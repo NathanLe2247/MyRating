@@ -1,5 +1,6 @@
+import { useClerk, useUser } from '@clerk/expo';
 import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedIcon } from '@/components/animated-icon';
@@ -8,22 +9,41 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { en } from '@/i18n/en';
+
+function AccountRow() {
+  const { user } = useUser();
+  const { signOut } = useClerk();
+
+  return (
+    <ThemedView type="backgroundElement" style={styles.accountRow}>
+      <ThemedText type="small" style={styles.accountEmail}>
+        {user?.primaryEmailAddress?.emailAddress ?? en.home.signedInFallback}
+      </ThemedText>
+      <Pressable onPress={() => signOut()}>
+        <ThemedText type="linkPrimary">{en.home.signOut}</ThemedText>
+      </Pressable>
+    </ThemedView>
+  );
+}
 
 function getDevMenuHint() {
   if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
+    return <ThemedText type="small">{en.home.devMenu.web}</ThemedText>;
   }
   if (Device.isDevice) {
     return (
       <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
+        {en.home.devMenu.deviceHintBefore}{' '}
+        <ThemedText type="code">{en.home.devMenu.deviceKey}</ThemedText>{' '}
+        {en.home.devMenu.deviceHintAfter}
       </ThemedText>
     );
   }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+  const shortcut = Platform.OS === 'android' ? en.home.devMenu.androidShortcut : en.home.devMenu.iosShortcut;
   return (
     <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
+      {en.home.devMenu.simulatorHintBefore} <ThemedText type="code">{shortcut}</ThemedText>
     </ThemedText>
   );
 }
@@ -32,26 +52,28 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
+        <AccountRow />
+
         <ThemedView style={styles.heroSection}>
           <AnimatedIcon />
           <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+            {en.home.welcome}
           </ThemedText>
         </ThemedView>
 
         <ThemedText type="code" style={styles.code}>
-          get started
+          {en.home.getStarted}
         </ThemedText>
 
         <ThemedView type="backgroundElement" style={styles.stepContainer}>
           <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+            title={en.home.tryEditingTitle}
+            hint={<ThemedText type="code">{en.home.tryEditingHint}</ThemedText>}
           />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
+          <HintRow title={en.home.devToolsTitle} hint={getDevMenuHint()} />
           <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
+            title={en.home.freshStartTitle}
+            hint={<ThemedText type="code">{en.home.freshStartHint}</ThemedText>}
           />
         </ThemedView>
 
@@ -94,5 +116,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.four,
     borderRadius: Spacing.four,
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: Spacing.three,
+    marginTop: Spacing.two,
+  },
+  accountEmail: {
+    flexShrink: 1,
   },
 });

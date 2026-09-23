@@ -31,6 +31,9 @@ mobile/.kotlin/
 backend/supabase/.branches/
 backend/supabase/.temp/
 
+# vendor-installed agent skills (regenerate with `npx skills experimental_install`)
+**/.agents/skills/
+
 # misc
 .DS_Store
 *.log
