@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+
+# env files - never commit real secrets, only *.example is tracked
+.env
+.env.local
+.env.*.local
+!*.env.example
+!.env.example
+
+# Next.js
+frontend/.next/
+frontend/out/
+
+# Expo
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/expo-env.d.ts
+mobile/ios/
+mobile/android/
+mobile/.kotlin/
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+.metro-health-check*
+*.tsbuildinfo
+
+# Supabase local dev
+backend/supabase/.branches/
+backend/supabase/.temp/
+
+# misc
+.DS_Store
+*.log
