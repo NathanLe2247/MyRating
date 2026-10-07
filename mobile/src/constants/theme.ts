@@ -45,6 +45,8 @@ export const Brand = {
   textFaint: '#5B646C',
   placeholder: '#58616A',
   error: '#FF6B6B',
+  /** Amber tag text, e.g. "18+ brackets" on onboarding. */
+  warm: '#FFA51F',
 } as const;
 
 /**
@@ -74,6 +76,13 @@ export const BrandSizes = {
   /** Gaps between `Spacing` steps: icon↔text and label↔control. */
   gapTight: 6,
   gapSnug: 12,
+  /** Onboarding: profile photo diameter and its "+" badge. */
+  avatar: 96,
+  avatarBadge: 32,
+  /** Onboarding: step progress bar thickness. */
+  progressBar: 6,
+  /** Onboarding: header account button diameter. */
+  headerButton: 36,
 } as const;
 
 export const Fonts = Platform.select({

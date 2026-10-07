@@ -13,14 +13,18 @@ issuing its own sessions.
 - `supabase/migrations/` — schema migrations. Any change to a shape defined
   in `shared/` (`Court`, `Tournament`, `RatingEntry`, `NewsItem`) needs a
   matching migration here, reviewed by the `schema-guardian` subagent.
-- `functions/ratings/` — Glicko-2 rating updates. Follows
+- `supabase/functions/ratings/` — Glicko-2 rating updates. Follows
   `agent/skills/ratings-engine` conventions; this is the only place ratings
   get written.
-- `functions/matchmaking/` — PostGIS radius queries for the mobile queue.
+- `supabase/functions/matchmaking/` — PostGIS radius queries for the mobile queue.
   Follows `agent/skills/geospatial-matching`.
-- `functions/dupr-import/` — importing/reconciling DUPR ratings.
-- `functions/whoop-oauth/` — WHOOP OAuth flow, token exchange/refresh for
+- `supabase/functions/dupr-import/` — importing/reconciling DUPR ratings.
+- `supabase/functions/whoop-oauth/` — WHOOP OAuth flow, token exchange/refresh for
   `agent/skills/health-integrations`.
+- `supabase/functions/player-profile/` — onboarding step 1: username
+  availability, R2 avatar upload URLs, and saving the profile to
+  `public.users` (plus Clerk `publicMetadata.profileCompletedAt`, which gates
+  onboarding in the app). Verifies Clerk tokens itself (`verify_jwt = false`).
 - `django/` — a separate Django service. **Ownership boundary vs. the edge
   functions above is not yet decided** — see `django/CLAUDE.md`. Don't
   assume it owns a piece of logic without confirming; check there first
