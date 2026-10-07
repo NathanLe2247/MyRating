@@ -41,7 +41,9 @@ export function RatingOptionCard({
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="radio"
-      accessibilityState={{ checked: selected, disabled }}
+      // aria-* rather than accessibilityState: react-native-web only maps these to ARIA.
+      aria-checked={selected}
+      aria-disabled={disabled}
       style={[styles.card, selected && styles.cardSelected, disabled && styles.cardDisabled]}>
       <View style={styles.header}>
         <View style={styles.icon}>
