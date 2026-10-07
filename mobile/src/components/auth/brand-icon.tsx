@@ -8,6 +8,8 @@ type SymbolName = ComponentProps<typeof SymbolView>['name'];
 const ICONS = {
   identifier: { ios: 'person.badge.key', android: 'passkey', web: 'passkey' },
   email: { ios: 'envelope', android: 'mail', web: 'mail' },
+  phone: { ios: 'phone', android: 'call', web: 'call' },
+  sms: { ios: 'message', android: 'sms', web: 'sms' },
   lock: { ios: 'lock', android: 'lock', web: 'lock' },
   eye: { ios: 'eye', android: 'visibility', web: 'visibility' },
   eyeOff: { ios: 'eye.slash', android: 'visibility_off', web: 'visibility_off' },

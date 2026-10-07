@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { AuthButton } from '@/components/auth/auth-button';
+import { AuthCodeField } from '@/components/auth/auth-code-field';
 import { AuthError } from '@/components/auth/auth-error';
 import { AuthField } from '@/components/auth/auth-field';
 import { AuthLink } from '@/components/auth/auth-link';
@@ -42,7 +43,7 @@ export default function ForgotPasswordScreen() {
     setFormError(null);
     const { error: verifyError } = await signIn.resetPasswordEmailCode.verifyCode({ code });
     if (verifyError) {
-      setFormError(verifyError.longMessage ?? verifyError.message ?? en.auth.verifyEmail.codeInvalid);
+      setFormError(verifyError.longMessage ?? verifyError.message ?? en.auth.verifyCode.codeInvalid);
       return;
     }
     const { error } = await signIn.resetPasswordEmailCode.submitPassword({ password });
@@ -58,7 +59,7 @@ export default function ForgotPasswordScreen() {
   };
 
   const footer = (
-    <AuthLink variant="muted" label={en.auth.forgotPassword.backToLogIn} onPress={() => router.back()} />
+    <AuthLink variant="muted" label={en.auth.forgotPassword.backToLogIn} onPress={() => router.dismissTo('/sign-in')} />
   );
 
   if (step === 'reset') {
@@ -67,16 +68,7 @@ export default function ForgotPasswordScreen() {
         title={en.auth.forgotPassword.title}
         subtitle={en.auth.forgotPassword.codeSubtitle(emailAddress)}
         footer={footer}>
-        <AuthField
-          label={en.auth.fields.codeLabel}
-          icon="email"
-          value={code}
-          onChangeText={setCode}
-          placeholder={en.auth.fields.codePlaceholder}
-          keyboardType="number-pad"
-          autoComplete="one-time-code"
-          textContentType="oneTimeCode"
-        />
+        <AuthCodeField icon="email" value={code} onChangeText={setCode} />
         <AuthField
           label={en.auth.forgotPassword.newPasswordLabel}
           icon="lock"

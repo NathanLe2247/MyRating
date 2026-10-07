@@ -1,7 +1,12 @@
 import { useSSO } from '@clerk/expo/experimental';
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 
+import { useWarmUpBrowser } from '@/hooks/use-warm-up-browser';
 import { en } from '@/i18n/en';
+
+// Closes the OAuth popup on web when Google redirects back.
+WebBrowser.maybeCompleteAuthSession();
 
 /**
  * Browser-based Google OAuth via Clerk. Works for both new and existing
@@ -10,6 +15,7 @@ import { en } from '@/i18n/en';
  */
 export function useGoogleSignIn() {
   const { startSSOFlow } = useSSO();
+  useWarmUpBrowser();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
