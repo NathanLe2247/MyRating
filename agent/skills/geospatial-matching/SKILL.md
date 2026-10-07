@@ -8,7 +8,7 @@ description: PostGIS radius queries for mobile-only match queueing — how nearb
 Conventions for finding nearby players and courts and queueing matches, using
 PostGIS on the Supabase backend.
 
-Scope: mobile-only. Consumed by `mobile/` and `backend/functions/matchmaking/`.
+Scope: mobile-only. Consumed by `mobile/` and `backend/supabase/functions/matchmaking/`.
 Do not surface queueing in `frontend/`.
 
 TODO: document the radius query pattern, queue table shape, and how it
