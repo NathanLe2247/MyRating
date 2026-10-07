@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BrandIcon } from '@/components/auth/brand-icon';
+import { BrandIcon } from '@/components/brand-icon';
 import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 
 type AuthCheckboxProps = {

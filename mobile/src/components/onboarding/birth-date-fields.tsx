@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandIcon } from '@/components/auth/brand-icon';
+import { BrandIcon } from '@/components/brand-icon';
 import { BirthDayLength, BirthYearLength } from '@/constants/profile';
 import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 import { en } from '@/i18n/en';

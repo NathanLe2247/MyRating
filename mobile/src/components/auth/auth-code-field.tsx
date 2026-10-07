@@ -1,5 +1,5 @@
 import { AuthField } from '@/components/auth/auth-field';
-import type { BrandIconName } from '@/components/auth/brand-icon';
+import type { BrandIconName } from '@/components/brand-icon';
 import { VerificationCodeLength } from '@/constants/auth';
 import { en } from '@/i18n/en';
 

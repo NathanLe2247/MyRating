@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
-import { BrandIcon, type BrandIconName } from '@/components/auth/brand-icon';
+import { BrandIcon, type BrandIconName } from '@/components/brand-icon';
 import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 
 type AuthFieldProps = Omit<TextInputProps, 'style' | 'placeholderTextColor'> & {

@@ -49,12 +49,24 @@ export const Brand = {
   warm: '#FFA51F',
   /** Dimmed backdrop behind bottom sheets and modals. */
   scrim: 'rgba(0, 0, 0, 0.6)',
-  /** Onboarding step 2: selected option card and its lime accents. */
+  /** Selected option card (onboarding step 2). */
   cardSelected: '#1E252C',
+  /** Lime tints for highlighted cards, chips, and badges. */
   limeSurface: 'rgba(212, 255, 0, 0.1)',
   limeBorder: 'rgba(212, 255, 0, 0.45)',
   /** Accent for the USA Pickleball option icon. */
   cyan: '#2EC7E6',
+  // Home dashboard
+  cardRaised: '#1B2127',
+  chip: '#1F262D',
+  /** Loss results; wins use `lime`. */
+  loss: '#FF8A80',
+  winSurface: 'rgba(212, 255, 0, 0.12)',
+  lossSurface: 'rgba(255, 107, 107, 0.12)',
+  limeHighlight: '#E6FF66',
+  onLimeMuted: 'rgba(11, 14, 16, 0.72)',
+  onLimeChip: 'rgba(11, 14, 16, 0.12)',
+  onLimeDivider: 'rgba(11, 14, 16, 0.15)',
 } as const;
 
 /**
@@ -85,6 +97,12 @@ export const BrandSizes = {
   gapTight: 6,
   gapMid: 10,
   gapSnug: 12,
+  /** Fully rounded ends for chips, tabs, and pills of any height. */
+  pillRadius: 999,
+  /** Status dots (availability, "players active"). */
+  dot: 6,
+  /** Vertical padding inside small chips. */
+  chipPaddingY: 3,
   /** Onboarding: profile photo diameter and its "+" badge. */
   avatar: 96,
   avatarBadge: 32,
@@ -95,8 +113,14 @@ export const BrandSizes = {
   /** Onboarding step 2: option card icon circle and radio diameters. */
   optionIcon: 40,
   radio: 22,
-  /** Inner padding of large cards (step 2 options). */
+  /** Inner padding of large cards (step 2 options, dashboard panels). */
   panelPadding: 20,
+  /** Home: dashboard panel corners (padding is `panelPadding`). */
+  panelRadius: 20,
+  /** Home: rating progress bar thickness. */
+  ratingBar: 8,
+  /** Home: win/loss result disc in a match row. */
+  resultBadge: 52,
 } as const;
 
 export const Fonts = Platform.select({

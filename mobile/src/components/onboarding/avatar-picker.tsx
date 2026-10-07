@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { BrandIcon } from '@/components/auth/brand-icon';
+import { BrandIcon } from '@/components/brand-icon';
 import { AvatarContentTypes, AvatarQuality } from '@/constants/profile';
 import { Brand, BrandSizes } from '@/constants/theme';
 import { en } from '@/i18n/en';

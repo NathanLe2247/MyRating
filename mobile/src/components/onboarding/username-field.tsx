@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { BrandIcon } from '@/components/auth/brand-icon';
+import { BrandIcon } from '@/components/brand-icon';
 import { normalizeUsername, UsernameMaxLength } from '@/constants/profile';
 import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 import { en } from '@/i18n/en';

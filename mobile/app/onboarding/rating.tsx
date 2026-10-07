@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AuthButton } from '@/components/auth/auth-button';
 import { AuthError } from '@/components/auth/auth-error';
-import { BrandIcon } from '@/components/auth/brand-icon';
+import { BrandIcon } from '@/components/brand-icon';
 import { FeatureChip } from '@/components/onboarding/feature-chip';
 import { OnboardingScreen } from '@/components/onboarding/onboarding-screen';
 import { ProtocolBanner } from '@/components/onboarding/protocol-banner';

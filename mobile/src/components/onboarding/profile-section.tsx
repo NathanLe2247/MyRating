@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BrandIcon, type BrandIconName } from '@/components/auth/brand-icon';
+import { BrandIcon, type BrandIconName } from '@/components/brand-icon';
 import { Brand, BrandFonts, BrandSizes } from '@/constants/theme';
 
 type ProfileSectionProps = {
