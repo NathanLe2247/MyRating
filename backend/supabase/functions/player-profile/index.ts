@@ -11,7 +11,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { authenticate, getClerkIdentity, markProfileCompleted } from './clerk.ts';
-import { AVATAR_CONTENT_TYPES, avatarPrefix, createAvatarUploadUrl } from './r2.ts';
+import { createAvatarUploadUrl, isAvatarContentType, isOwnAvatarKey } from './r2.ts';
 
 // Keep in sync with mobile/src/constants/profile.ts and the users_username_format check.
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
@@ -52,7 +52,7 @@ function parseProfile(body: Record<string, unknown>, clerkUserId: string): Profi
   if (typeof username !== 'string' || !USERNAME_PATTERN.test(username)) return 'invalid_username';
   if (!isValidBirthDate(dateOfBirth)) return 'invalid_date_of_birth';
   if (!DOMINANT_HANDS.includes(dominantHand as ProfileInput['dominantHand'])) return 'invalid_dominant_hand';
-  if (avatarKey != null && (typeof avatarKey !== 'string' || !avatarKey.startsWith(avatarPrefix(clerkUserId)))) {
+  if (avatarKey != null && (typeof avatarKey !== 'string' || !isOwnAvatarKey(clerkUserId, avatarKey))) {
     return 'invalid_avatar_key';
   }
   return {
@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
 
       case '/avatar-upload-url': {
         const { contentType } = body;
-        if (typeof contentType !== 'string' || !(contentType in AVATAR_CONTENT_TYPES)) {
+        if (!isAvatarContentType(contentType)) {
           return json(422, { error: 'unsupported_content_type' });
         }
         return json(200, await createAvatarUploadUrl(clerkUserId, contentType));

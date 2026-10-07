@@ -20,6 +20,8 @@ type BirthDateFieldsProps = {
 const copy = en.onboarding.profile.birthDate;
 const monthLabel = (month: number) => `${String(month).padStart(2, '0')} - ${copy.months[month - 1]}`;
 const digitsOnly = (text: string, max: number) => text.replace(/\D/g, '').slice(0, max);
+// 1–12, built once rather than on every render.
+const MONTHS = copy.months.map((_, i) => i + 1);
 
 // Labelled box shared by the three parts: small caps label over the value.
 function DateBox({ label, flex, children }: { label: string; flex: number; children: ReactNode }) {
@@ -84,7 +86,7 @@ export function BirthDateFields({ month, day, year, onChangeMonth, onChangeDay, 
         <SafeAreaView edges={['bottom']} style={styles.sheet}>
           <Text style={styles.sheetTitle}>{copy.selectMonth}</Text>
           <FlatList
-            data={copy.months.map((_, i) => i + 1)}
+            data={MONTHS}
             keyExtractor={(m) => String(m)}
             renderItem={({ item }) => (
               <Pressable
@@ -151,7 +153,7 @@ const styles = StyleSheet.create({
   },
   scrim: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: Brand.scrim,
   },
   sheet: {
     maxHeight: SHEET_MAX_HEIGHT,

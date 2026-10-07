@@ -47,6 +47,8 @@ export const Brand = {
   error: '#FF6B6B',
   /** Amber tag text, e.g. "18+ brackets" on onboarding. */
   warm: '#FFA51F',
+  /** Dimmed backdrop behind bottom sheets and modals. */
+  scrim: 'rgba(0, 0, 0, 0.6)',
 } as const;
 
 /**
