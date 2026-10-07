@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandIcon } from '@/components/auth/brand-icon';
+import { BrandIcon } from '@/components/brand-icon';
 import { BrandLogo } from '@/components/auth/brand-logo';
 import { OnboardingStepCount } from '@/constants/profile';
 import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';

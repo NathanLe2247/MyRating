@@ -4,12 +4,12 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AuthButton } from '@/components/auth/auth-button';
 import { AuthError } from '@/components/auth/auth-error';
-import { BrandIcon } from '@/components/auth/brand-icon';
+import { BrandIcon } from '@/components/brand-icon';
 import { AvatarPicker } from '@/components/onboarding/avatar-picker';
 import { BirthDateFields } from '@/components/onboarding/birth-date-fields';
 import { OnboardingScreen } from '@/components/onboarding/onboarding-screen';
 import { ProfileSection } from '@/components/onboarding/profile-section';
-import { SegmentedControl } from '@/components/onboarding/segmented-control';
+import { SegmentedControl } from '@/components/segmented-control';
 import { UsernameField } from '@/components/onboarding/username-field';
 import { BirthYearLength, DominantHands, toBirthDate } from '@/constants/profile';
 import { Brand, BrandFonts, BrandSizes } from '@/constants/theme';

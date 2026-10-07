@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BrandIcon } from '@/components/auth/brand-icon';
+import { BrandIcon } from '@/components/brand-icon';
 import { Brand, BrandFonts, Spacing } from '@/constants/theme';
 
 type ProtocolBannerProps = {

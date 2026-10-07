@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react';
 type SymbolName = ComponentProps<typeof SymbolView>['name'];
 
 // iOS SF Symbol / Android Material Symbol pairs for the icons used on the
-// auth and onboarding screens. `web` reuses the Material name.
+// app's screens. `web` reuses the Material name.
 const ICONS = {
   identifier: { ios: 'person.badge.key', android: 'passkey', web: 'passkey' },
   email: { ios: 'envelope', android: 'mail', web: 'mail' },
@@ -30,6 +30,10 @@ const ICONS = {
   trophy: { ios: 'trophy.fill', android: 'emoji_events', web: 'emoji_events' },
   tune: { ios: 'slider.horizontal.3', android: 'tune', web: 'tune' },
   shield: { ios: 'checkmark.shield.fill', android: 'verified_user', web: 'verified_user' },
+  court: { ios: 'sportscourt', android: 'sports_tennis', web: 'sports_tennis' },
+  chevronDown: { ios: 'chevron.down', android: 'expand_more', web: 'expand_more' },
+  trendUp: { ios: 'chart.line.uptrend.xyaxis', android: 'trending_up', web: 'trending_up' },
+  history: { ios: 'clock.arrow.circlepath', android: 'history', web: 'history' },
 } satisfies Record<string, SymbolName>;
 
 export type BrandIconName = keyof typeof ICONS;

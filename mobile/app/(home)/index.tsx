@@ -1,133 +1,80 @@
-import { useClerk, useUser } from '@clerk/expo';
-import * as Device from 'expo-device';
-import { Platform, Pressable, StyleSheet } from 'react-native';
+import { useClerk } from '@clerk/expo';
+import { StatusBar } from 'expo-status-bar';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { DashboardHeader } from '@/components/home/dashboard-header';
+import { LoadError } from '@/components/home/load-error';
+import { QueueCard } from '@/components/home/queue-card';
+import { RatingCard } from '@/components/home/rating-card';
+import { RecentMatches } from '@/components/home/recent-matches';
+import { DashboardPlaceholderData } from '@/constants/dashboard-placeholder';
+import type { MatchFormat } from '@/constants/match';
+import { BottomTabInset, Brand, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useDashboard } from '@/hooks/use-dashboard';
 import { en } from '@/i18n/en';
 
-function AccountRow() {
-  const { user } = useUser();
-  const { signOut } = useClerk();
-
-  return (
-    <ThemedView type="backgroundElement" style={styles.accountRow}>
-      <ThemedText type="small" style={styles.accountEmail}>
-        {user?.primaryEmailAddress?.emailAddress ?? en.home.signedInFallback}
-      </ThemedText>
-      <Pressable onPress={() => signOut()}>
-        <ThemedText type="linkPrimary">{en.home.signOut}</ThemedText>
-      </Pressable>
-    </ThemedView>
-  );
-}
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">{en.home.devMenu.web}</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        {en.home.devMenu.deviceHintBefore}{' '}
-        <ThemedText type="code">{en.home.devMenu.deviceKey}</ThemedText>{' '}
-        {en.home.devMenu.deviceHintAfter}
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? en.home.devMenu.androidShortcut : en.home.devMenu.iosShortcut;
-  return (
-    <ThemedText type="small">
-      {en.home.devMenu.simulatorHintBefore} <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
-
 export default function HomeScreen() {
+  const { signOut } = useClerk();
+  const [format, setFormat] = useState<MatchFormat>('doubles');
+  const { data, error, refetch } = useDashboard(format);
+
+  // TODO: the header's options button is the only place to sign out until
+  // there's a profile/settings screen.
+  const openAccountMenu = () => {
+    // react-native-web's Alert.alert is a no-op, so web uses the browser dialog.
+    if (Platform.OS === 'web') {
+      if (window.confirm(en.home.account.confirmSignOut)) signOut();
+      return;
+    }
+    Alert.alert(en.home.account.title, undefined, [
+      { text: en.home.account.cancel, style: 'cancel' },
+      { text: en.home.account.signOut, style: 'destructive', onPress: () => signOut() },
+    ]);
+  };
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <AccountRow />
-
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            {en.home.welcome}
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          {en.home.getStarted}
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title={en.home.tryEditingTitle}
-            hint={<ThemedText type="code">{en.home.tryEditingHint}</ThemedText>}
-          />
-          <HintRow title={en.home.devToolsTitle} hint={getDevMenuHint()} />
-          <HintRow
-            title={en.home.freshStartTitle}
-            hint={<ThemedText type="code">{en.home.freshStartHint}</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <DashboardHeader
+          format={format}
+          onFormatChange={setFormat}
+          courts={DashboardPlaceholderData.courts}
+          onMenuPress={openAccountMenu}
+        />
+        {data ? (
+          <>
+            {error && <LoadError message={en.home.loadFailed} onRetry={() => refetch()} />}
+            <RatingCard summary={data.rating} />
+            {/* TODO: navigate to the queue screen once it exists. */}
+            <QueueCard summary={data.queue} />
+            <RecentMatches matches={data.recentMatches} />
+          </>
+        ) : (
+          <ActivityIndicator color={Brand.lime} style={styles.loading} />
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    backgroundColor: Brand.background,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
+  scroll: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.three,
+    paddingBottom: BottomTabInset + Spacing.four,
     gap: Spacing.four,
   },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-  accountRow: {
-    flexDirection: 'row',
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  accountEmail: {
-    flexShrink: 1,
+  loading: {
+    paddingVertical: Spacing.six,
   },
 });

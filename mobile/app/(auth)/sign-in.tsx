@@ -11,7 +11,7 @@ import { AuthError } from '@/components/auth/auth-error';
 import { AuthField } from '@/components/auth/auth-field';
 import { AuthLink } from '@/components/auth/auth-link';
 import { AuthScreen } from '@/components/auth/auth-screen';
-import { BrandIcon } from '@/components/auth/brand-icon';
+import { BrandIcon } from '@/components/brand-icon';
 import { GoogleIcon } from '@/components/auth/google-icon';
 import { VerificationCodeLength } from '@/constants/auth';
 import { toUsE164 } from '@/constants/phone';
