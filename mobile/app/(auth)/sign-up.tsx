@@ -156,7 +156,7 @@ export default function SignUpScreen() {
             variant="cta"
             prompt={en.auth.signUp.haveAccount}
             label={en.auth.signUp.logIn}
-            onPress={() => router.back()}
+            onPress={() => router.dismissTo('/sign-in')}
           />
         </>
       }>

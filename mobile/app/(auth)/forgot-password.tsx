@@ -59,7 +59,7 @@ export default function ForgotPasswordScreen() {
   };
 
   const footer = (
-    <AuthLink variant="muted" label={en.auth.forgotPassword.backToLogIn} onPress={() => router.back()} />
+    <AuthLink variant="muted" label={en.auth.forgotPassword.backToLogIn} onPress={() => router.dismissTo('/sign-in')} />
   );
 
   if (step === 'reset') {
