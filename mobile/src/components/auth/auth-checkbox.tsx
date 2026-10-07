@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BrandIcon } from '@/components/auth/brand-icon';
-import { Brand, BrandFonts, Spacing } from '@/constants/theme';
+import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 
 type AuthCheckboxProps = {
   label: string;
@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
   touch: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two + Spacing.one,
+    gap: BrandSizes.gapSnug,
     flexShrink: 1,
   },
   box: {

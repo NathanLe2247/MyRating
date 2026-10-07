@@ -4,7 +4,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandLogo } from '@/components/auth/brand-logo';
-import { Brand, BrandFonts, Spacing } from '@/constants/theme';
+import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 
 type AuthScreenProps = {
   title: string;
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     width: '100%',
-    maxWidth: 480,
+    maxWidth: BrandSizes.authMaxWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.six,
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: Brand.card,
-    borderRadius: 16,
+    borderRadius: BrandSizes.cardRadius,
     padding: Spacing.four,
     gap: Spacing.four,
     // Faint lime wash along the top edge of the card, as in the mock.

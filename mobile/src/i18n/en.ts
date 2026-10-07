@@ -39,6 +39,8 @@ export const en = {
       haveAccount: 'Already have an account?',
       logIn: 'Log in',
       accountCreationFailed: 'Could not create your account.',
+      sendCodeFailed: 'Could not send a verification code.',
+      incomplete: 'Your email is verified, but sign-up isn’t complete yet.',
     },
     verifyEmail: {
       title: 'Check your email',

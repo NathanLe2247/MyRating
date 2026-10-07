@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 
-import { Brand, BrandFonts, Spacing } from '@/constants/theme';
+import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 
 type AuthButtonProps = {
   label: string;
@@ -53,8 +53,8 @@ export function AuthButton({
 
 const styles = StyleSheet.create({
   base: {
-    height: 48,
-    borderRadius: 24,
+    height: BrandSizes.control,
+    borderRadius: BrandSizes.controlRadius,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

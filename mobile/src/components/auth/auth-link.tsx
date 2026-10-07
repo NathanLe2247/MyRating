@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BrandIcon, type BrandIconName } from '@/components/auth/brand-icon';
-import { Brand, BrandFonts, Spacing } from '@/constants/theme';
+import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 
 type AuthLinkProps = {
   label: string;
@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
   link: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.one + Spacing.half,
+    gap: BrandSizes.gapTight,
   },
   pressed: {
     opacity: 0.6,
@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
   promptRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two + Spacing.one,
+    gap: BrandSizes.gapSnug,
   },
   prompt: {
     fontFamily: BrandFonts.body,

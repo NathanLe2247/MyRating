@@ -39,7 +39,11 @@ export default function SignUpScreen() {
       setFormError(error.longMessage ?? error.message ?? en.auth.signUp.accountCreationFailed);
       return;
     }
-    await signUp.verifications.sendEmailCode();
+    const { error: sendError } = await signUp.verifications.sendEmailCode();
+    if (sendError) {
+      setFormError(sendError.longMessage ?? sendError.message ?? en.auth.signUp.sendCodeFailed);
+      return;
+    }
     setStep('verify-email');
   };
 
@@ -52,6 +56,8 @@ export default function SignUpScreen() {
     }
     if (signUp.status === 'complete') {
       await signUp.finalize({ navigate: navigateAfterAuth });
+    } else {
+      setFormError(en.auth.signUp.incomplete);
     }
   };
 

@@ -59,6 +59,23 @@ export const BrandFonts = {
   bodySemiBold: 'HankenGrotesk_600SemiBold',
 } as const;
 
+/**
+ * Sizes shared by the brand-styled (auth) components, so inputs and buttons
+ * line up and the shell width is defined once.
+ */
+export const BrandSizes = {
+  /** Height of text inputs and buttons. */
+  control: 48,
+  /** Pill radius for `control`-height elements. */
+  controlRadius: 24,
+  cardRadius: 16,
+  /** Max width of the auth card column (narrower than `MaxContentWidth`). */
+  authMaxWidth: 480,
+  /** Gaps between `Spacing` steps: icon↔text and label↔control. */
+  gapTight: 6,
+  gapSnug: 12,
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

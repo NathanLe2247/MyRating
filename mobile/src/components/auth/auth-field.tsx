@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
 import { BrandIcon, type BrandIconName } from '@/components/auth/brand-icon';
-import { Brand, BrandFonts, Spacing } from '@/constants/theme';
+import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 
 type AuthFieldProps = Omit<TextInputProps, 'style' | 'placeholderTextColor'> & {
   label: string;
@@ -66,7 +66,7 @@ export function AuthField({
 
 const styles = StyleSheet.create({
   field: {
-    gap: Spacing.two + Spacing.one,
+    gap: BrandSizes.gapSnug,
   },
   labelRow: {
     flexDirection: 'row',
@@ -84,9 +84,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-    height: 48,
+    height: BrandSizes.control,
     paddingHorizontal: Spacing.three,
-    borderRadius: 24,
+    borderRadius: BrandSizes.controlRadius,
     backgroundColor: Brand.input,
     borderWidth: 1,
     borderColor: 'transparent',
