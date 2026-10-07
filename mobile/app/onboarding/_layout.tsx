@@ -8,7 +8,7 @@ export default function OnboardingLayout() {
   const onboarding = useOnboarding();
 
   if (!isLoaded || !onboarding.isLoaded) return null;
-  if (!isSignedIn) return <Redirect href="/sign-in" />;
+  if (!isSignedIn) return <Redirect href="/sign-up" />;
   if (onboarding.profileCompleted) return <Redirect href="/" />;
 
   return <Stack screenOptions={{ headerShown: false }} />;

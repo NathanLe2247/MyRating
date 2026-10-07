@@ -2,9 +2,10 @@ import { useAuth } from '@clerk/expo';
 import { Redirect, Stack } from 'expo-router';
 
 // Without this the Stack starts on the alphabetically-first route
-// (forgot-password) on Android instead of the redirect target.
+// (forgot-password) on Android instead of the redirect target. Signed-out
+// users start on sign-up; it links to sign-in for returning players.
 export const unstable_settings = {
-  initialRouteName: 'sign-in',
+  initialRouteName: 'sign-up',
 };
 
 export default function AuthLayout() {

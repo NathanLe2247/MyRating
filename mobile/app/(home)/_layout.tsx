@@ -9,7 +9,7 @@ export default function HomeLayout() {
   const onboarding = useOnboarding();
 
   if (!isLoaded) return null;
-  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
+  if (!isSignedIn) return <Redirect href="/(auth)/sign-up" />;
   if (!onboarding.isLoaded) return null;
   // New accounts (email, phone, or Google) land on onboarding until they
   // finish step 1 or skip it.
