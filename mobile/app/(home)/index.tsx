@@ -46,13 +46,12 @@ export default function HomeScreen() {
         />
         {data ? (
           <>
+            {error && <LoadError message={en.home.loadFailed} onRetry={() => refetch()} />}
             <RatingCard summary={data.rating} />
             {/* TODO: navigate to the queue screen once it exists. */}
             <QueueCard summary={data.queue} />
             <RecentMatches matches={data.recentMatches} />
           </>
-        ) : error ? (
-          <LoadError message={en.home.loadFailed} onRetry={() => refetch()} />
         ) : (
           <ActivityIndicator color={Brand.lime} style={styles.loading} />
         )}

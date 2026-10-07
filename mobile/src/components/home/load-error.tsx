@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     gap: Spacing.three,
-    paddingVertical: Spacing.six,
+    paddingVertical: Spacing.two,
   },
   message: {
     fontFamily: BrandFonts.body,

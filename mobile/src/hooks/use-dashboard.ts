@@ -34,11 +34,12 @@ export function useDashboard(_format: MatchFormat) {
     },
   });
 
+  // Only the rating is fetched, so a failed fetch shouldn't hide the rest of
+  // the dashboard: it renders with the rating as unrated and `error` set.
   const placeholder = DashboardPlaceholderData;
-  const data: Dashboard | undefined =
-    ratingQuery.data === undefined
-      ? undefined
-      : { ...placeholder, rating: { ...placeholder.rating, rating: ratingQuery.data } };
+  const data: Dashboard | undefined = ratingQuery.isPending
+    ? undefined
+    : { ...placeholder, rating: { ...placeholder.rating, rating: ratingQuery.data ?? null } };
 
   return {
     data,
