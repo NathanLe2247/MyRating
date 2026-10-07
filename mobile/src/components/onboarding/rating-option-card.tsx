@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     borderRadius: BrandSizes.cardRadius + Spacing.two,
     borderWidth: 1,
     borderColor: Brand.border,
-    padding: Spacing.three + Spacing.one,
+    padding: BrandSizes.panelPadding,
     gap: Spacing.three,
     overflow: 'hidden',
   },

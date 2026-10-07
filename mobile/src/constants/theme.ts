@@ -83,6 +83,7 @@ export const BrandSizes = {
   authMaxWidth: 480,
   /** Gaps between `Spacing` steps: icon↔text and label↔control. */
   gapTight: 6,
+  gapMid: 10,
   gapSnug: 12,
   /** Onboarding: profile photo diameter and its "+" badge. */
   avatar: 96,
@@ -94,6 +95,8 @@ export const BrandSizes = {
   /** Onboarding step 2: option card icon circle and radio diameters. */
   optionIcon: 40,
   radio: 22,
+  /** Inner padding of large cards (step 2 options). */
+  panelPadding: 20,
 } as const;
 
 export const Fonts = Platform.select({

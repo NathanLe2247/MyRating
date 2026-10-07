@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BrandIcon, type BrandIconName } from '@/components/auth/brand-icon';
-import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
+import { Brand, BrandFonts, BrandSizes } from '@/constants/theme';
 
 type FeatureChipProps = {
   icon: BrandIconName;
@@ -26,8 +26,8 @@ const styles = StyleSheet.create({
     gap: BrandSizes.gapTight,
     backgroundColor: Brand.background,
     borderRadius: BrandSizes.gapSnug,
-    paddingHorizontal: Spacing.two + Spacing.half,
-    paddingVertical: Spacing.one + Spacing.half,
+    paddingHorizontal: BrandSizes.gapMid,
+    paddingVertical: BrandSizes.gapTight,
   },
   label: {
     fontFamily: BrandFonts.bodyMedium,

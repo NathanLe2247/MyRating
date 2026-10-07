@@ -49,9 +49,8 @@ export const ProfileCompletedKey = 'profileCompletedAt';
 export const OnboardingCompletedKey = 'onboardingCompletedAt';
 export const OnboardingSkippedKey = 'onboardingSkippedSessionId';
 
-// Step 2 options, in display order. Only `calibration` is supported so far;
-// the others render disabled. Mirrors public.rating_source.
-export const RatingSources: readonly RatingSource[] = ['dupr', 'usa_pickleball', 'calibration'];
+// Step 2 options the app can submit; the others render disabled. Subset of
+// public.rating_source.
 export const SupportedRatingSources: readonly RatingSource[] = ['calibration'];
 export const PlacementGameCount = 3;
 
