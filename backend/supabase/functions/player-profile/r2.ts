@@ -24,6 +24,23 @@ export const AVATAR_CONTENT_TYPES: Record<string, string> = {
 /** Every avatar a user uploads lives under this prefix, so a saved key can be checked for ownership. */
 export const avatarPrefix = (clerkUserId: string) => `avatars/${clerkUserId}/`;
 
+/** Own-property check, so inherited names like `constructor` aren't accepted as a type. */
+export const isAvatarContentType = (value: unknown): value is string =>
+  typeof value === 'string' && Object.hasOwn(AVATAR_CONTENT_TYPES, value);
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * True only for keys `createAvatarUploadUrl` could have issued to this user:
+ * `avatars/<clerk_user_id>/<uuid>.<ext>`. A bare prefix check would accept
+ * `avatars/<id>/../<other id>/…`, which resolves to someone else's photo once
+ * it's turned into a public URL.
+ */
+export function isOwnAvatarKey(clerkUserId: string, key: string): boolean {
+  const exts = Object.values(AVATAR_CONTENT_TYPES).join('|');
+  return new RegExp(`^${escapeRegExp(avatarPrefix(clerkUserId))}[0-9a-f-]{36}\\.(${exts})$`).test(key);
+}
+
 /**
  * Presigned PUT URL for a new avatar. The client uploads the file directly to
  * R2 with the same Content-Type, then sends `key` along with the profile.
