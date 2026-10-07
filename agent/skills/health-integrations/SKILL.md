@@ -8,7 +8,7 @@ description: HealthKit and WHOOP OAuth integration conventions, mobile-only.
 Conventions for reading Apple HealthKit data on-device and integrating with
 WHOOP via OAuth.
 
-Scope: mobile-only. Consumed by `mobile/` and `backend/functions/whoop-oauth/`.
+Scope: mobile-only. Consumed by `mobile/` and `backend/supabase/functions/whoop-oauth/`.
 Raw health data and OAuth tokens must not be persisted in `shared/` or any
 client-visible table — see `backend/CLAUDE.md`.
 

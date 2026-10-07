@@ -11,7 +11,7 @@ check specifically for:
   into `frontend/`.
 - Data shapes (`Court`, `Tournament`, `RatingEntry`, `NewsItem`) redefined
   locally instead of imported from `shared/`.
-- Rating math implemented outside `backend/functions/ratings/` and
+- Rating math implemented outside `backend/supabase/functions/ratings/` and
   `agent/skills/ratings-engine`.
 - Clients writing ratings or match state directly instead of going through
   backend edge functions.
