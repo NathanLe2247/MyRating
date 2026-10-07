@@ -16,10 +16,11 @@ const HOLES = [
   [C + 5, C + 5],
 ] as const;
 
-export function BrandLogo() {
+// `size` scales the whole mark (drawn on an 80×80 viewBox).
+export function BrandLogo({ size = SIZE }: { size?: number }) {
   return (
-    <View style={styles.glow}>
-      <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+    <View style={[styles.glow, { width: size, height: size, borderRadius: size / 2 }]}>
+      <Svg width={size} height={size} viewBox={`0 0 ${SIZE} ${SIZE}`}>
         <Circle cx={C} cy={C} r={C} fill={Brand.logoRing} />
         <Circle
           cx={C}
@@ -51,9 +52,6 @@ export function BrandLogo() {
 
 const styles = StyleSheet.create({
   glow: {
-    width: SIZE,
-    height: SIZE,
-    borderRadius: SIZE / 2,
     boxShadow: `0 0 36px ${Brand.limeGlow}`,
   },
 });

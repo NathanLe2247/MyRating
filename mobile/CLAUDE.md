@@ -49,8 +49,8 @@ Supabase's own session.
 
 - Import shared types/schemas from `shared/`, never redefine them locally.
 - Anything writing ratings goes through the `ratings` edge function in
-  `backend/functions/ratings/`, using `agent/skills/ratings-engine`
+  `backend/supabase/functions/ratings/`, using `agent/skills/ratings-engine`
   conventions — never compute Glicko-2 client-side as the source of truth.
 - OAuth tokens (WHOOP) and HealthKit data stay device-local or go through
-  `backend/functions/whoop-oauth/`; never persist raw health credentials in
+  `backend/supabase/functions/whoop-oauth/`; never persist raw health credentials in
   `shared/` or client-visible tables.
