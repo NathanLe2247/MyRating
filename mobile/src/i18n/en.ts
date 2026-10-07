@@ -79,6 +79,11 @@ export const en = {
     google: {
       continue: 'Continue with Google',
       failed: 'Could not sign in with Google.',
+      missingRequirements: (fields: string) =>
+        `Google sign-up needs more details this app doesn’t collect yet: ${fields}.`,
+      finishing: 'Finishing Google sign-in…',
+      finishingSubtitle: 'Hang tight — we’re setting up your session.',
+      backToSignUp: 'Back to sign up',
     },
   },
   onboarding: {

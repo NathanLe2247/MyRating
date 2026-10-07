@@ -1,26 +1,29 @@
-import { useUser } from '@clerk/expo';
+import { useSession, useUser } from '@clerk/expo';
 
 import { OnboardingSkippedKey, ProfileCompletedKey } from '@/constants/profile';
 
 /**
  * Whether the signed-in user still needs onboarding, read from Clerk metadata
- * (see ProfileCompletedKey / OnboardingSkippedKey). `pending` is false until
- * the user has loaded.
+ * (see ProfileCompletedKey / OnboardingSkippedKey). Anyone without a completed
+ * profile is sent there after every sign-in; "Skip for now" only covers the
+ * current session.
  */
 export function useOnboarding() {
-  const { isLoaded, user } = useUser();
+  const { isLoaded: userLoaded, user } = useUser();
+  const { isLoaded: sessionLoaded, session } = useSession();
   const profileCompleted = Boolean(user?.publicMetadata[ProfileCompletedKey]);
-  const skipped = Boolean(user?.unsafeMetadata[OnboardingSkippedKey]);
+  const skippedThisSession = !!session && user?.unsafeMetadata[OnboardingSkippedKey] === session.id;
 
-  // "Skip for now" — remembered on the Clerk user so it survives reinstalls.
   const skip = async () => {
-    await user?.updateMetadata({ unsafeMetadata: { [OnboardingSkippedKey]: new Date().toISOString() } });
+    if (!session) return;
+    await user?.updateMetadata({ unsafeMetadata: { [OnboardingSkippedKey]: session.id } });
   };
 
+  const isLoaded = userLoaded && sessionLoaded;
   return {
     isLoaded,
     profileCompleted,
-    needsOnboarding: isLoaded && !!user && !profileCompleted && !skipped,
+    needsOnboarding: isLoaded && !!user && !profileCompleted && !skippedThisSession,
     skip,
   };
 }

@@ -39,11 +39,13 @@ export const OnboardingStepCount = 3;
 
 /**
  * Clerk metadata keys that gate onboarding. `publicMetadata.profileCompletedAt`
- * is set by the `player-profile` edge function once the profile is saved;
- * `unsafeMetadata.onboardingSkippedAt` is set by the app on "Skip for now".
+ * is set by the `player-profile` edge function once the profile is saved.
+ * "Skip for now" stores the current session id in
+ * `unsafeMetadata.onboardingSkippedSessionId`, so a skip only lasts until the
+ * next sign-in.
  */
 export const ProfileCompletedKey = 'profileCompletedAt';
-export const OnboardingSkippedKey = 'onboardingSkippedAt';
+export const OnboardingSkippedKey = 'onboardingSkippedSessionId';
 
 // Image types the edge function will issue an upload URL for.
 export const AvatarContentTypes = ['image/jpeg', 'image/png', 'image/webp'];
