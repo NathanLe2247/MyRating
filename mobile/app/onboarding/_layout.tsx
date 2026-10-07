@@ -9,7 +9,7 @@ export default function OnboardingLayout() {
 
   if (!isLoaded || !onboarding.isLoaded) return null;
   if (!isSignedIn) return <Redirect href="/sign-up" />;
-  if (onboarding.profileCompleted) return <Redirect href="/" />;
+  if (onboarding.onboardingCompleted) return <Redirect href="/" />;
 
   return <Stack screenOptions={{ headerShown: false }} />;
 }

@@ -1,4 +1,4 @@
-import type { DominantHand } from '@/types/profile';
+import type { DominantHand, RatingSource } from '@/types/profile';
 
 // Handles are 3–20 lowercase letters, digits, or underscores. Keep in sync
 // with the `player-profile` edge function and the users_username_format check.
@@ -34,18 +34,26 @@ export function toBirthDate(month: number | null, day: string, year: string): st
   return isRealDate && y >= MinBirthYear && iso < today ? iso : null;
 }
 
-// Onboarding is three steps; only step 1 (profile) exists so far.
-export const OnboardingStepCount = 3;
+// Onboarding is two steps: profile, then rating calibration.
+export const OnboardingStepCount = 2;
 
 /**
- * Clerk metadata keys that gate onboarding. `publicMetadata.profileCompletedAt`
- * is set by the `player-profile` edge function once the profile is saved.
+ * Clerk metadata keys that gate onboarding, both set by the `player-profile`
+ * edge function: `publicMetadata.profileCompletedAt` once step 1 is saved and
+ * `publicMetadata.onboardingCompletedAt` once step 2 is.
  * "Skip for now" stores the current session id in
  * `unsafeMetadata.onboardingSkippedSessionId`, so a skip only lasts until the
  * next sign-in.
  */
 export const ProfileCompletedKey = 'profileCompletedAt';
+export const OnboardingCompletedKey = 'onboardingCompletedAt';
 export const OnboardingSkippedKey = 'onboardingSkippedSessionId';
+
+// Step 2 options, in display order. Only `calibration` is supported so far;
+// the others render disabled. Mirrors public.rating_source.
+export const RatingSources: readonly RatingSource[] = ['dupr', 'usa_pickleball', 'calibration'];
+export const SupportedRatingSources: readonly RatingSource[] = ['calibration'];
+export const PlacementGameCount = 3;
 
 // Image types the edge function will issue an upload URL for.
 export const AvatarContentTypes = ['image/jpeg', 'image/png', 'image/webp'];

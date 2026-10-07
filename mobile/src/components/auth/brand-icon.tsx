@@ -25,6 +25,11 @@ const ICONS = {
   at: { ios: 'at', android: 'alternate_email', web: 'alternate_email' },
   cake: { ios: 'birthday.cake', android: 'cake', web: 'cake' },
   paddle: { ios: 'figure.pickleball', android: 'sports_tennis', web: 'sports_tennis' },
+  verified: { ios: 'checkmark.seal.fill', android: 'verified', web: 'verified' },
+  bolt: { ios: 'bolt.fill', android: 'bolt', web: 'bolt' },
+  trophy: { ios: 'trophy.fill', android: 'emoji_events', web: 'emoji_events' },
+  tune: { ios: 'slider.horizontal.3', android: 'tune', web: 'tune' },
+  shield: { ios: 'checkmark.shield.fill', android: 'verified_user', web: 'verified_user' },
 } satisfies Record<string, SymbolName>;
 
 export type BrandIconName = keyof typeof ICONS;

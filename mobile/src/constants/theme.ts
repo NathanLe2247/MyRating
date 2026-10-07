@@ -49,6 +49,12 @@ export const Brand = {
   warm: '#FFA51F',
   /** Dimmed backdrop behind bottom sheets and modals. */
   scrim: 'rgba(0, 0, 0, 0.6)',
+  /** Onboarding step 2: selected option card and its lime accents. */
+  cardSelected: '#1E252C',
+  limeSurface: 'rgba(212, 255, 0, 0.1)',
+  limeBorder: 'rgba(212, 255, 0, 0.45)',
+  /** Accent for the USA Pickleball option icon. */
+  cyan: '#2EC7E6',
 } as const;
 
 /**
@@ -85,6 +91,9 @@ export const BrandSizes = {
   progressBar: 6,
   /** Onboarding: header account button diameter. */
   headerButton: 36,
+  /** Onboarding step 2: option card icon circle and radio diameters. */
+  optionIcon: 40,
+  radio: 22,
 } as const;
 
 export const Fonts = Platform.select({
