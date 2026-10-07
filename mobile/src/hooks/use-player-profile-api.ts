@@ -2,7 +2,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { useMemo } from 'react';
 
 import { useSupabaseClient } from '@/config/supabase';
-import type { PickedAvatar, PlayerProfileInput } from '@/types/profile';
+import type { PickedAvatar, PlayerProfileInput, RatingSource } from '@/types/profile';
 
 const FUNCTION_NAME = 'player-profile';
 
@@ -48,6 +48,10 @@ export function usePlayerProfileApi() {
       saveProfile: async (input: PlayerProfileInput, avatar: PickedAvatar | null) => {
         const avatarKey = avatar ? await uploadAvatar(avatar) : null;
         await call<{ id: string }>('', { ...input, avatarKey });
+      },
+
+      saveRatingSource: async (source: RatingSource) => {
+        await call<{ id: string }>('/rating-source', { source });
       },
     };
   }, [supabase]);

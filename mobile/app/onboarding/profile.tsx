@@ -23,7 +23,7 @@ const copy = en.onboarding.profile;
 
 // Onboarding step 1. "Continue" saves everything collected so far (this form
 // plus the Clerk account details) to public.users via the player-profile edge
-// function.
+// function, then moves on to step 2 (rating calibration).
 export default function OnboardingProfileScreen() {
   const router = useRouter();
   const onboarding = useOnboarding();
@@ -48,7 +48,7 @@ export default function OnboardingProfileScreen() {
   const handleContinue = async () => {
     if (!dateOfBirth || !hand) return;
     const saved = await save({ username, dateOfBirth, dominantHand: hand }, avatar);
-    if (saved) router.replace('/');
+    if (saved) router.push('/onboarding/rating');
   };
 
   const handleSkip = async () => {

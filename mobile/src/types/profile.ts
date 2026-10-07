@@ -1,3 +1,6 @@
+// Mirrors public.rating_source.
+export type RatingSource = 'dupr' | 'usa_pickleball' | 'calibration';
+
 // Mirrors public.dominant_hand.
 export type DominantHand = 'left' | 'ambi' | 'right';
 

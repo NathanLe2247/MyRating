@@ -56,3 +56,11 @@ export async function getClerkIdentity(clerkUserId: string): Promise<ClerkIdenti
 export async function markProfileCompleted(clerkUserId: string, completedAt: string) {
   await clerk.users.updateUserMetadata(clerkUserId, { publicMetadata: { profileCompletedAt: completedAt } });
 }
+
+/**
+ * Flags onboarding as finished (step 2 done). Key must match
+ * OnboardingCompletedKey in mobile/src/constants/profile.ts.
+ */
+export async function markOnboardingCompleted(clerkUserId: string, completedAt: string) {
+  await clerk.users.updateUserMetadata(clerkUserId, { publicMetadata: { onboardingCompletedAt: completedAt } });
+}

@@ -130,7 +130,7 @@ export const en = {
         options: { left: 'Left hand', ambi: 'Ambi', right: 'Right hand' },
       },
       continue: 'Continue to rating calibration',
-      nextStep: 'Next: DUPR calibration & skill assessment (Step 2/3)',
+      nextStep: 'Next: rating calibration (Step 2/2)',
       errors: {
         username_taken: 'That username was just taken. Pick another.',
         invalid_username: 'That username isn’t valid.',
@@ -138,6 +138,47 @@ export const en = {
         unsupported_content_type: 'That photo format isn’t supported. Use a JPEG or PNG.',
         avatar_upload_failed: 'Couldn’t upload your photo. Try again or skip the photo.',
         fallback: 'Couldn’t save your profile. Try again.',
+      } as Record<string, string>,
+    },
+    rating: {
+      headerSubtitle: 'Onboarding — Skill Calibration',
+      stepLabel: 'Skill Calibration',
+      title: 'What’s your pickleball rating?',
+      subtitle:
+        'myRating pairs you with balanced opponents to ensure every rally is intense, competitive, and logged to your verified lifetime record.',
+      protocol: {
+        title: 'Official rating protocol',
+        subtitle: 'Standardized algorithmic matchmaking',
+      },
+      comingSoon: 'Coming soon',
+      options: {
+        dupr: {
+          title: 'Connect Official DUPR',
+          tag: 'Fastest',
+          subtitle: 'Global standard rating system',
+          body: 'Instant real-time sync with Dynamic Universal Pickleball Rating. Unlock sanctioned tournaments & validated competitive ladders automatically.',
+          features: { instant: 'Instant Calibration', badge: 'Official Badge' },
+        },
+        usa_pickleball: {
+          title: 'Import USA Pickleball / UTPR',
+          subtitle: 'Sanctioned tournament records & member ID',
+          body: 'Import your tournament skill brackets (3.0 to 5.5+) directly via your registered member profile credentials.',
+        },
+        calibration: {
+          title: 'Start Fresh / Calibrate',
+          tag: 'Unranked',
+          subtitle: 'New or recreational player pathway',
+          body: (games: number) =>
+            `Calibrate dynamically across your first ${games} unranked placement games — your provisional rating appears once they’re logged.`,
+          placement: (games: number) => `Includes ${games}-Game Provisional Placement`,
+        },
+      },
+      security: '256-bit Encrypted · Official Partner of Local & Regional Leagues',
+      continue: 'Start calibration',
+      errors: {
+        profile_required: 'Finish your profile first.',
+        unsupported_rating_source: 'That option isn’t available yet.',
+        fallback: 'Couldn’t save your choice. Try again.',
       } as Record<string, string>,
     },
   },

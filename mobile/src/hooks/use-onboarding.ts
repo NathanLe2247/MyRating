@@ -1,17 +1,18 @@
 import { useSession, useUser } from '@clerk/expo';
 
-import { OnboardingSkippedKey, ProfileCompletedKey } from '@/constants/profile';
+import { OnboardingCompletedKey, OnboardingSkippedKey, ProfileCompletedKey } from '@/constants/profile';
 
 /**
- * Whether the signed-in user still needs onboarding, read from Clerk metadata
- * (see ProfileCompletedKey / OnboardingSkippedKey). Anyone without a completed
- * profile is sent there after every sign-in; "Skip for now" only covers the
- * current session.
+ * Where the signed-in user is in onboarding, read from Clerk metadata (see
+ * ProfileCompletedKey / OnboardingCompletedKey / OnboardingSkippedKey). Anyone
+ * who hasn't finished both steps is sent back after every sign-in; "Skip for
+ * now" only covers the current session.
  */
 export function useOnboarding() {
   const { isLoaded: userLoaded, user } = useUser();
   const { isLoaded: sessionLoaded, session } = useSession();
   const profileCompleted = Boolean(user?.publicMetadata[ProfileCompletedKey]);
+  const onboardingCompleted = Boolean(user?.publicMetadata[OnboardingCompletedKey]);
   const skippedThisSession = !!session && user?.unsafeMetadata[OnboardingSkippedKey] === session.id;
 
   const skip = async () => {
@@ -23,7 +24,10 @@ export function useOnboarding() {
   return {
     isLoaded,
     profileCompleted,
-    needsOnboarding: isLoaded && !!user && !profileCompleted && !skippedThisSession,
+    onboardingCompleted,
+    needsOnboarding: isLoaded && !!user && !onboardingCompleted && !skippedThisSession,
+    /** The first unfinished step. */
+    nextStep: profileCompleted ? ('/onboarding/rating' as const) : ('/onboarding/profile' as const),
     skip,
   };
 }

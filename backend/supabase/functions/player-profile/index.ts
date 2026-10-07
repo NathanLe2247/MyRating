@@ -1,22 +1,26 @@
-// Onboarding step 1 ("Create your profile"). Three routes, all requiring a
-// Clerk session token:
+// Onboarding steps 1 ("Create your profile") and 2 ("What's your pickleball
+// rating?"). All routes require a Clerk session token:
 //
 //   POST /player-profile                    save the profile (upserts public.users)
 //   POST /player-profile/username           { username } -> { available }
 //   POST /player-profile/avatar-upload-url  { contentType } -> { uploadUrl, key, publicUrl }
+//   POST /player-profile/rating-source      { source } -> finishes onboarding
 //
 // public.users is service-role-write-only, so this function is its writer for
 // player-entered fields; Clerk-owned fields (names, email, phone) are read from
 // Clerk here rather than trusted from the client.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-import { authenticate, getClerkIdentity, markProfileCompleted } from './clerk.ts';
+import { authenticate, getClerkIdentity, markOnboardingCompleted, markProfileCompleted } from './clerk.ts';
 import { createAvatarUploadUrl, isAvatarContentType, isOwnAvatarKey } from './r2.ts';
 
 // Keep in sync with mobile/src/constants/profile.ts and the users_username_format check.
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 const DOMINANT_HANDS = ['left', 'ambi', 'right'] as const;
 const MIN_BIRTH_DATE = '1900-01-01';
+// Subset of public.rating_source the app can pick today; DUPR and USA
+// Pickleball imports aren't implemented yet.
+const SUPPORTED_RATING_SOURCES = ['calibration'] as const;
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
@@ -125,6 +129,34 @@ async function saveProfile(clerkUserId: string, body: Record<string, unknown>) {
   return json(200, { id: data.id });
 }
 
+// Step 2: records how the starting rating will be set and finishes onboarding.
+// Requires step 1, since that's what creates the public.users row.
+async function saveRatingSource(clerkUserId: string, body: Record<string, unknown>) {
+  const { source } = body;
+  if (!SUPPORTED_RATING_SOURCES.includes(source as (typeof SUPPORTED_RATING_SOURCES)[number])) {
+    return json(422, { error: 'unsupported_rating_source' });
+  }
+
+  const now = new Date().toISOString();
+  const { data, error } = await db
+    .from('users')
+    .update({ rating_source: source, onboarding_completed_at: now, updated_at: now })
+    .eq('clerk_user_id', clerkUserId)
+    .not('profile_completed_at', 'is', null)
+    .select('id')
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return json(409, { error: 'profile_required' });
+
+  await markOnboardingCompleted(clerkUserId, now);
+
+  console.log(
+    JSON.stringify({ event: 'onboarding_completed', user_id: data.id, clerk_user_id: clerkUserId, rating_source: source }),
+  );
+
+  return json(200, { id: data.id });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
@@ -156,6 +188,9 @@ Deno.serve(async (req) => {
         }
         return json(200, await createAvatarUploadUrl(clerkUserId, contentType));
       }
+
+      case '/rating-source':
+        return await saveRatingSource(clerkUserId, body);
 
       default:
         return json(404, { error: 'not_found' });

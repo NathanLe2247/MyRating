@@ -12,8 +12,8 @@ export default function HomeLayout() {
   if (!isSignedIn) return <Redirect href="/(auth)/sign-up" />;
   if (!onboarding.isLoaded) return null;
   // New accounts (email, phone, or Google) land on onboarding until they
-  // finish step 1 or skip it.
-  if (onboarding.needsOnboarding) return <Redirect href="/onboarding/profile" />;
+  // finish both steps or skip it.
+  if (onboarding.needsOnboarding) return <Redirect href={onboarding.nextStep} />;
 
   return <AppTabs />;
 }
