@@ -1,6 +1,6 @@
 ---
 name: pr-check
-description: Check whether a myRating pull request is ready to merge — mergeability/conflicts, CI checks, reviews, branch hygiene, and myRating's app-boundary rules on the diff. Use when the user asks to check, vet, or review a PR / merge request, asks "is PR #N ready to merge", or before merging anything into main. Takes an optional PR number, URL, or branch; defaults to the PR for the current branch.
+description: Check whether a myRating pull request is ready to merge — mergeability/conflicts, CI checks, reviews, branch hygiene, and myRating's app-boundary rules, plus code quality (hardcoded text, magic values, duplicated constants/components/hooks, inefficiencies) on the diff. Use when the user asks to check, vet, or review a PR / merge request, asks "is PR #N ready to merge", or before merging anything into main. Takes an optional PR number, URL, or branch; defaults to the PR for the current branch.
 ---
 
 # pr-check
@@ -97,10 +97,76 @@ for the file list). Check it against the repo's boundary rules from
 - **Secrets** — committed `.env` files, API keys, Clerk secret keys,
   Supabase service-role keys.
 
-Also flag ordinary correctness bugs you notice, but keep this pass focused —
-for a deep review, suggest `/code-review` instead of duplicating it here.
+Also flag ordinary correctness bugs you notice (ignored error results,
+silent dead-ends, UI controls that do nothing).
 
-## 6. Branch hygiene (lightweight, non-blocking)
+## 6. Code quality
+
+Review every non-generated file in the diff (skip lockfiles). These findings
+are **NEEDS WORK** when they're clear-cut (a literal user-facing string, a
+duplicated constant); judgment calls go under Notes.
+
+**Hardcoded text** — every user-facing string comes from `src/i18n/en.ts`
+(mobile) or the app's equivalent. Flag string literals rendered in JSX,
+passed as `label`/`placeholder`/`title`/`accessibilityLabel`, or used as
+error messages. Not flagged: route paths, style values, test IDs, log
+messages, i18n files themselves.
+
+**Magic values** — colors, font families, sizes, radii, spacing, durations,
+and limits belong in `src/constants/` (`theme.ts` for `Colors`/`Brand`/
+`Spacing`/fonts). Flag:
+- hex/rgb colors outside `constants/` (exception: third-party brand marks
+  like the Google "G", if commented);
+- numbers repeated across files that mean the same thing (e.g. a `48`
+  input height, `24`/`999` pill radius, `480` max width) — suggest one
+  named constant;
+- arithmetic on tokens that reads like a missing token
+  (`Spacing.two + Spacing.one`, `Spacing.two + 2`);
+- values that duplicate an existing constant (e.g. a literal `480` when
+  `MaxContentWidth` exists).
+
+**Duplication / reuse** — before accepting a new component, hook, constant,
+or helper, search the *whole repo* (not just the diff) for an existing one:
+
+```bash
+git grep -nE '<name-or-shape>' origin/main -- mobile/src shared
+```
+
+Flag: a new hook/component that does what an existing one already does
+(e.g. two post-auth navigation hooks, two Google sign-in hooks, two button
+components with the same look); two constants objects with the same name or
+overlapping keys; copy-pasted blocks across screens that should be one
+component; local types that already exist in `shared/` or `src/types/`.
+Also check other **open PRs** for overlap — the same file or the same
+abstraction being introduced twice is a merge-order problem:
+
+```bash
+gh pr list --state open --json number,headRefName --jq '.[] | "\(.number) \(.headRefName)"'
+gh pr diff <other> --name-only    # intersect with this PR's file list
+```
+
+**Inefficiencies** — flag only with a concrete cost:
+- work repeated on every render that could be hoisted to module scope or
+  memoized (static arrays/objects, regexes, `StyleSheet.create` inside a
+  component);
+- inline closures/objects passed to memoized children or list items;
+- state that can be derived from other state/props;
+- effects that should be event handlers; missing effect cleanup;
+- redundant or sequential network calls that could be one / parallel;
+  Supabase queries in loops (N+1), `select('*')` where few columns are used;
+- new dependencies that duplicate an existing one, or heavy deps for
+  something small;
+- dead code: unused exports, props, imports, i18n keys, or files left behind
+  after a rewrite.
+
+**Leftovers** — `console.log`, commented-out code, `TODO`s that ship visible
+behavior (e.g. a control that does nothing yet), `as never` / `as any` casts
+without a comment.
+
+For a deeper correctness pass, suggest `/code-review` instead of
+duplicating it here.
+
+## 7. Branch hygiene (lightweight, non-blocking)
 
 - Commits: `gh pr view <number> --json commits --jq '.commits[].messageHeadline'`
   — flag WIP/fixup commits that should be squashed.
@@ -122,13 +188,19 @@ Blockers
 Rule violations
 - mobile/app/sign-in.tsx:15 defines `AuthFormProps` inline — move to mobile/src/types/
 
+Code quality
+- mobile/src/components/auth/auth-card.tsx:24 hardcoded "OR" — add to en.ts
+- mobile/src/components/auth/primary-button.tsx:12 `borderRadius: 999` repeated in 4 files — add a `Radius.pill` token
+- mobile/src/hooks/use-navigate-after-auth.ts duplicates hooks/use-auth-navigate.ts — reuse it
+
 Notes (non-blocking)
 - 3 "wip" commits — consider squash-merging
 ```
 
 Verdicts:
 - **READY** — not draft, no conflicts, required checks green, no changes
-  requested, no unresolved threads, no rule violations.
+  requested, no unresolved threads, no rule violations, no clear-cut
+  code-quality findings.
 - **NEEDS WORK** — fixable issues: failing checks, unresolved threads, rule
-  violations, behind base.
+  violations, hardcoded text, duplicated constants/abstractions, behind base.
 - **BLOCKED** — conflicts, changes requested, or draft.
