@@ -1,9 +1,9 @@
 import { createClerkClient, verifyToken } from 'npm:@clerk/backend@3';
 
+import { type LoginMethod, loginMethodFor } from '../_shared/login-method.ts';
+
 const secretKey = Deno.env.get('CLERK_SECRET_KEY')!;
 const clerk = createClerkClient({ secretKey });
-
-export type LoginMethod = 'phone' | 'email' | 'both';
 
 export type ClerkIdentity = {
   clerkUserId: string;
@@ -43,8 +43,7 @@ export async function getClerkIdentity(clerkUserId: string): Promise<ClerkIdenti
     lastName: user.lastName,
     email,
     phoneNumber,
-    // Google sign-in counts as email (see public.users.login_method).
-    loginMethod: email && phoneNumber ? 'both' : phoneNumber ? 'phone' : 'email',
+    loginMethod: loginMethodFor(email, phoneNumber),
   };
 }
 
