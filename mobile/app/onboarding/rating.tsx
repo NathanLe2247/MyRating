@@ -26,7 +26,6 @@ export default function OnboardingRatingScreen() {
   const onboarding = useOnboarding();
   const { save, saving, errorCode } = useSaveRatingSource();
   const [source, setSource] = useState<RatingSource>('calibration');
-  const [skipping, setSkipping] = useState(false);
 
   // Step 2 updates the row step 1 creates, so it can't come first.
   if (!onboarding.profileCompleted) return <Redirect href="/onboarding/profile" />;
@@ -38,16 +37,6 @@ export default function OnboardingRatingScreen() {
     if (await save(source)) router.replace('/');
   };
 
-  const handleSkip = async () => {
-    setSkipping(true);
-    try {
-      await onboarding.skip();
-      router.replace('/');
-    } finally {
-      setSkipping(false);
-    }
-  };
-
   return (
     <OnboardingScreen
       step={2}
@@ -55,7 +44,6 @@ export default function OnboardingRatingScreen() {
       headerSubtitle={copy.headerSubtitle}
       title={copy.title}
       subtitle={copy.subtitle}
-      onSkip={handleSkip}
       onBack={router.canGoBack() ? router.back : undefined}
       footer={
         <>
@@ -68,7 +56,6 @@ export default function OnboardingRatingScreen() {
             label={copy.continue}
             onPress={handleContinue}
             loading={saving}
-            disabled={skipping}
             trailing={<BrandIcon name="arrowRight" color={Brand.onLime} size={20} />}
           />
         </>
