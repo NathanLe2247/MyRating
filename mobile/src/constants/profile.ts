@@ -41,13 +41,9 @@ export const OnboardingStepCount = 2;
  * Clerk metadata keys that gate onboarding, both set by the `player-profile`
  * edge function: `publicMetadata.profileCompletedAt` once step 1 is saved and
  * `publicMetadata.onboardingCompletedAt` once step 2 is.
- * "Skip for now" stores the current session id in
- * `unsafeMetadata.onboardingSkippedSessionId`, so a skip only lasts until the
- * next sign-in.
  */
 export const ProfileCompletedKey = 'profileCompletedAt';
 export const OnboardingCompletedKey = 'onboardingCompletedAt';
-export const OnboardingSkippedKey = 'onboardingSkippedSessionId';
 
 // Step 2 options the app can submit; the others render disabled. Subset of
 // public.rating_source.

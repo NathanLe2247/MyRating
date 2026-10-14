@@ -1,9 +1,27 @@
 // English strings for the mobile app. Import as `en` and reference nested
 // keys from screens/components instead of inlining literal UI text.
 export const en = {
+  // Keyed by route name (see AppTabNames).
   tabs: {
-    home: 'Home',
-    explore: 'Explore',
+    index: 'Home',
+    play: 'Play',
+    health: 'Health',
+    community: 'Community',
+  },
+  comingSoon: {
+    tag: 'Coming soon',
+    play: {
+      title: 'Play',
+      body: 'Find courts near you and queue up for rated matches.',
+    },
+    health: {
+      title: 'Health',
+      body: 'Connect Apple Health or WHOOP to track recovery and strain alongside your matches.',
+    },
+    community: {
+      title: 'Community',
+      body: 'Chat with players at your courts and see who’s around to play.',
+    },
   },
   auth: {
     fields: {
@@ -90,7 +108,6 @@ export const en = {
     brand: 'myRating',
     back: 'Back',
     account: 'Account',
-    skip: 'Skip for now',
     step: (step: number, total: number) => `Step ${step} of ${total}`,
     profile: {
       headerSubtitle: 'Onboarding — Player Profile',
@@ -188,7 +205,7 @@ export const en = {
       singles: 'Singles',
       mixed: 'Mixed',
     },
-    courts: (count: number) => `${count} ${count === 1 ? 'court' : 'courts'}`,
+    courts: 'Courts',
     account: {
       open: 'Account options',
       title: 'Account',
@@ -197,22 +214,17 @@ export const en = {
       confirmSignOut: 'Sign out of myRating?',
     },
     rating: {
-      certified: 'DUPR certified',
       label: 'Dynamic performance rating',
       unit: 'DUPR',
-      trajectory: (days: number) => `${days}d trajectory`,
-      tierTarget: 'Tier Target:',
-      achieved: (percent: number) => `${percent}% achieved`,
-      current: (rating: string) => `Current: ${rating}`,
-      next: 'Next',
+      unranked: 'Unranked',
+      calibrating: 'Calibrating rating',
+      calibratingBody: (games: number) =>
+        `Play ${games} placement matches and your provisional rating will appear here.`,
     },
     queue: {
       title: 'Queue for match',
-      range: (min: string, max: string, formats: string) => `DUPR ${min}–${max} · ${formats}`,
-      formatsJoin: ' & ',
-      active: (players: number, courts: number) =>
-        `${players} players active across ${courts} ${courts === 1 ? 'court' : 'courts'}`,
-      wait: (minutes: number) => `~${minutes}m wait`,
+      placement: 'Play your first placement match',
+      subtitle: 'Find a balanced match nearby',
     },
     recent: {
       title: 'Recent matches',
@@ -227,58 +239,15 @@ export const en = {
     },
     loadFailed: 'Couldn’t load your rating.',
     retry: 'Retry',
-    unrated: '—',
+    location: {
+      title: 'Turn on location',
+      body: 'myRating uses your location to find courts and players near you.',
+      allow: 'Allow location',
+      openSettings: 'Open settings',
+    },
   },
   hintRow: {
     defaultTitle: 'Try editing',
     defaultHint: 'app/index.tsx',
-  },
-  explore: {
-    title: 'Explore',
-    subtitle: 'This starter app includes example\ncode to help you get started.',
-    expoDocsLink: 'Expo documentation',
-    learnMore: 'Learn more',
-    sections: {
-      routing: {
-        title: 'File-based routing',
-        body1Before: 'This app has two screens:',
-        body1ScreenOne: 'src/app/index.tsx',
-        body1And: 'and',
-        body1ScreenTwo: 'src/app/explore.tsx',
-        body2Before: 'The layout file in',
-        body2Layout: 'src/app/_layout.tsx',
-        body2After: 'sets up the tab navigator.',
-      },
-      platforms: {
-        title: 'Android, iOS, and web support',
-        bodyBefore:
-          'You can open this project on Android, iOS, and the web. To open the web version, press',
-        webKey: 'w',
-        bodyAfter: 'in the terminal running this project.',
-      },
-      images: {
-        title: 'Images',
-        bodyBefore: 'For static images, you can use the',
-        suffixOne: '@2x',
-        bodyAnd: 'and',
-        suffixTwo: '@3x',
-        bodyAfter: 'suffixes to provide files for different screen densities.',
-      },
-      colorScheme: {
-        title: 'Light and dark mode components',
-        bodyBefore: 'This template has light and dark mode support. The',
-        hook: 'useColorScheme()',
-        bodyAfter:
-          "hook lets you inspect what the user's current color scheme is, and so you can adjust UI colors accordingly.",
-      },
-      animations: {
-        title: 'Animations',
-        bodyBefore: 'This template includes an example of an animated component. The',
-        component: 'src/components/ui/collapsible.tsx',
-        bodyMiddle: 'component uses the powerful',
-        library: 'react-native-reanimated',
-        bodyAfter: 'library to animate opening this hint.',
-      },
-    },
   },
 };
