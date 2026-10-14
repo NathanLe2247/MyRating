@@ -2,14 +2,14 @@ import { useAuth } from '@clerk/expo';
 import { useQuery } from '@tanstack/react-query';
 
 import { useSupabaseClient } from '@/config/supabase';
-import { DashboardPlaceholderData } from '@/constants/dashboard-placeholder';
 import type { MatchFormat } from '@/constants/match';
 import type { Dashboard } from '@/types/dashboard';
 
 /**
  * Home dashboard data. The player's rating comes from Supabase
- * (`users` → `player_ratings`, own row via RLS); everything else is still
- * `DashboardPlaceholderData` until its table exists.
+ * (`users` → `player_ratings`, own row via RLS) and is null until their
+ * placement matches are rated. Recent matches stay empty until the matches
+ * table exists.
  */
 export function useDashboard(_format: MatchFormat) {
   const supabase = useSupabaseClient();
@@ -35,11 +35,11 @@ export function useDashboard(_format: MatchFormat) {
   });
 
   // Only the rating is fetched, so a failed fetch shouldn't hide the rest of
-  // the dashboard: it renders with the rating as unrated and `error` set.
-  const placeholder = DashboardPlaceholderData;
+  // the dashboard: it renders as calibrating with `error` set.
+  // TODO: load recent matches once the matches table exists.
   const data: Dashboard | undefined = ratingQuery.isPending
     ? undefined
-    : { ...placeholder, rating: { ...placeholder.rating, rating: ratingQuery.data ?? null } };
+    : { rating: ratingQuery.data ?? null, recentMatches: [] };
 
   return {
     data,

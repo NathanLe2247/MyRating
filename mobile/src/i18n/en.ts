@@ -205,7 +205,7 @@ export const en = {
       singles: 'Singles',
       mixed: 'Mixed',
     },
-    courts: (count: number) => `${count} ${count === 1 ? 'court' : 'courts'}`,
+    courts: 'Courts',
     account: {
       open: 'Account options',
       title: 'Account',
@@ -214,22 +214,17 @@ export const en = {
       confirmSignOut: 'Sign out of myRating?',
     },
     rating: {
-      certified: 'DUPR certified',
       label: 'Dynamic performance rating',
       unit: 'DUPR',
-      trajectory: (days: number) => `${days}d trajectory`,
-      tierTarget: 'Tier Target:',
-      achieved: (percent: number) => `${percent}% achieved`,
-      current: (rating: string) => `Current: ${rating}`,
-      next: 'Next',
+      unranked: 'Unranked',
+      calibrating: 'Calibrating rating',
+      calibratingBody: (games: number) =>
+        `Play ${games} placement matches and your provisional rating will appear here.`,
     },
     queue: {
       title: 'Queue for match',
-      range: (min: string, max: string, formats: string) => `DUPR ${min}–${max} · ${formats}`,
-      formatsJoin: ' & ',
-      active: (players: number, courts: number) =>
-        `${players} players active across ${courts} ${courts === 1 ? 'court' : 'courts'}`,
-      wait: (minutes: number) => `~${minutes}m wait`,
+      placement: 'Play your first placement match',
+      subtitle: 'Find a balanced match nearby',
     },
     recent: {
       title: 'Recent matches',
@@ -244,7 +239,12 @@ export const en = {
     },
     loadFailed: 'Couldn’t load your rating.',
     retry: 'Retry',
-    unrated: '—',
+    location: {
+      title: 'Turn on location',
+      body: 'myRating uses your location to find courts and players near you.',
+      allow: 'Allow location',
+      openSettings: 'Open settings',
+    },
   },
   hintRow: {
     defaultTitle: 'Try editing',
