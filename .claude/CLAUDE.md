@@ -24,8 +24,13 @@ types package.
 sends bug reports (`bug` label) to `debugger` and features or changes to
 `worker` (`.claude/agents/`), each in its own worktree, gates each PR
 (`scripts/agent/regress.sh --full`, mobile smoke, reviewers, and a
-fails-on-main repro for fixes), and pings the user when a PR is ready. **Bug fixes and features never share a PR. Agents never merge.**
-The user merges every PR. Playbook: `.claude/skills/manager/SKILL.md`.
+fails-on-main repro for fixes). `scripts/agent/classify-pr.sh` sorts each
+passing PR: **routine** app-level PRs and fixes are merged by the manager
+through `scripts/agent/merge-pr.sh` with no ping; **major** ones
+(migrations, edge functions, `shared/`, auth, health, deps, config, CI,
+agent rules, large or `major`-labeled) wait for the user, who is pinged.
+Workers and debuggers never merge. Bug fixes and features never share a PR.
+Playbook: `.claude/skills/manager/SKILL.md`.
 
 ## Working across apps
 
