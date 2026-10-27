@@ -20,9 +20,11 @@ in your report and the manager will file it separately.
    existing branch if the manager says you're continuing previous work.
 3. **Reproduce before changing any code.** Write a repro that fails because
    of the bug:
-   - If the area has a test runner, add a test that fails, in its own new
-     file where you can.
-   - If it doesn't (mobile has none yet), write
+   - If the area has a test runner (mobile: Jest, see `mobile/CLAUDE.md`
+     Testing), add a test that fails, in its own new file where you can.
+     RUN is then e.g. `cd mobile && npx jest <path>`.
+   - Only if the bug can't be captured in a unit or component test (for
+     example a whole-app navigation or web-build bug), write
      `scripts/agent/repro/<N>-<slug>.sh` or `.mjs`. It must exit non-zero
      while the bug is present and 0 once it's fixed. For UI bugs, drive the
      Expo web build with Playwright the way `.claude/skills/mobile-auth-smoke`
