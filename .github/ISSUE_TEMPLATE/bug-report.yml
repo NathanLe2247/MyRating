@@ -1,0 +1,45 @@
+name: Bug report
+description: Something is broken. The manager sends it to the debugger, which reproduces it, fixes it in its own Fix PR, and pings you to merge.
+labels: ["bug", "agent"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - mobile
+        - frontend
+        - backend
+        - shared
+        - not sure
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, including the exact error text or a screenshot.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The debugger has to reproduce the bug before fixing it. The more exact these steps are, the faster it gets fixed.
+      placeholder: |
+        1. Sign in as a new user
+        2. Skip location permission on Home
+        3. Tap "Find match", app shows a blank screen
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: Device / OS / web browser, and app build or commit if you know it.

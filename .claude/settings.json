@@ -1,3 +1,50 @@
 {
-  "$schema": "https://json.schemastore.org/claude-code-settings.json"
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(git commit *)",
+      "Bash(git push -u origin agent/*)",
+      "Bash(git push origin agent/*)",
+      "Bash(gh issue *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr comment *)",
+      "Bash(gh pr edit *)",
+      "Bash(gh pr ready *)",
+      "Bash(npm ci *)",
+      "Bash(npx tsc *)",
+      "Bash(npx expo lint*)",
+      "Bash(scripts/agent/regress.sh*)",
+      "Bash(git push -u origin fix/*)",
+      "Bash(git push origin fix/*)"
+    ],
+    "deny": [
+      "Bash(gh pr merge *)",
+      "Bash(gh pr review --approve *)",
+      "Bash(git push origin main*)",
+      "Bash(git push * main)",
+      "Bash(git push * HEAD:main)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(supabase db push*)",
+      "Bash(supabase functions deploy*)",
+      "Bash(supabase link*)",
+      "Bash(supabase * --linked*)"
+    ]
+  },
+  "hooks": {
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/agent/subagent-stop.sh",
+            "timeout": 900
+          }
+        ]
+      }
+    ]
+  }
 }
