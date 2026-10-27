@@ -74,22 +74,45 @@ check_node_app() { # check_node_app <dir>
 # so parsing with it also catches syntax newer bashes accept but the user's
 # shell doesn't.
 #
-# Shell scripts are found by `.sh` extension or by shebang (#!/usr/bin/env
-# bash|sh, #!/bin/bash, #!/bin/sh), so extensionless scripts are covered too.
+# Shell scripts are found by `.sh` extension or by shebang, so extensionless
+# scripts are covered too. Any absolute path or `env` form counts:
+# `#!/bin/bash`, `#! /bin/sh`, `#!/opt/homebrew/bin/bash`, `#!/usr/bin/env bash`,
+# `#!/usr/bin/env -S bash -e`.
+#
+# bash scripts are also scanned by check-bash32.sh for bash 4+ features that
+# parse but fail at runtime on 3.2 (#29); sh scripts get ShellCheck's SC3xxx
+# (non-POSIX) warnings, which `-S error` alone would hide.
 #
 # The gate expects ShellCheck to be installed wherever it runs:
 #   brew install shellcheck      (macOS)
 #   apt-get install shellcheck   (Debian/Ubuntu)
 # Without it the gate falls back to `bash -n` / `sh -n` and prints a SKIP line.
-SHEBANG_RE='^#!(/usr/bin/env[[:space:]]+(ba)?sh|/bin/(ba)?sh)([[:space:]]|$)'
 shell_of() { # prints bash|sh for a shell script, nothing otherwise
-  local first
+  local first w name=
+  local -a words=()
   first=$(head -n 1 "$1" 2>/dev/null)
-  if echo "$first" | grep -qE "$SHEBANG_RE"; then
-    case "$first" in *bash*) echo bash ;; *) echo sh ;; esac
-  elif [ "${1%.sh}" != "$1" ]; then
-    echo bash
-  fi
+  first=${first%$'\r'} # CRLF files: `read -a` would keep the \r on "bash"
+  case "$first" in
+    '#!'*)
+      read -r -a words <<<"${first#??}"
+      for w in "${words[@]+"${words[@]}"}"; do
+        # skip env's own options (-S, -i, ...) and VAR=val assignments to
+        # reach the interpreter
+        case "$w" in -*|*=*) [ "$name" = env ] && continue ;; esac
+        name=${w##*/}
+        [ "$name" = env ] || break
+      done
+      case "$name" in bash|sh) echo "$name"; return ;; esac
+      ;;
+  esac
+  if [ "${1%.sh}" != "$1" ]; then echo bash; fi
+}
+
+# sh_bashisms <file>: fails with ShellCheck's SC3xxx findings for a sh script
+sh_bashisms() {
+  local out
+  out=$(shellcheck -s sh -S warning -f gcc "$1" | grep -E 'SC3[0-9]{3}')
+  [ -z "$out" ] || { echo "$out"; return 1; }
 }
 
 if touched 'scripts/'; then
@@ -101,13 +124,20 @@ if touched 'scripts/'; then
     [ -n "$f" ] && [ -f "$f" ] || continue # deleted on this branch
     sh_kind=$(shell_of "$f")
     [ -n "$sh_kind" ] || continue # not a shell script
-    if [ "$sh_kind" = sh ]; then run "sh -n $f" . sh -n "$f"
-    else run "bash -n $f" . "$BASH_N" -n "$f"
+    if [ "$sh_kind" = sh ]; then
+      run "sh -n $f" . sh -n "$f"
+      [ $HAS_SHELLCHECK = 1 ] && run "posix sh (SC3xxx) $f" . sh_bashisms "$f"
+    else
+      run "bash -n $f" . "$BASH_N" -n "$f"
+      run "bash 3.2 features $f" . scripts/agent/check-bash32.sh "$f"
     fi
     [ $HAS_SHELLCHECK = 1 ] && run "shellcheck $f" . shellcheck -S error "$f"
   done <<EOF
 $(echo "$CHANGED" | grep -E '^scripts/')
 EOF
+  if touched 'scripts/agent/(check-bash32|tests/check-bash32)'; then
+    run "check-bash32 tests" . scripts/agent/tests/check-bash32.test.sh
+  fi
   [ $HAS_SHELLCHECK = 1 ] || result SKIP "shellcheck: not installed (bash -n only; brew install shellcheck)"
 fi
 
