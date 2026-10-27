@@ -18,7 +18,10 @@
       "Bash(npx expo lint*)",
       "Bash(scripts/agent/regress.sh*)",
       "Bash(git push -u origin fix/*)",
-      "Bash(git push origin fix/*)"
+      "Bash(git push origin fix/*)",
+      "Bash(scripts/agent/classify-pr.sh *)",
+      "Bash(scripts/agent/merge-pr.sh *)",
+      "Bash(git revert *)"
     ],
     "deny": [
       "Bash(gh pr merge *)",
