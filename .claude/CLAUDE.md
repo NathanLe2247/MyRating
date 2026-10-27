@@ -29,7 +29,8 @@ passing PR: **routine** app-level PRs and fixes are merged by the manager
 through `scripts/agent/merge-pr.sh` with no ping; **major** ones
 (migrations, edge functions, `shared/`, auth, health, deps, config, CI,
 agent rules, large or `major`-labeled) wait for the user, who is pinged.
-Workers and debuggers never merge. Bug fixes and features never share a PR.
+After merges the manager deletes merged branches and agent worktrees
+with `scripts/agent/prune-branches.sh`. Workers and debuggers never merge. Bug fixes and features never share a PR.
 Playbook: `.claude/skills/manager/SKILL.md`.
 
 ## Working across apps

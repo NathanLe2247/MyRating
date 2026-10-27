@@ -77,8 +77,14 @@ gh pr list --state open --json number,title,headRefName,isDraft,reviewDecision,m
 - An `agent:ready` PR with new comments or a review from the user asking for
   changes: dispatch that lane's agent on that branch with the feedback
   quoted, and relabel to `agent:working`.
-- Merged PRs close their issues through `Closes #N`. Remove their worktrees
-  with `git worktree remove` (and `git worktree prune`).
+- Merged PRs close their issues through `Closes #N`. Clean up after them
+  (including MAJOR PRs the user merged) with
+  `scripts/agent/prune-branches.sh` from the main checkout. It deletes
+  remote and local branches whose PR merged at the branch's current tip, and
+  removes clean `agent-*` worktrees whose work is on `main`. It keeps
+  anything with an open PR, a closed-unmerged PR, commits added after the
+  merge, or unmerged work with no PR. Never delete branches any other way
+  and never ask the user to; housekeeping is yours.
 
 ## 2. Dispatch
 
@@ -216,6 +222,7 @@ scripts/agent/merge-pr.sh <PR> "$HEAD_SHA" "$MAIN_SHA"
   linking both PRs. Ping only if the revert itself can't be merged.
 - Agents still in flight are now behind `main`. Their PRs get re-gated
   against the new `main` before they merge.
+- Run `scripts/agent/prune-branches.sh` after the main regression passes.
 - **No ping.**
 
 ### MAJOR: hand off to the user
@@ -280,4 +287,7 @@ Bug lane:
 - an environment failure you can't fix: Docker down, `gh` auth expired,
   `origin` unreachable
 
-Never ping for routine merges, routine fixes, or progress.
+Never ping for routine merges, routine fixes, progress, or housekeeping
+(branch and worktree cleanup, label fixes, filing follow-up issues). Don't
+ask the user to run a command the manager is allowed to run itself. A ping
+is for something only the user can decide or merge.
