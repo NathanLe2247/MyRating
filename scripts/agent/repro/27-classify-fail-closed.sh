@@ -37,7 +37,7 @@ in_list() { case " $2 " in *" $1 "*) return 0 ;; esac; return 1; }
 case "$1 $2" in
   "repo view") echo '{"nameWithOwner":"NathanLe2247/MyRating"}' | emit ;;
   "api --paginate") echo '[{"status":"modified","additions":3,"deletions":1,"filename":"mobile/src/components/foo.tsx"}]' | emit ;;
-  "pr view") jq -n --arg b "$STUB_BODY" '{labels: [], body: $b, headRefName: "fix/7-thing"}' | emit ;;
+  "pr view") jq -n --arg b "$STUB_BODY" '{labels: [], body: $b, headRefName: "fix/7-thing", closingIssuesReferences: []}' | emit ;;
   "issue view")
     n=$3
     in_list "$n" "${STUB_FAIL_ISSUES:-}" && { echo "GraphQL: Could not resolve to an issue ($n)" >&2; exit 1; }

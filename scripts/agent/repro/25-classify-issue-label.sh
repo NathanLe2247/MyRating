@@ -34,7 +34,7 @@ emit() {
 case "$1 $2" in
   "repo view") echo '{"nameWithOwner":"stub/repo"}' | emit ;;
   "api --paginate") echo '[{"status":"modified","additions":3,"deletions":1,"filename":"mobile/src/components/foo.tsx"}]' | emit ;;
-  "pr view") printf '{"labels":%s,"body":"Fixes a thing.\\n\\nCloses #7","headRefName":"fix/7-thing"}\n' "$(labels "$STUB_PR_LABELS")" | emit ;;
+  "pr view") printf '{"labels":%s,"body":"Fixes a thing.\\n\\nCloses #7","headRefName":"fix/7-thing","closingIssuesReferences":[]}\n' "$(labels "$STUB_PR_LABELS")" | emit ;;
   "issue view") printf '{"labels":%s}\n' "$(labels "$STUB_ISSUE_LABELS")" | emit ;;
   *) echo "gh stub: unhandled: $*" >&2; exit 1 ;;
 esac
