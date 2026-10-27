@@ -57,7 +57,10 @@ check_node_app() { # check_node_app <dir>
   if has_script "$dir" typecheck; then run "$dir: typecheck" "$dir" npm run -s typecheck
   elif [ -f "$ROOT/$dir/tsconfig.json" ]; then run "$dir: typecheck" "$dir" npx tsc --noEmit
   fi
-  has_script "$dir" lint && run "$dir: lint" "$dir" npm run -s lint
+  # --no-cache: the ESLint cache (expo lint keeps it in .expo/cache/eslint) is
+  # keyed on file contents and config, not node_modules, so it can replay
+  # results from before an `npm ci` (#18). The gate must match a fresh run.
+  has_script "$dir" lint && run "$dir: lint" "$dir" npm run -s lint -- --no-cache
   has_script "$dir" test && run "$dir: test" "$dir" npm test --silent
 }
 
