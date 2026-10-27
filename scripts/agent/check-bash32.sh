@@ -48,9 +48,17 @@ function scan(line,    i, n, c, nx, pv, q, d, dash, quoted) {
       if (c == "$" && nx == "\047") { st = "A"; i++; code = code "~~"; expn = expn "~~"; pv = "~"; continue }
       if (c == "\047") { st = "S"; code = code "~"; expn = expn "~"; pv = "~"; continue }
       if (c == "\"") { st = "D"; code = code "~"; expn = expn "~"; pv = "~"; continue }
+      # (( )) and $[ ] arithmetic, where << is a shift, not a heredoc. Counted
+      # per line only (reset in the main rule), so a stray `((` such as
+      # `((cd a); b)` cannot hide heredocs further down the file.
       if (c == "(" && nx == "(") arith++
       if (c == ")" && nx == ")" && arith > 0) arith--
-      if (c == "<" && nx == "<" && pv != "<" && substr(line, i + 2, 1) != "<" && arith == 0) {
+      if (c == "$" && nx == "[") brk++
+      if (c == "]" && brk > 0) brk--
+      if (c == "<" && nx == "<" && pv != "<" && substr(line, i + 2, 1) != "<" && \
+          ((arith == 0 && brk == 0) || substr(line, i + 2) ~ /^-?[ \t]*[\\\047"]/)) {
+        # (a quoted delimiter is a heredoc even inside an apparent (( ), so a
+        # quoted body is never scanned as code)
         # heredoc: <<[-] [quote]DELIM[quote]
         code = code "<<"; expn = expn "<<"
         i += 2; dash = 0; quoted = 0
@@ -77,10 +85,29 @@ function scan(line,    i, n, c, nx, pv, q, d, dash, quoted) {
   if (nh > hcur) st = "H"
 }
 
+# True when `s` runs `shopt` with a bash 4+ option name in the same simple
+# command and nothing handles its failure on 3.2: not followed by `||`, and
+# not the condition of an if/elif/while/until.
+function unguarded_shopt(s,    m, k, before, after) {
+  while (match(s, CMD "shopt([ \t]+[^ \t;&|]+)*[ \t]+(" SHOPT4 ")([ \t;&|)]|$)")) {
+    m = substr(s, RSTART, RLENGTH)
+    k = index(m, "shopt")
+    before = substr(s, 1, RSTART + k - 2)
+    after = substr(s, RSTART + RLENGTH)
+    if (m ~ /[;&|)]$/) after = substr(m, length(m)) after
+    gsub(/[0-9]*>&[0-9-]*/, "", after) # 2>&1 is a redirect, not a separator
+    if (after !~ /^[^;&|]*\|\|/ && before !~ /(^|[^A-Za-z0-9_])(if|elif|while|until)[ \t]+(![ \t]+)?$/) return 1
+    s = after
+  }
+  return 0
+}
+
 BEGIN {
   # a word in command position: line start, after a separator, or after a
   # keyword that starts a command
   CMD = "(^|[;&|(){!]|(^|[ \t])(then|do|else|elif|if|while|until|time))[ \t]*"
+  SPECIAL = "BASHPID|EPOCHSECONDS|EPOCHREALTIME|SRANDOM|BASH_ARGV0"
+  SHOPT4 = "globstar|lastpipe|inherit_errexit|localvar_inherit|autocd|direxpand"
 }
 
 FNR == 1 { st = "N"; arith = 0; nh = 0; hcur = 0 }
@@ -97,22 +124,26 @@ FNR == 1 { st = "N"; arith = 0; nh = 0; hcur = 0 }
     if (hq[hcur + 1]) next
     code = ""; expn = $0
   } else {
+    arith = 0; brk = 0
     scan($0)
   }
 
   if (expn ~ /\$\{[A-Za-z0-9_@*]+(\[[^]]*\])?[,^]/) flag("case modification ${x,,} / ${x^^}")
   if (expn ~ /\$\{[A-Za-z0-9_@*]+(\[[^]]*\])?@[A-Za-z]\}/) flag("${x@op} transformation")
   if (expn ~ /\$\{[A-Za-z_][A-Za-z0-9_]*\[-[0-9]/) flag("negative array index")
-  if (expn ~ /\$[{]?(BASHPID|EPOCHSECONDS|EPOCHREALTIME|SRANDOM|BASH_ARGV0)([^A-Za-z0-9_]|$)/) flag("bash 4+/5 special variable")
+  # bare use only: ${BASHPID:-$$} and friends supply a 3.2 fallback
+  if (expn ~ "[$](" SPECIAL ")([^A-Za-z0-9_]|$)" || \
+      expn ~ "[$][{](" SPECIAL ")([^-:=+A-Za-z0-9_]|:[^-=+]|:?$)") flag("bash 4+/5 special variable")
 
   if (code ~ CMD "(declare|typeset|local)[ \t]+(-[A-Za-z]+[ \t]+)*-[A-Za-z]*A") flag("associative array (declare -A)")
-  if (code ~ CMD "(declare|typeset|local)[ \t]+(-[A-Za-z]+[ \t]+)*-[A-Za-z]*n") flag("nameref (declare -n)")
-  if (code ~ CMD "(declare|typeset|local)[ \t]+(-[A-Za-z]+[ \t]+)*-[A-Za-z]*[lu]") flag("case attribute (declare -l / -u)")
+  # (-f groups excluded: declare -fu etc. act on functions)
+  if (code ~ CMD "(declare|typeset|local)[ \t]+(-[A-Za-z]+[ \t]+)*-[A-Za-eg-z]*n[A-Za-eg-z]*([ \t]|$)") flag("nameref (declare -n)")
+  if (code ~ CMD "(declare|typeset|local)[ \t]+(-[A-Za-z]+[ \t]+)*-[A-Za-eg-z]*[lu][A-Za-eg-z]*([ \t]|$)") flag("case attribute (declare -l / -u)")
   if (code ~ CMD "(mapfile|readarray)([ \t;&|)]|$)") flag("mapfile / readarray")
   if (code ~ CMD "coproc([ \t;&|)]|$)") flag("coproc")
   if (code ~ CMD "wait[ \t]+-[A-Za-z]*n") flag("wait -n")
   if (code ~ /\[\[?[ \t]+(![ \t]+)?-v[ \t]/) flag("test -v")
-  if (code ~ CMD "shopt[ \t].*(globstar|lastpipe|inherit_errexit|localvar_inherit|autocd|direxpand)") flag("bash 4+ shopt option")
+  if (unguarded_shopt(code)) flag("bash 4+ shopt option")
   if (code ~ /&>>/) flag("&>> append redirect")
   if (code ~ /\|&/) flag("|& pipe")
   if (code ~ /;;?&/) flag("case fallthrough ;& / ;;&")

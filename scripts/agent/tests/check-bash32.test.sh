@@ -46,6 +46,12 @@ shopt -s globstar
 echo "${x@Q}"
 echo "${arr[-1]}"
 echo "$EPOCHSECONDS"
+echo "${BASHPID}"
+x=${EPOCHSECONDS:0:3}
+shopt -s globstar; echo ok
+shopt -s nullglob globstar
+if true; then shopt -s globstar; fi
+shopt -s lastpipe && echo y
 case x in a) echo ;& b) echo ;; esac
 case x in a) echo ;;& b) echo ;; esac
 EOF
@@ -70,10 +76,45 @@ QUOTED
 cat <<-PLAIN
 	mapfile in an unquoted heredoc body is text, not a command
 	PLAIN
+pid=${BASHPID:-$$}; ts=${EPOCHSECONDS:-$(date +%s)}
+r=${SRANDOM-$RANDOM} a=${BASHPID:=1} b=${BASHPID=1} c=${BASHPID:+x} d=${BASHPID+x}
+shopt -s globstar 2>/dev/null || true
+shopt -s lastpipe 2>&1 || :
+if shopt -s globstar 2>/dev/null; then echo yes; fi
+if ! shopt -s autocd; then echo no; fi
+shopt -s nullglob; echo autocd
+shopt -s extglob && echo globstar
+echo $[1<<2]
+declare -fu name_of_func
 echo done
 EOF
 if ! out=$("$CHECK" "$TMP/good.sh" 2>&1); then
   echo "false positive(s):"; echo "$out"; FAILS=1
+fi
+
+# A stray `((` (nested subshells) must not hide a later quoted heredoc, whose
+# body would then be scanned as code.
+cat >"$TMP/subshell.sh" <<'EOF'
+#!/bin/bash
+((cd /tmp && ls); echo)
+cat <<'X'
+declare -A not_code
+X
+EOF
+if ! out=$("$CHECK" "$TMP/subshell.sh" 2>&1); then
+  echo "false positive after ((...):"; echo "$out"; FAILS=1
+fi
+
+# Even on a line with an unclosed (( a quoted heredoc is still a heredoc.
+cat >"$TMP/subshell2.sh" <<'EOF'
+#!/bin/bash
+((cd /tmp && ls); cat <<'X'
+declare -A not_code
+X
+)
+EOF
+if ! out=$("$CHECK" "$TMP/subshell2.sh" 2>&1); then
+  echo "false positive in quoted heredoc after ((:"; echo "$out"; FAILS=1
 fi
 
 # An unquoted heredoc body still expands ${x,,}.
@@ -81,6 +122,25 @@ printf '#!/bin/bash\ncat <<EOF\n${x,,}\nEOF\n' >"$TMP/heredoc.sh"
 if "$CHECK" "$TMP/heredoc.sh" >/dev/null 2>&1; then
   echo "not flagged: \${x,,} in an unquoted heredoc"; FAILS=1
 fi
+
+# regress.sh's shebang detection (shell_of), loaded on its own.
+eval "$(sed -n '/^shell_of() {/,/^}/p' "$(dirname "$CHECK")/regress.sh")"
+expect_kind() { # expect_kind <first line> <bash|sh|empty>
+  local f="$TMP/script" got
+  printf '%s\necho\n' "$1" >"$f"
+  got=$(shell_of "$f")
+  [ "$got" = "$2" ] || { echo "shell_of '$1': got '$got', want '$2'"; FAILS=1; }
+}
+expect_kind '#!/bin/bash' bash
+expect_kind '#! /bin/bash' bash
+expect_kind $'#!/bin/bash\r' bash
+expect_kind '#!/opt/homebrew/bin/bash' bash
+expect_kind '#!/usr/bin/env bash' bash
+expect_kind '#!/usr/bin/env -S bash -e' bash
+expect_kind '#!/usr/bin/env -i PATH=/bin bash' bash
+expect_kind '#!/bin/sh' sh
+expect_kind '#!/bin/zsh' ''
+expect_kind '#!/usr/bin/env python3' ''
 
 [ $FAILS = 0 ] && echo "check-bash32: all cases pass"
 exit $FAILS

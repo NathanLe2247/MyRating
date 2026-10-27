@@ -91,12 +91,14 @@ shell_of() { # prints bash|sh for a shell script, nothing otherwise
   local first w name=
   local -a words=()
   first=$(head -n 1 "$1" 2>/dev/null)
+  first=${first%$'\r'} # CRLF files: `read -a` would keep the \r on "bash"
   case "$first" in
     '#!'*)
       read -r -a words <<<"${first#??}"
       for w in "${words[@]+"${words[@]}"}"; do
-        # skip env's own options (-S, -i, ...) to reach the interpreter
-        case "$w" in -*) [ "$name" = env ] && continue ;; esac
+        # skip env's own options (-S, -i, ...) and VAR=val assignments to
+        # reach the interpreter
+        case "$w" in -*|*=*) [ "$name" = env ] && continue ;; esac
         name=${w##*/}
         [ "$name" = env ] || break
       done
