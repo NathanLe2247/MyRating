@@ -37,6 +37,22 @@ already configured in `tsconfig.json`.
 `create-expo-app`'s default (Expo Router) template — `app/index.tsx` and
 `app/explore.tsx` are the template's placeholder screens, not real ones yet.
 
+## Testing
+
+Jest via `jest-expo` with React Native Testing Library. `npm test` runs it;
+`npm run typecheck` runs `tsc --noEmit`.
+
+- Tests go in a `__tests__/` folder next to the code
+  (`src/hooks/__tests__/use-foo.test.ts`). **Never under `app/`**: Expo
+  Router turns every file there into a route. Jest only looks in `src/`.
+- Test logic that matters (rating display, phone parsing, onboarding rules)
+  and component behavior (what's on screen, what a tap does). Query by role
+  or text the way a user would (`getByRole('button', { name })`), not by
+  test IDs or styles. No snapshot tests.
+- Mock at the boundary (Clerk hooks, the Supabase client, `fetch`), not the
+  component under test.
+- CSS imports resolve to `jest/style-mock.js`.
+
 ## Auth
 
 Auth is Clerk, not Supabase Auth. Supabase is configured as a third-party
