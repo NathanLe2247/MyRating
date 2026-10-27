@@ -68,21 +68,47 @@ check_node_app() { # check_node_app <dir>
   has_script "$dir" test && run "$dir: test" "$dir" npm test --silent
 }
 
-# The gate checks changes to itself (#22): syntax-check every changed shell
-# script under scripts/agent/, and run the mobile checks below so a gate change
-# is exercised against a real app. /bin/bash is 3.2 on macOS, so parsing with
-# it also catches syntax newer bashes accept but the user's shell doesn't.
-if touched 'scripts/agent/'; then
+# The gate checks changes to itself (#22, #24): syntax-check and shellcheck
+# every changed shell script under scripts/, and run the mobile checks below
+# so a gate change is exercised against a real app. /bin/bash is 3.2 on macOS,
+# so parsing with it also catches syntax newer bashes accept but the user's
+# shell doesn't.
+#
+# Shell scripts are found by `.sh` extension or by shebang (#!/usr/bin/env
+# bash|sh, #!/bin/bash, #!/bin/sh), so extensionless scripts are covered too.
+#
+# The gate expects ShellCheck to be installed wherever it runs:
+#   brew install shellcheck      (macOS)
+#   apt-get install shellcheck   (Debian/Ubuntu)
+# Without it the gate falls back to `bash -n` / `sh -n` and prints a SKIP line.
+SHEBANG_RE='^#!(/usr/bin/env[[:space:]]+(ba)?sh|/bin/(ba)?sh)([[:space:]]|$)'
+shell_of() { # prints bash|sh for a shell script, nothing otherwise
+  local first
+  first=$(head -n 1 "$1" 2>/dev/null)
+  if echo "$first" | grep -qE "$SHEBANG_RE"; then
+    case "$first" in *bash*) echo bash ;; *) echo sh ;; esac
+  elif [ "${1%.sh}" != "$1" ]; then
+    echo bash
+  fi
+}
+
+if touched 'scripts/'; then
   BASH_N=bash
   [ -x /bin/bash ] && BASH_N=/bin/bash
-  for f in $(echo "$CHANGED" | grep -E '^scripts/agent/.*\.sh$'); do
-    [ -f "$f" ] || continue # deleted on this branch
-    run "bash -n $f" . "$BASH_N" -n "$f"
-    if command -v shellcheck >/dev/null; then
-      run "shellcheck $f" . shellcheck -S error "$f"
+  HAS_SHELLCHECK=0
+  command -v shellcheck >/dev/null && HAS_SHELLCHECK=1
+  while IFS= read -r f; do
+    [ -n "$f" ] && [ -f "$f" ] || continue # deleted on this branch
+    sh_kind=$(shell_of "$f")
+    [ -n "$sh_kind" ] || continue # not a shell script
+    if [ "$sh_kind" = sh ]; then run "sh -n $f" . sh -n "$f"
+    else run "bash -n $f" . "$BASH_N" -n "$f"
     fi
-  done
-  command -v shellcheck >/dev/null || result SKIP "shellcheck: not installed (bash -n only)"
+    [ $HAS_SHELLCHECK = 1 ] && run "shellcheck $f" . shellcheck -S error "$f"
+  done <<EOF
+$(echo "$CHANGED" | grep -E '^scripts/')
+EOF
+  [ $HAS_SHELLCHECK = 1 ] || result SKIP "shellcheck: not installed (bash -n only; brew install shellcheck)"
 fi
 
 # shared/ is imported by both apps, so a shared change re-checks both.
