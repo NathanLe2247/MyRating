@@ -16,8 +16,9 @@ are editing other worktrees at the same time.
   writing code. The rules in the root `.claude/CLAUDE.md` apply: no
   mobile-only features in `frontend/`, shapes come from `shared/`, and rating
   math lives only where `agent/skills/ratings-engine` says.
-- Don't widen scope. Note unrelated problems in your report instead of
-  fixing them.
+- Don't widen scope. **Never fix a bug in a feature PR**, even a one-line
+  bug. List it under OPEN and the manager files it for the debugger. The
+  exception is a bug your own change on this branch introduced.
 
 ## Steps
 

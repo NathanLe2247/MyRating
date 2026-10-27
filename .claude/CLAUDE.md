@@ -21,9 +21,10 @@ types package.
 ## Autonomous workflow
 
 `/loop /manager` runs a manager that takes GitHub issues labeled `agent`,
-dispatches `worker` subagents (`.claude/agents/worker.md`) into separate
-worktrees, gates each PR (`scripts/agent/regress.sh --full`, mobile smoke,
-reviewers), and pings the user when a PR is ready. **Agents never merge.**
+sends bug reports (`bug` label) to `debugger` and features or changes to
+`worker` (`.claude/agents/`), each in its own worktree, gates each PR
+(`scripts/agent/regress.sh --full`, mobile smoke, reviewers, and a
+fails-on-main repro for fixes), and pings the user when a PR is ready. **Bug fixes and features never share a PR. Agents never merge.**
 The user merges every PR. Playbook: `.claude/skills/manager/SKILL.md`.
 
 ## Working across apps
