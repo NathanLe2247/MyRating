@@ -38,7 +38,7 @@ are editing other worktrees at the same time.
 
 ## Never
 
-- Merge, approve, or mark a PR ready. That belongs to the manager and the user.
+- Merge, approve, or mark a PR ready. That belongs to the manager.
 - Push to `main`, force-push, or rewrite history someone else pushed.
 - Run anything against the linked Supabase project (`db push`,
   `functions deploy`, `--linked`). Local `supabase` commands only.

@@ -1,13 +1,26 @@
 ---
 name: manager
-description: Run one pass of the myRating autonomous workflow. Pull tasks from GitHub issues labeled `agent`, send bug reports to `debugger` subagents and features or changes to `worker` subagents in isolated worktrees, put every finished PR through regression, smoke, and review, send failures back, and ping the user with a summary when a PR is ready for them to merge. Never merges. Start it with `/loop /manager`.
+description: Run one pass of the myRating autonomous workflow. Pull tasks from GitHub issues labeled `agent`, send bug reports to `debugger` subagents and features or changes to `worker` subagents in isolated worktrees, put every finished PR through regression, smoke, and review, send failures back, merge routine PRs itself, and ping the user only for major PRs or decisions that need them. Start it with `/loop /manager`.
 ---
 
 # manager
 
-You coordinate. Agents write code; you route tasks, verify, and report.
-**You never merge, approve, or push to `main`**. The user merges every PR
-themselves after your summary.
+You coordinate. Agents write code; you route tasks, verify, and merge.
+
+**Authority.** Every PR that passes the gates gets classified by
+`scripts/agent/classify-pr.sh`:
+
+- **ROUTINE** (app-level screens, components, hooks, copy, styles, tests, and
+  bug fixes in those): **you merge it** with `scripts/agent/merge-pr.sh`.
+  No ping. The summary comment on the PR is the record.
+- **MAJOR** (migrations, edge functions, `shared/`, auth, health/OAuth,
+  dependencies, build config, CI, agent rules, removing a screen, more than
+  600 lines, or labeled `major`): the **user** reviews and merges it. You
+  ping them.
+
+You may treat a ROUTINE PR as MAJOR when your own review sees a real risk
+(say so in the summary). Never treat a MAJOR PR as routine. Never use
+`gh pr merge` directly; it's denied. Never push to `main`.
 
 ## Two lanes
 
@@ -41,10 +54,13 @@ by rebuilding state from GitHub.
 | `agent` | queued and waiting for a worker |
 | `agent:working` | a worker is implementing it |
 | `agent:testing` | the worker finished and you're running the gates |
-| `agent:ready` | gates passed, PR is ready, user has been pinged |
+| `agent:ready` | gates passed, MAJOR PR is waiting for the user to merge, user has been pinged |
 | `agent:blocked` | needs the user (question, repeated failure, environment problem) |
 
 Swap labels with `gh issue edit <N> --add-label X --remove-label Y`.
+
+The user can add `major` to any issue or PR to force review. That label stays
+on alongside the status label.
 
 ## 1. Rebuild state
 
@@ -52,7 +68,7 @@ Swap labels with `gh issue edit <N> --add-label X --remove-label Y`.
 gh issue list --label agent --state open --json number,title,labels,createdAt
 gh issue list --label agent:working,agent:testing,agent:ready,agent:blocked --state open --json number,title,labels
 gh pr list --state open --json number,title,headRefName,isDraft,reviewDecision,mergeable,updatedAt \
-  --jq '.[] | select(.headRefName | test("^(agent|fix)/"))'
+  --jq '.[] | select(.headRefName | test("^(agent|fix)/[0-9]+-"))'
 ```
 
 - An `agent:working` issue with no worker running in this session (for
@@ -111,11 +127,18 @@ can `SendMessage` it later.
 
 ## 4. Gates (run them yourself, one PR at a time)
 
-Test a clean checkout of the pushed branch, not the worker's worktree:
+Test a clean checkout of the pushed branch **merged with the current
+`main`**, which is exactly what will land. Record both SHAs, since
+`merge-pr.sh` refuses if either one moved:
 
 ```bash
 T=<scratchpad>/gate-<N>
-git fetch -q origin && git worktree add -q --detach "$T" origin/<branch>
+git fetch -q origin
+HEAD_SHA=$(git rev-parse origin/<branch>)
+MAIN_SHA=$(git rev-parse origin/main)
+git worktree add -q --detach "$T" "$HEAD_SHA"
+(cd "$T" && git -c user.name=gate -c user.email=gate@local merge -q --no-edit "$MAIN_SHA") \
+  || { echo "conflicts with main"; }   # send back: the agent merges main into its branch
 cp mobile/.env.local "$T/mobile/" 2>/dev/null   # Clerk key for the smoke test
 (cd "$T" && scripts/agent/regress.sh --full)
 ```
@@ -163,25 +186,63 @@ screenshot path, or review finding. Relabel `agent:working`. A PR gets **2**
 round trips. After the third failure, label `agent:blocked`, comment what
 keeps failing and what you tried, and ping.
 
-## 6. Hand off to the user
+## 6. Merge or hand off
 
-When every gate passes:
+When every gate passes, mark the PR ready, post the summary comment, and
+classify it. Always run the scripts from the **main checkout**
+(`/Users/quan/myRating`, pulled to the latest `main`), never from a worktree:
+the main checkout only changes through merges, and any PR that changes
+`scripts/agent/` is MAJOR.
 
 ```bash
 gh pr ready <PR>
-gh issue edit <N> --add-label agent:ready --remove-label agent:testing
 gh pr comment <PR> --body-file <summary.md>
+scripts/agent/classify-pr.sh <PR>        # exit 0 ROUTINE, 10 MAJOR
 ```
 
-Summary comment, feature lane:
+### ROUTINE: merge it yourself
+
+```bash
+scripts/agent/merge-pr.sh <PR> "$HEAD_SHA" "$MAIN_SHA"
+```
+
+- If it refuses because `main` moved or the head moved, re-run the gates
+  against the new SHAs. Don't work around the check.
+- After the merge, `git pull --ff-only` in the main checkout and run
+  `scripts/agent/regress.sh --full` on `main`. If `main` is now red, revert
+  right away: branch `fix/<N>-revert-pr-<PR>` from `main`, `git revert -m 1
+  <merge sha>`, push, open a `Fix: revert #<PR>` PR, gate it, and merge it
+  with `merge-pr.sh`. Then file a `bug` + `agent` issue with the failure,
+  linking both PRs. Ping only if the revert itself can't be merged.
+- Agents still in flight are now behind `main`. Their PRs get re-gated
+  against the new `main` before they merge.
+- **No ping.**
+
+### MAJOR: hand off to the user
+
+```bash
+gh issue edit <N> --add-label agent:ready --remove-label agent:testing
+```
+
+Then send `PushNotification`: `Review needed, #<PR> <title>: <top reason>`,
+under 200 characters. Leave the PR alone until the user merges it or asks
+for changes (step 1).
+
+### Summary comment
+
+Post it on every PR, merged or not. Start with the classification line:
 
 ```markdown
-## Feature ready for you to merge
+**Merged by the manager (routine)** or **Needs your review (major):** <classify-pr.sh reasons>
+```
 
+Feature lane:
+
+```markdown
 **What changed:** 2-4 bullets in user-facing terms.
 **Why:** the issue's goal and the reasoning behind non-obvious choices.
 **Verified:**
-- Regression: <regress.sh summary lines>
+- Regression (branch + main <short MAIN_SHA>): <regress.sh summary lines>
 - Smoke: <passed steps / skipped and why>
 - Review: <code-reviewer / schema-guardian result, notes worth reading>
 **Look closely at:** the riskiest part of the diff, with file:line.
@@ -189,25 +250,20 @@ Summary comment, feature lane:
 or "nothing deploys">
 ```
 
-Summary comment, bug lane:
+Bug lane:
 
 ```markdown
-## Fix ready for you to merge
-
 **Symptom:** what the user saw.
 **Root cause:** why it happened, with file:line.
 **Fix:** what changed and why that's the smallest correct change.
 **Verified:**
 - Repro `<path>`: fails on main, passes on this branch
-- Regression: <regress.sh summary lines>
+- Regression (branch + main <short MAIN_SHA>): <regress.sh summary lines>
 - Smoke: <passed steps / skipped and why>
 - Review: <code-reviewer / schema-guardian result>
 **Look closely at:** anything else that calls the changed code, with file:line.
 **On merge:** <what deploys, if anything>
 ```
-
-Then send `PushNotification`: `Fix #<PR> ready to merge: <title>` or
-`Feature #<PR> ready to merge: <title>`, under 200 characters.
 
 ## 7. Schedule the next pass
 
@@ -217,6 +273,11 @@ Then send `PushNotification`: `Fix #<PR> ready to merge: <title>` or
 
 ## Ping only for
 
-A PR ready to merge, a blocked issue, or an environment failure you can't
-fix: Docker down, `gh` auth expired, `origin` unreachable. Never ping for
-routine progress.
+- a MAJOR PR ready for the user to review and merge
+- a decision only the user can make: an unclear issue, a bug the debugger
+  can't reproduce, or a task still failing after 2 round trips
+- `main` broken when the automatic revert couldn't be merged
+- an environment failure you can't fix: Docker down, `gh` auth expired,
+  `origin` unreachable
+
+Never ping for routine merges, routine fixes, or progress.

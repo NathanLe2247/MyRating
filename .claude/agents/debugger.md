@@ -54,7 +54,7 @@ in your report and the manager will file it separately.
 
 ## Never
 
-- Merge, approve, or mark a PR ready.
+- Merge, approve, or mark a PR ready. That belongs to the manager.
 - Push to `main`, force-push, or rewrite history someone else pushed.
 - Run anything against the linked Supabase project (`db push`,
   `functions deploy`, `--linked`). Local `supabase` commands only.
