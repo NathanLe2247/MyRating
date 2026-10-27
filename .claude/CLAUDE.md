@@ -15,7 +15,16 @@ types package.
 - `shared/` — Cross-app types, Zod schemas, constants. See `shared/CLAUDE.md`.
 - `agent/skills/` — Domain conventions (ratings math, geospatial queries,
   realtime patterns, health OAuth, courts data shape, content feed reads).
-- `agent/agents/` — Subagents for this repo: `code-reviewer`, `schema-guardian`.
+- `agent/agents/` — Subagents for this repo: `code-reviewer`, `schema-guardian`
+  (symlinked into `.claude/agents/` so Claude Code loads them).
+
+## Autonomous workflow
+
+`/loop /manager` runs a manager that takes GitHub issues labeled `agent`,
+dispatches `worker` subagents (`.claude/agents/worker.md`) into separate
+worktrees, gates each PR (`scripts/agent/regress.sh --full`, mobile smoke,
+reviewers), and pings the user when a PR is ready. **Agents never merge.**
+The user merges every PR. Playbook: `.claude/skills/manager/SKILL.md`.
 
 ## Working across apps
 
