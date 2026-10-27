@@ -24,8 +24,12 @@ CHANGED=$( { git diff --name-only "$BASE"; git ls-files --others --exclude-stand
 touched() { echo "$CHANGED" | grep -qE "^($1)"; }
 
 FAILED=0
+CHECKS=0 # PASS/FAIL lines printed; 0 means nothing was checked
 LOG_DIR=$(mktemp -d)
-result() { printf '%-5s %s\n' "$1" "$2"; }
+result() {
+  printf '%-5s %s\n' "$1" "$2"
+  [ "$1" = SKIP ] || CHECKS=$((CHECKS + 1))
+}
 
 run() { # run <name> <dir> <cmd...>
   local name=$1 dir=$2; shift 2
@@ -64,8 +68,26 @@ check_node_app() { # check_node_app <dir>
   has_script "$dir" test && run "$dir: test" "$dir" npm test --silent
 }
 
-# shared/ is imported by both apps, so a shared change re-checks both
-if [ $FULL = 1 ] || touched 'mobile/|shared/'; then check_node_app mobile; fi
+# The gate checks changes to itself (#22): syntax-check every changed shell
+# script under scripts/agent/, and run the mobile checks below so a gate change
+# is exercised against a real app. /bin/bash is 3.2 on macOS, so parsing with
+# it also catches syntax newer bashes accept but the user's shell doesn't.
+if touched 'scripts/agent/'; then
+  BASH_N=bash
+  [ -x /bin/bash ] && BASH_N=/bin/bash
+  for f in $(echo "$CHANGED" | grep -E '^scripts/agent/.*\.sh$'); do
+    [ -f "$f" ] || continue # deleted on this branch
+    run "bash -n $f" . "$BASH_N" -n "$f"
+    if command -v shellcheck >/dev/null; then
+      run "shellcheck $f" . shellcheck -S error "$f"
+    fi
+  done
+  command -v shellcheck >/dev/null || result SKIP "shellcheck: not installed (bash -n only)"
+fi
+
+# shared/ is imported by both apps, so a shared change re-checks both.
+# scripts/agent/ re-checks mobile so a gate change runs against a real app.
+if [ $FULL = 1 ] || touched 'mobile/|shared/|scripts/agent/'; then check_node_app mobile; fi
 if [ $FULL = 1 ] || touched 'frontend/|shared/'; then check_node_app frontend; fi
 if [ $FULL = 1 ] || touched 'shared/'; then check_node_app shared; fi
 
@@ -93,6 +115,9 @@ if touched 'backend/supabase/migrations/'; then
     result SKIP "supabase migrations: replayed by the manager's --full run"
   fi
 fi
+
+# a diff with no matching checks says so instead of passing silently
+[ $CHECKS = 0 ] && result SKIP "no checks apply to the changed paths"
 
 rm -rf "$LOG_DIR"
 exit $FAILED
