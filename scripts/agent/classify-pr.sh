@@ -53,9 +53,25 @@ SIZE=$(echo "$NONTEST" | awk -F'\t' '$3 !~ /package-lock\.json$/ {s += $2} END {
 
 # The user can force review with a `major` label on the PR or its issue
 echo "$META" | jq -e '[.labels[].name] | index("major")' >/dev/null && hit "labeled major"
-for N in $(echo "$META" | jq -r .body | grep -oiE '(closes|fixes|resolves) #[0-9]+' | grep -oE '[0-9]+'); do
-  gh issue view "$N" --json labels -q '[.labels[].name] | any(. == "major")' 2>/dev/null | grep -qx true \
-    && hit "issue #$N labeled major"
+# Closing references: #N, owner/repo#N, or a full issue URL. Fails closed: an
+# issue whose labels can't be read, or one in another repo, makes the PR major.
+SLUG='[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+'
+REPO_LC=$(echo "$REPO" | tr '[:upper:]' '[:lower:]')
+for REF in $(echo "$META" | jq -r .body \
+  | grep -oiE "(closes|fixes|resolves) +(#[0-9]+|$SLUG#[0-9]+|https?://github\.com/$SLUG/issues/[0-9]+)" \
+  | sed -E 's/^[A-Za-z]+ +//; s#^https?://github\.com/##; s#/issues/#\##'); do
+  N=${REF##*#}
+  OWNER_REPO=${REF%#*}
+  if [ -n "$OWNER_REPO" ] && [ "$(echo "$OWNER_REPO" | tr '[:upper:]' '[:lower:]')" != "$REPO_LC" ]; then
+    hit "closes $REF in another repo (labels can't be checked)"
+    continue
+  fi
+  IS_MAJOR=$(gh issue view "$N" --json labels -q '[.labels[].name] | any(. == "major")') || IS_MAJOR=unreadable
+  case "$IS_MAJOR" in
+    true) hit "issue #$N labeled major" ;;
+    false) ;;
+    *) hit "couldn't read issue #$N labels" ;;
+  esac
 done
 
 # Only agent branches can be routine
