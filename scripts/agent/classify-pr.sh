@@ -54,7 +54,7 @@ SIZE=$(echo "$NONTEST" | awk -F'\t' '$3 !~ /package-lock\.json$/ {s += $2} END {
 # The user can force review with a `major` label on the PR or its issue
 echo "$META" | jq -e '[.labels[].name] | index("major")' >/dev/null && hit "labeled major"
 for N in $(echo "$META" | jq -r .body | grep -oiE '(closes|fixes|resolves) #[0-9]+' | grep -oE '[0-9]+'); do
-  gh issue view "$N" --json labels -q '[.labels[].name] | index("major")' 2>/dev/null | grep -qv null \
+  gh issue view "$N" --json labels -q '[.labels[].name] | any(. == "major")' 2>/dev/null | grep -qx true \
     && hit "issue #$N labeled major"
 done
 
