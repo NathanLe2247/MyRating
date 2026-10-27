@@ -53,13 +53,24 @@ SIZE=$(echo "$NONTEST" | awk -F'\t' '$3 !~ /package-lock\.json$/ {s += $2} END {
 
 # The user can force review with a `major` label on the PR or its issue
 echo "$META" | jq -e '[.labels[].name] | index("major")' >/dev/null && hit "labeled major"
-# Closing references: #N, owner/repo#N, or a full issue URL. Fails closed: an
-# issue whose labels can't be read, or one in another repo, makes the PR major.
+# Closing references: the union of GitHub's own links (closingIssuesReferences)
+# and the body's keywords (any GitHub accepts, optional colon) followed by #N,
+# owner/repo#N, or a full issue URL. Fails closed: references that can't be
+# read, an issue whose labels can't be read, or one in another repo, make the
+# PR major.
 SLUG='[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+'
 REPO_LC=$(echo "$REPO" | tr '[:upper:]' '[:lower:]')
-for REF in $(echo "$META" | jq -r .body \
-  | grep -oiE "(closes|fixes|resolves) +(#[0-9]+|$SLUG#[0-9]+|https?://github\.com/$SLUG/issues/[0-9]+)" \
-  | sed -E 's/^[A-Za-z]+ +//; s#^https?://github\.com/##; s#/issues/#\##'); do
+GH_REFS=$(gh pr view "$PR" --json closingIssuesReferences \
+  --jq '.closingIssuesReferences[] | "\(.repository.owner.login)/\(.repository.name)#\(.number)"') \
+  && ! echo "$GH_REFS" | grep -vxE "$SLUG#[0-9]+" | grep -q . \
+  || { hit "couldn't read the PR's closing issue references"; GH_REFS=; }
+BODY_REFS=$(echo "$META" | jq -r .body \
+  | grep -oiE "(close[sd]?|fix(e[sd])?|resolve[sd]?)(:[[:space:]]*|[[:space:]]+)(#[0-9]+|$SLUG#[0-9]+|https?://github\.com/$SLUG/issues/[0-9]+)" \
+  | sed -E 's/^[A-Za-z]+:?[[:space:]]*//; s#^https?://github\.com/##; s#/issues/#\##')
+# Same-repo references become #N so each issue is checked and reported once.
+for REF in $(printf '%s\n%s\n' "$GH_REFS" "$BODY_REFS" | grep . \
+  | awk -v repo="$REPO_LC" '{ r = $0; i = index(r, "#"); if (tolower(substr(r, 1, i - 1)) == repo) r = substr(r, i); print r }' \
+  | sort -u); do
   N=${REF##*#}
   OWNER_REPO=${REF%#*}
   if [ -n "$OWNER_REPO" ] && [ "$(echo "$OWNER_REPO" | tr '[:upper:]' '[:lower:]')" != "$REPO_LC" ]; then
