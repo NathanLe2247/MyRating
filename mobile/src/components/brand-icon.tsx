@@ -15,6 +15,12 @@ const ICONS = {
   eyeOff: { ios: 'eye.slash', android: 'visibility_off', web: 'visibility_off' },
   arrowRight: { ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' },
   key: { ios: 'key', android: 'key', web: 'key' },
+  // Match Found
+  timer: { ios: 'timer', android: 'timer', web: 'timer' },
+  close: { ios: 'xmark', android: 'close', web: 'close' },
+  map: { ios: 'map', android: 'map', web: 'map' },
+  scoreboard: { ios: 'rectangle.split.2x1', android: 'scoreboard', web: 'scoreboard' },
+  navigation: { ios: 'location.north.fill', android: 'navigation', web: 'navigation' },
   check: { ios: 'checkmark', android: 'check', web: 'check' },
   checkCircle: { ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' },
   xCircle: { ios: 'xmark.circle.fill', android: 'cancel', web: 'cancel' },
