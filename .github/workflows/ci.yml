@@ -16,9 +16,9 @@ permissions:
   contents: read
 
 concurrency:
-  # one run per PR (or per pushed ref); a new PR push cancels the older run.
-  # Pushes to main queue instead, so no main commit goes unchecked.
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  # One group per PR: a new PR push cancels the older run. Pushes to main get
+  # a group per commit, so every push runs and no main commit goes unchecked.
+  group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
