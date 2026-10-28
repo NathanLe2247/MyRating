@@ -1,0 +1,72 @@
+# Runs the agent regression gate (scripts/agent/regress.sh) on every PR to
+# main and every push to main, so hand-merged PRs get the same checks as
+# agent-made ones and GitHub shows a pass/fail status.
+#
+# Non-`--full` mode only: no local Supabase stack, no secrets, no deploys.
+# Migration replays stay with the manager's local `regress.sh --full` run.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  # one run per PR (or per pushed ref); a new push cancels the older run
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    # explicit `bash` gets `-eo pipefail`; the implicit default is only `-e`
+    shell: bash
+
+jobs:
+  regress:
+    name: regress.sh
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # regress.sh diffs against `git merge-base origin/main HEAD`,
+          # which needs full history
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          # mobile/ today; shared/ and frontend/ are picked up once they
+          # get a package-lock.json
+          cache-dependency-path: '*/package-lock.json'
+
+      - name: Diff a push against the commit before it
+        # On a push to main, HEAD == origin/main, so regress.sh would see no
+        # changes and check nothing. Point origin/main (in this runner's clone
+        # only) at the pre-push commit so the pushed range gets checked.
+        if: github.event_name == 'push'
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -n "$BEFORE" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            base=$BEFORE
+          else
+            base=$(git rev-parse HEAD~1)
+          fi
+          git update-ref refs/remotes/origin/main "$base"
+          echo "regress.sh base: $base"
+
+      - name: Run scripts/agent/regress.sh
+        # GitHub's bash runs with -eo pipefail, so a non-zero exit from
+        # regress.sh fails the step; the grep also fails it on any FAIL line.
+        run: |
+          scripts/agent/regress.sh | tee "$RUNNER_TEMP/regress.log"
+          if grep -q '^FAIL' "$RUNNER_TEMP/regress.log"; then
+            echo "::error::regress.sh reported FAIL lines"
+            exit 1
+          fi
