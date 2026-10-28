@@ -67,6 +67,9 @@ export const Brand = {
   onLimeMuted: 'rgba(11, 14, 16, 0.72)',
   onLimeChip: 'rgba(11, 14, 16, 0.12)',
   onLimeDivider: 'rgba(11, 14, 16, 0.15)',
+  /** Match Found: card drop shadow and the heavier top-bar shadow. */
+  shadowSoft: 'rgba(0, 0, 0, 0.1)',
+  shadowStrong: 'rgba(0, 0, 0, 0.35)',
 } as const;
 
 /**
@@ -121,6 +124,13 @@ export const BrandSizes = {
   ratingBar: 8,
   /** Home: win/loss result disc in a match row. */
   resultBadge: 52,
+  /** Match Found: player photo, VS disc, and header profile photo diameters. */
+  matchAvatar: 64,
+  vsBadge: 44,
+  headerAvatar: 32,
+  /** Match Found: top bar height and its minimum tap target. */
+  topBar: 64,
+  minTouch: 44,
 } as const;
 
 export const Fonts = Platform.select({
