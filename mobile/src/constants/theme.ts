@@ -67,6 +67,12 @@ export const Brand = {
   onLimeMuted: 'rgba(11, 14, 16, 0.72)',
   onLimeChip: 'rgba(11, 14, 16, 0.12)',
   onLimeDivider: 'rgba(11, 14, 16, 0.15)',
+  // Community tab
+  /** Middle and end stops of the challenge card's accent bar (starts at `lime`). */
+  challengeAmber: '#FFB800',
+  challengeSky: '#9CF0FF',
+  /** Bottom fade over a group photo, so the presence dot reads. */
+  photoShade: 'rgba(0, 0, 0, 0.6)',
 } as const;
 
 /**
@@ -121,6 +127,21 @@ export const BrandSizes = {
   ratingBar: 8,
   /** Home: win/loss result disc in a match row. */
   resultBadge: 52,
+  // Community tab
+  /** Group photo in the room header and challenger photo on a challenge card. */
+  groupAvatar: 48,
+  /** Sender photo next to a chat message. */
+  chatAvatar: 36,
+  /** Online dot on a chat or group photo. */
+  presenceBadge: 12,
+  /** Round buttons in the chat input bar. */
+  chatAction: 40,
+  /** "VS" disc on a challenge card. */
+  versusBadge: 32,
+  /** Height of the challenge card's top accent bar. */
+  challengeAccent: 6,
+  /** Left indent of a challenge card so it lines up with message bubbles. */
+  chatIndent: 44,
 } as const;
 
 export const Fonts = Platform.select({

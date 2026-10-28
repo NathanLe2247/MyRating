@@ -18,10 +18,6 @@ export const en = {
       title: 'Health',
       body: 'Connect Apple Health or WHOOP to track recovery and strain alongside your matches.',
     },
-    community: {
-      title: 'Community',
-      body: 'Chat with players at your courts and see who’s around to play.',
-    },
   },
   auth: {
     fields: {
@@ -246,6 +242,59 @@ export const en = {
       body: 'myRating uses your location to find courts and players near you.',
       allow: 'Allow location',
       openSettings: 'Open settings',
+    },
+  },
+  community: {
+    brand: 'myRating',
+    title: 'Community',
+    sections: {
+      mine: 'My communities',
+      discover: 'Discover & search',
+    },
+    joined: 'Joined squads',
+    activeSquad: 'Active squad: ',
+    members: (count: number) => `${count} ${count === 1 ? 'member' : 'members'}`,
+    online: (count: number) => `${count} online now`,
+    a11y: {
+      groupDetails: 'Group details',
+      notifications: 'Group notifications',
+      verified: 'Verified group',
+      moreOptions: 'More options',
+      memberCount: (name: string, count: number) => `${name}, ${count} members`,
+    },
+    empty: {
+      title: 'No groups yet',
+      body: 'Join a local squad to chat with players at your courts and pick up open challenges.',
+      cta: 'Discover groups',
+    },
+    chat: {
+      empty: 'No messages yet. Say hi or drop a challenge.',
+      rating: (rating: string) => `DUPR ${rating}`,
+      unrated: 'Unrated',
+      reaction: (emoji: string, count: number) => `${emoji} ${count}`,
+    },
+    challenge: {
+      live: 'Live open challenge',
+      rated: 'DUPR rated',
+      versus: 'VS',
+      format: '1v1',
+      openSeat: 'Open seat',
+      you: 'You?',
+      rating: (rating: string) => `${rating} DUPR`,
+      court: 'Court',
+      time: 'Time',
+      accept: 'Accept challenge',
+      decline: 'Decline',
+    },
+    prompt: {
+      body: 'Want to issue a group-wide challenge?',
+      cta: '+ Post match',
+    },
+    input: {
+      placeholder: 'Send a message or drop challenge…',
+      dropChallenge: 'Drop match challenge',
+      attachPhoto: 'Attach photo',
+      send: 'Send message',
     },
   },
   hintRow: {
