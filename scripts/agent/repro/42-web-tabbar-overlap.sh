@@ -28,15 +28,17 @@ if [ -z "${CLERK_SECRET_KEY:-}" ]; then
   [ -n "$CLERK_SECRET_KEY" ] || CLERK_SECRET_KEY=$(env_value "$MAIN/backend/.env.local" CLERK_SECRET_KEY)
 fi
 [ -n "${CLERK_SECRET_KEY:-}" ] || { echo "SETUP ERROR: no CLERK_SECRET_KEY"; exit 2; }
-export CLERK_SECRET_KEY
+# Only the node call below gets the key; the Expo server never sees it.
+SECRET=$CLERK_SECRET_KEY
+unset CLERK_SECRET_KEY
 
 [ -f "$MOBILE/.env.local" ] || cp "$MAIN/mobile/.env.local" "$MOBILE/.env.local" 2>/dev/null \
   || { echo "SETUP ERROR: no mobile/.env.local"; exit 2; }
 [ -d "$MOBILE/node_modules" ] || (cd "$MOBILE" && npm ci --prefer-offline --no-audit --no-fund >/dev/null 2>&1) \
   || { echo "SETUP ERROR: npm ci failed"; exit 2; }
 
-# Playwright stays out of the repo: a driver directory cached per machine.
-DRIVER="${TMPDIR:-/tmp}/myrating-repro-playwright"
+# Playwright stays out of the repo: a driver directory cached per user.
+DRIVER="${XDG_CACHE_HOME:-$HOME/.cache}/myrating-repro-playwright"
 if [ ! -d "$DRIVER/node_modules/playwright" ]; then
   mkdir -p "$DRIVER"
   (cd "$DRIVER" && npm init -y >/dev/null && npm i -s playwright@1 >/dev/null && npx playwright install chromium >/dev/null) \
@@ -61,4 +63,4 @@ done
 [ "$up" = 1 ] || { echo "SETUP ERROR: Expo web server didn't start"; tail -20 "$WORK/expo.log"; exit 2; }
 
 cp "$HERE/42-web-tabbar-overlap.mjs" "$DRIVER/"
-cd "$DRIVER" && BASE_URL="http://localhost:$PORT" node 42-web-tabbar-overlap.mjs ${SHOTS:+"$SHOTS"}
+cd "$DRIVER" && CLERK_SECRET_KEY="$SECRET" BASE_URL="http://localhost:$PORT" node 42-web-tabbar-overlap.mjs ${SHOTS:+"$SHOTS"}

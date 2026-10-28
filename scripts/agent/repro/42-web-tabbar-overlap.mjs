@@ -43,8 +43,28 @@ const user = await clerkApi('POST', '/users', {
 });
 
 const failures = [];
-const browser = await chromium.launch();
+let browser;
+let setupError = null;
+let cleanedUp = false;
+// Always close the browser and delete the test user, even on a setup error
+// or Ctrl-C. A failed cleanup step is reported but never changes the result.
+async function cleanup() {
+  if (cleanedUp) return;
+  cleanedUp = true;
+  await browser?.close().catch((err) => console.error(`cleanup: browser close: ${err.message}`));
+  await clerkApi('DELETE', `/users/${user.id}`).catch((err) =>
+    console.error(`cleanup: delete test user ${user.id}: ${err.message}`)
+  );
+}
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, async () => {
+    await cleanup();
+    process.exit(130);
+  });
+}
+
 try {
+  browser = await chromium.launch();
   const ticket = (await clerkApi('POST', '/sign_in_tokens', { user_id: user.id })).token;
   const testingToken = (await clerkApi('POST', '/testing_tokens')).token;
   const page = await browser.newPage({ viewport: { width: 420, height: 900 } });
@@ -87,10 +107,13 @@ try {
   await check('Home: Account options button', accountOptions);
   if (OUT) await page.screenshot({ path: `${OUT}/42-home.png` });
 
-  const body = await page.locator('body').innerText();
-  if (/expo starter/i.test(body)) failures.push('tab bar still says "Expo Starter"');
-  if (/\bdocs\b/i.test(body)) failures.push('tab bar still has a "Docs" link');
-  if (!/myrating/i.test(body)) failures.push('tab bar has no myRating branding');
+  // The tab bar: the container whose direct children are the tab links
+  // (and, before the fix, the brand text and the Docs link).
+  const tabBar = vis(page.locator('div:has(> a[href="/play"])'));
+  const tabBarText = await tabBar.innerText();
+  if (/expo starter/i.test(tabBarText)) failures.push('tab bar still says "Expo Starter"');
+  if (/\bdocs\b/i.test(tabBarText)) failures.push('tab bar still has a "Docs" link');
+  if (!/myrating/i.test(tabBarText)) failures.push('tab bar has no myRating branding');
 
   for (const name of ['Play', 'Health', 'Community']) {
     await vis(page.getByText(new RegExp(`^${name}$`, 'i'))).click();
@@ -103,13 +126,14 @@ try {
     if (OUT) await page.screenshot({ path: `${OUT}/42-${name.toLowerCase()}.png` });
   }
 } catch (e) {
-  console.error(`SETUP ERROR: ${e.message.split('\n')[0]}`);
-  await browser.close();
-  await clerkApi('DELETE', `/users/${user.id}`).catch((err) => console.error(`cleanup: ${err.message}`));
+  setupError = e;
+} finally {
+  await cleanup();
+}
+if (setupError) {
+  console.error(`SETUP ERROR: ${setupError.message.split('\n')[0]}`);
   process.exit(2);
 }
-await browser.close();
-await clerkApi('DELETE', `/users/${user.id}`);
 
 if (failures.length) {
   for (const f of failures) console.log(`FAIL ${f}`);
