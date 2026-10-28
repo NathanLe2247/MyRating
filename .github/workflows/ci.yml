@@ -16,9 +16,10 @@ permissions:
   contents: read
 
 concurrency:
-  # one run per PR (or per pushed ref); a new push cancels the older run
+  # one run per PR (or per pushed ref); a new PR push cancels the older run.
+  # Pushes to main queue instead, so no main commit goes unchecked.
   group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
   run:
@@ -36,6 +37,7 @@ jobs:
           # regress.sh diffs against `git merge-base origin/main HEAD`,
           # which needs full history
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
