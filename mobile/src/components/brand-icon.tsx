@@ -37,6 +37,8 @@ const ICONS = {
   health: { ios: 'heart.text.square', android: 'monitor_heart', web: 'monitor_heart' },
   community: { ios: 'person.2', android: 'group', web: 'group' },
   location: { ios: 'location.fill', android: 'location_on', web: 'location_on' },
+  directions: { ios: 'arrow.turn.up.right', android: 'directions', web: 'directions' },
+  calendar: { ios: 'calendar', android: 'calendar_month', web: 'calendar_month' },
 } satisfies Record<string, SymbolName>;
 
 export type BrandIconName = keyof typeof ICONS;

@@ -67,6 +67,10 @@ export const Brand = {
   onLimeMuted: 'rgba(11, 14, 16, 0.72)',
   onLimeChip: 'rgba(11, 14, 16, 0.12)',
   onLimeDivider: 'rgba(11, 14, 16, 0.15)',
+  // Play tab: indoor venues use a light cyan accent in place of lime.
+  indoor: '#9CF0FF',
+  indoorSurface: 'rgba(156, 240, 255, 0.2)',
+  onIndoor: '#001F24',
 } as const;
 
 /**
@@ -121,6 +125,9 @@ export const BrandSizes = {
   ratingBar: 8,
   /** Home: win/loss result disc in a match row. */
   resultBadge: 52,
+  /** Play: venue photo height on a court card, and its top accent bar. */
+  venuePhoto: 112,
+  accentBar: 4,
 } as const;
 
 export const Fonts = Platform.select({
