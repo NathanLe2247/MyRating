@@ -145,7 +145,9 @@ fi
 # scripts/agent/ re-checks mobile so a gate change runs against a real app.
 if [ $FULL = 1 ] || touched 'mobile/|shared/|scripts/agent/'; then check_node_app mobile; fi
 if [ $FULL = 1 ] || touched 'frontend/|shared/'; then check_node_app frontend; fi
-if [ $FULL = 1 ] || touched 'shared/'; then check_node_app shared; fi
+# shared/'s tests compare its enum schemas against the migrations, so a
+# migration change re-runs them too.
+if [ $FULL = 1 ] || touched 'shared/|backend/supabase/migrations/'; then check_node_app shared; fi
 
 if touched 'backend/supabase/functions/'; then
   if command -v deno >/dev/null; then
