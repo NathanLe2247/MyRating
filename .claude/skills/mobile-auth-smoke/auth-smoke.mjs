@@ -192,14 +192,22 @@ async function afterAuth(what) {
   if (screen !== 'home') await orFail(`${what}: not on onboarding or home`)();
   return 'straight to home';
 }
-// Signed-in tabs (PR #13 onward). Each placeholder tab is recognised by its
-// "coming soon" body copy (src/i18n/en.ts comingSoon.*). Screenshots home and
-// each tab as <step>-home.png, <step>-tab-play.png, and so on.
-const TABS = {
-  play: /find courts near you/i,
-  health: /connect apple health or whoop/i,
-  community: /chat with players at your courts/i,
-};
+// Signed-in tabs (PR #13 onward), by route (AppTabHrefs in
+// src/constants/tabs.ts). Detection doesn't depend on what a tab's screen
+// shows, since each placeholder is replaced as its feature lands: click the
+// tab-bar link for the route, wait for the URL and for the page to settle,
+// then screenshot (<step>-home.png, <step>-tab-play.png, and so on).
+const TAB_HREFS = { play: '/play', health: '/health', community: '/community' };
+const SETTLE_MS = 1500;
+const tabLink = (href) => vis(page.locator(`a[href="${href}"]`));
+async function openTab(href) {
+  await tabLink(href).click();
+  await page.waitForURL((u) => u.pathname === href, { timeout: T });
+  // Let the screen's first fetches and animations finish; a screen that keeps
+  // polling never goes idle, so this is best-effort.
+  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(SETTLE_MS);
+}
 async function visitTabs() {
   // The dashboard shows a spinner until the rating query settles (it retries
   // a failing Supabase fetch for several seconds); wait for the queue card or
@@ -211,14 +219,12 @@ async function visitTabs() {
     .catch(() => false);
   await shot('home');
   const homeNote = loaded ? '' : ' (dashboard still loading)';
-  const tab = (name) => text(new RegExp(`^${name}$`, 'i'));
-  if (!(await tab('play').count())) return `no Play/Health/Community tabs (pre-#13 build)${homeNote}`;
-  for (const [name, body] of Object.entries(TABS)) {
-    await tab(name).click();
-    await text(body).waitFor({ timeout: T }).catch(orFail(`${name} tab didn't open`));
+  if (!(await tabLink(TAB_HREFS.play).count())) return `no Play/Health/Community tabs (pre-#13 build)${homeNote}`;
+  for (const [name, href] of Object.entries(TAB_HREFS)) {
+    await openTab(href).catch(orFail(`${name} tab didn't open`));
     await shot(`tab-${name}`);
   }
-  await tab('home').click();
+  await openTab('/').catch(orFail("home tab didn't reopen"));
   await SCREENS.home().waitFor({ timeout: T }).catch(orFail("home tab didn't reopen"));
   return `home${homeNote} + play/health/community tabs open`;
 }

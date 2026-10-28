@@ -124,7 +124,10 @@ opening `accounts.google.com`, and the `/sso-callback` page Google returns to
 With the key: email sign-up → verify → onboarding step 1 → marked onboarded
 → home (the note says "via onboarding step 1 (marked onboarded via Clerk
 API)"); wrong password; email + password sign-in, which goes straight home and
-then screenshots Home and opens the Play, Health and Community tabs
+then screenshots Home and opens the Play, Health and Community tabs. Each tab
+is opened by its tab-bar link (`a[href="/play"]` etc.); the step waits for the
+URL and for the page to settle and checks nothing on the screen itself, so it
+keeps working as real screens replace the placeholders. Screenshots:
 (`NN-home.png`, `NN-tab-play.png`, `NN-tab-health.png`,
 `NN-tab-community.png`, numbered like that step; builds before the tabs
 existed note "pre-#13 build" instead); `/sso-callback` with an unfinished
