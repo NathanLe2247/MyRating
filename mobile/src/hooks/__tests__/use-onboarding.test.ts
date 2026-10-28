@@ -89,11 +89,14 @@ describe('useOnboarding', () => {
     expect(result.current.nextStep).toBe('/onboarding/rating');
   });
 
-  it('has no way to skip onboarding', () => {
+  it('always requires onboarding for a signed-in user with neither step done', () => {
     mockClerk({ user: fakeUser() });
 
-    const { result } = renderHook(() => useOnboarding());
+    const { result, rerender } = renderHook(() => useOnboarding());
 
+    expect(result.current.needsOnboarding).toBe(true);
+    rerender({});
+    expect(result.current.needsOnboarding).toBe(true);
     expect(result.current).not.toHaveProperty('skip');
   });
 });
