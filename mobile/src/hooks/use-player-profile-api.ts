@@ -1,8 +1,9 @@
+import type { RatingSource } from '@myrating/shared';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { useMemo } from 'react';
 
 import { useSupabaseClient } from '@/config/supabase';
-import type { PickedAvatar, PlayerProfileInput, RatingSource } from '@/types/profile';
+import type { PickedAvatar, PlayerProfileInput } from '@/types/profile';
 
 const FUNCTION_NAME = 'player-profile';
 

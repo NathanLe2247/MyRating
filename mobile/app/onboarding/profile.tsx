@@ -1,3 +1,4 @@
+import type { DominantHand } from '@myrating/shared';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -16,7 +17,7 @@ import { Brand, BrandFonts, BrandSizes } from '@/constants/theme';
 import { useSavePlayerProfile } from '@/hooks/use-save-player-profile';
 import { useUsernameAvailability } from '@/hooks/use-username-availability';
 import { en } from '@/i18n/en';
-import type { DominantHand, PickedAvatar } from '@/types/profile';
+import type { PickedAvatar } from '@/types/profile';
 
 const copy = en.onboarding.profile;
 
