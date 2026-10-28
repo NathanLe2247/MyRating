@@ -1,6 +1,7 @@
 // English strings for the mobile app. Import as `en` and reference nested
 // keys from screens/components instead of inlining literal UI text.
 export const en = {
+  brand: 'myRating',
   // Keyed by route name (see AppTabNames).
   tabs: {
     index: 'Home',
