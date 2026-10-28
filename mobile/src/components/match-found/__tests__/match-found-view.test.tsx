@@ -4,6 +4,7 @@ import { MatchFoundView } from '@/components/match-found/match-found-view';
 import { SampleMatchFound } from '@/constants/dev-previews';
 import { en } from '@/i18n/en';
 import type { MatchFound } from '@/types/match-found';
+import { parseMatchFound } from '@/utils/match-found-param';
 
 const t = en.matchFound;
 
@@ -98,6 +99,49 @@ describe('MatchFoundView', () => {
       expect(screen.queryByText(t.evenMatchup)).toBeNull();
       expect(screen.queryByRole('button', { name: t.openMap })).toBeNull();
       expect(screen.getByRole('button', { name: t.accept })).toBeOnTheScreen();
+    });
+
+    it('shows initials instead of loading a photo from outside the app’s R2 bucket', () => {
+      renderView({
+        ...SampleMatchFound,
+        opponent: { ...SampleMatchFound.opponent, avatarUrl: 'https://evil.example.com/x.png' },
+      });
+
+      expect(screen.getByText('JA')).toBeOnTheScreen();
+    });
+  });
+
+  describe('from a malformed route param', () => {
+    it('renders the valid parts and empty states for the bad optional fields', () => {
+      const param = JSON.stringify({
+        ...SampleMatchFound,
+        player: { ...SampleMatchFound.player, location: {}, avatarUrl: 'https://evil.example.com/x.png' },
+        opponent: { ...SampleMatchFound.opponent, winStreak: 'seven' },
+        venue: { name: 'Zilker Park Courts' },
+        rules: {},
+        winProbability: '0.51',
+        ratingImpact: 'huge',
+        autoCheckIn: 'yes',
+      });
+
+      renderView(parseMatchFound(param));
+
+      expect(screen.getByText(t.title)).toBeOnTheScreen();
+      expect(screen.getByText('Alex Vance')).toBeOnTheScreen();
+      expect(screen.getByText('J. Alvarez')).toBeOnTheScreen();
+      expect(screen.getByText(t.venueEmpty)).toBeOnTheScreen();
+      expect(screen.getByText(t.rulesEmpty)).toBeOnTheScreen();
+      expect(screen.queryByText(t.winProbability)).toBeNull();
+      expect(screen.queryByText(/NaN|undefined|\[object/)).toBeNull();
+      expect(screen.queryByText(t.autoCheckIn)).toBeNull();
+      expect(screen.queryByText(t.streak(7))).toBeNull();
+      expect(screen.getAllByText('AV').length).toBeGreaterThan(0);
+    });
+
+    it('shows the empty state when a required field is bad', () => {
+      renderView(parseMatchFound(JSON.stringify({ ...SampleMatchFound, player: { name: 'X' } })));
+
+      expect(screen.getByText(t.empty.title)).toBeOnTheScreen();
     });
   });
 });
