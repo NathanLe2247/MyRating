@@ -36,6 +36,11 @@ const PH = {
 const ONBOARDING_KEYS = ['profileCompletedAt', 'onboardingCompletedAt'];
 
 const sk = process.env.CLERK_SECRET_KEY;
+// Dev instances only: the script creates accounts and writes their metadata.
+if (sk && !sk.startsWith('sk_test_')) {
+  console.error('CLERK_SECRET_KEY is not a dev instance key (sk_test_…); refusing to run.');
+  process.exit(2);
+}
 async function clerkApi(method, path, body) {
   if (!sk) throw new Error('CLERK_SECRET_KEY is needed for this step');
   const res = await fetch(`https://api.clerk.com/v1${path}`, {
@@ -43,7 +48,7 @@ async function clerkApi(method, path, body) {
     headers: { Authorization: `Bearer ${sk}`, 'Content-Type': 'application/json' },
     body: body && JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`Clerk ${method} ${path} failed: ${res.status} ${await res.text()}`);
+  if (!res.ok) throw new Error(`Clerk ${method} ${path} failed: ${res.status} ${(await res.text()).slice(0, 200)}`);
   return res.json();
 }
 
@@ -75,8 +80,10 @@ if (testingToken) {
 }
 
 const errors = [];
-page.on('pageerror', (e) => errors.push(`PAGEERROR ${e.message}`));
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+// Console lines can carry request URLs, which include the testing token.
+const redact = (t) => t.replace(/(__clerk_testing_token=)[^&\s"')]+/g, '$1REDACTED');
+page.on('pageerror', (e) => errors.push(redact(`PAGEERROR ${e.message}`)));
+page.on('console', (m) => m.type() === 'error' && errors.push(redact(m.text())));
 
 // Expo Router on web keeps earlier stack screens mounted but hidden, so
 // every locator must be filtered to visible elements.
@@ -134,9 +141,32 @@ async function signOut() {
 // EXPO_PUBLIC_SUPABASE_URL points. Instead, set the publicMetadata the edge
 // function would set, through the Clerk Backend API, then reload the user in
 // clerk-js so the app sees it. `done = false` clears it again.
+//
+// Guarded so it can only touch this script's own accounts on a dev instance:
+// the page must use a pk_test_ key, and the user (as the Backend API reports
+// it) must only have Clerk test identifiers — `+clerk_test@example.com`
+// emails and +1 555-555-01xx phones.
+const TEST_EMAIL = /\+clerk_test@example\.com$/i;
+const TEST_PHONE = /^\+155555501\d\d$/;
+async function assertDevInstance() {
+  const pk = await page.evaluate(() => window.Clerk?.publishableKey ?? '');
+  if (!pk.startsWith('pk_test_')) throw new Error('app is not using a dev Clerk instance (pk_test_…); refusing');
+}
+async function assertTestAccount(userId) {
+  const user = await clerkApi('GET', `/users/${userId}`);
+  const ids = [
+    ...user.email_addresses.map((e) => [e.email_address, TEST_EMAIL]),
+    ...user.phone_numbers.map((p) => [p.phone_number, TEST_PHONE]),
+  ];
+  if (!ids.length || ids.some(([id, re]) => !re.test(id))) {
+    throw new Error(`user ${userId} is not a Clerk test account; refusing to change its metadata`);
+  }
+}
 async function setOnboarded(done) {
+  await assertDevInstance();
   const userId = await page.evaluate(() => window.Clerk.user?.id);
   if (!userId) throw new Error('no signed-in Clerk user');
+  await assertTestAccount(userId);
   const value = done ? new Date().toISOString() : null; // null deletes the key
   await clerkApi('PATCH', `/users/${userId}/metadata`, {
     public_metadata: Object.fromEntries(ONBOARDING_KEYS.map((k) => [k, value])),
@@ -210,6 +240,7 @@ async function step(name, fn, { needsAccount = false } = {}) {
   }
   try {
     await toSignIn();
+    if (needsAccount) await assertDevInstance();
     results.push({ name, status: 'pass', note: (await fn()) ?? '' });
   } catch (e) {
     results.push({ name, status: 'FAIL', note: e.message.split('\n')[0] });

@@ -87,12 +87,16 @@ Read the key from the untracked backend env file at run time, without
 echoing it:
 
 ```bash
-CLERK_SECRET_KEY=$(grep '^CLERK_SECRET_KEY=' /Users/quan/myRating/backend/.env.local | cut -d= -f2- | tr -d '"') \
+CLERK_SECRET_KEY=$(grep '^CLERK_SECRET_KEY=' /Users/quan/myRating/backend/.env.local | cut -d= -f2- | tr -d "\"'") \
   node auth-smoke.mjs $DRIVER/shots
 ```
 
 Never commit the key or paste it into chat. It must be the **dev** instance
-key (`sk_test_…`) that matches `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`.
+key (`sk_test_…`) that matches `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`. The script
+refuses to start with any other key, refuses account flows when the app's
+publishable key isn't `pk_test_…`, and only writes metadata for users whose
+every identifier is a Clerk test email or phone (below). Testing-token values
+are redacted from the reported console errors.
 
 Test credentials (dev instances only — nothing is actually sent):
 - email: any `…+clerk_test@example.com`, code `424242`
