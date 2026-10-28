@@ -216,6 +216,8 @@ export const en = {
     rating: {
       label: 'Dynamic performance rating',
       unit: 'DUPR',
+      /** Shown in place of the number when the rating couldn't be loaded. */
+      unavailable: '—',
       unranked: 'Unranked',
       calibrating: 'Calibrating rating',
       calibratingBody: (games: number) =>

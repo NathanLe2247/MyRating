@@ -35,11 +35,13 @@ export function useDashboard(_format: MatchFormat) {
   });
 
   // Only the rating is fetched, so a failed fetch shouldn't hide the rest of
-  // the dashboard: it renders as calibrating with `error` set.
+  // the dashboard. It renders with `error` set and the rating left undefined
+  // (unknown), not null, which would mean calibrating. A failed refetch keeps
+  // the last rating.
   // TODO: load recent matches once the matches table exists.
   const data: Dashboard | undefined = ratingQuery.isPending
     ? undefined
-    : { rating: ratingQuery.data ?? null, recentMatches: [] };
+    : { rating: ratingQuery.data, recentMatches: [] };
 
   return {
     data,

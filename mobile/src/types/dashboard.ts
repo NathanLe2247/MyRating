@@ -17,7 +17,10 @@ export type RecentMatch = {
 };
 
 export type Dashboard = {
-  /** From `player_ratings.rating`; null while the player is still calibrating. */
-  rating: number | null;
+  /**
+   * From `player_ratings.rating`; null while the player is still calibrating,
+   * undefined when it couldn't be loaded (don't show that as calibrating).
+   */
+  rating: number | null | undefined;
   recentMatches: RecentMatch[];
 };

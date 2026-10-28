@@ -6,8 +6,11 @@ import { en } from '@/i18n/en';
 import { formatRating } from '@/utils/rating-format';
 
 type RatingCardProps = {
-  /** Null while the player is still playing placement matches. */
-  rating: number | null;
+  /**
+   * Null while the player is still playing placement matches; undefined when
+   * the rating couldn't be loaded.
+   */
+  rating: number | null | undefined;
 };
 
 const copy = en.home.rating;
@@ -30,7 +33,9 @@ export function RatingCard({ rating }: RatingCardProps) {
     <View style={styles.card}>
       <Text style={styles.label}>{copy.label}</Text>
       <View style={styles.ratingValue}>
-        <Text style={styles.rating}>{formatRating(rating)}</Text>
+        <Text style={styles.rating}>
+          {rating === undefined ? copy.unavailable : formatRating(rating)}
+        </Text>
         <Text style={styles.unit}>{copy.unit}</Text>
       </View>
     </View>
