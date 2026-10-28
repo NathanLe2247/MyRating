@@ -1,0 +1,38 @@
+name: Agent task
+description: Queue work for the autonomous manager. It picks this up, implements it, tests it, and pings you when a PR is ready to merge.
+labels: ["agent"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - mobile
+        - frontend
+        - backend
+        - shared
+        - multiple (manager splits it)
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should change, and why.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: Concrete, checkable outcomes. Workers stop and ask instead of guessing, so vague criteria block the task.
+      placeholder: |
+        - Tapping "Find match" on Home shows players within 10 mi
+        - Empty state when nobody is nearby
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Optional. Screens, files, constraints, things to avoid.
