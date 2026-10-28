@@ -1,0 +1,63 @@
+# Deploys the hosted Supabase project whenever backend/supabase changes on
+# main: applies pending migrations, then redeploys every edge function that
+# has an index.ts (placeholder folders with only .gitkeep are skipped).
+#
+# Repo secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_ACCESS_TOKEN — personal access token (supabase.com/dashboard/account/tokens)
+#   SUPABASE_DB_PASSWORD  — the project's database password
+#
+# Function secrets (CLERK_SECRET_KEY, R2_*, …) live in the Supabase project
+# and aren't touched here.
+
+name: Deploy Supabase
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/supabase/**'
+      - '.github/workflows/deploy-supabase.yml'
+  workflow_dispatch:
+
+# Never run two deploys at once; queue instead of cancelling a half-applied one.
+concurrency:
+  group: deploy-supabase
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: eigyrdscekxoetqbidrr
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.117.0
+
+      - name: Link project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Apply migrations
+        run: supabase db push
+
+      - name: Deploy edge functions
+        run: |
+          for dir in supabase/functions/*/; do
+            name=$(basename "$dir")
+            if [ -f "$dir/index.ts" ]; then
+              echo "Deploying $name"
+              supabase functions deploy "$name" --project-ref "$SUPABASE_PROJECT_REF" --use-api
+            else
+              echo "Skipping $name (no index.ts)"
+            fi
+          done
