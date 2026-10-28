@@ -248,6 +248,76 @@ export const en = {
       openSettings: 'Open settings',
     },
   },
+  health: {
+    brand: 'myRating',
+    title: 'Health',
+    sync: {
+      synced: (provider: string) => `Synced with ${provider}`,
+      separator: ' · ',
+      justNow: 'just now',
+      minutesAgo: (n: number) => `${n}m ago`,
+      hoursAgo: (n: number) => `${n}h ago`,
+      daysAgo: (n: number) => `${n}d ago`,
+    },
+    providers: {
+      apple_health: 'Apple Health',
+      whoop: 'WHOOP',
+    },
+    units: {
+      hoursMinutes: (h: number, m: number) => `${h}h ${m}m`,
+      minutes: (m: number) => `${m}m`,
+      percent: (n: number) => `${n}%`,
+      ms: 'ms',
+      bpm: 'bpm',
+    },
+    readiness: {
+      tag: 'Daily bio-readiness',
+      zones: {
+        optimal: 'Optimal',
+        moderate: 'Moderate',
+        low: 'Low',
+      },
+      modes: {
+        optimal: 'High output',
+        moderate: 'Steady output',
+        low: 'Recovery day',
+      },
+      verdicts: {
+        optimal: 'Primed for high-intensity match play today.',
+        moderate: 'Good to play. Pace yourself in long sessions.',
+        low: 'Still recovering. Consider drills or a rest day.',
+      },
+      hrv: 'HRV Baseline',
+      restingHr: 'Resting HR',
+      sleep: 'Sleep Total',
+      /** Shown in the ring when there's no score. */
+      empty: '—',
+      emptyTitle: 'No readiness data yet',
+      emptyBody:
+        'Connect a wearable to see your daily recovery, HRV, resting heart rate and sleep.',
+    },
+    courtLoad: {
+      eyebrow: 'Past 7 days',
+      title: 'Court exertion load',
+      kcalPerMatch: 'kcal/match',
+      today: 'Today',
+      /** Indexed by `Date#getUTCDay()` (Sunday first). */
+      weekdays: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
+      totalTime: 'Total Court Time',
+      matchesLogged: 'Matches Logged',
+      matches: (n: number) => `${n} ${n === 1 ? 'game' : 'games'}`,
+      avgHeartRate: 'Avg Heart Rate',
+      bpm: (n: number) => `${n} bpm`,
+    },
+    connect: {
+      eyebrow: 'Hardware ecosystem',
+      tag: 'Not connected',
+      title: 'Connect continuous biometrics',
+      body: 'Stream recovery, strain and sleep from your wearable to see how ready you are to play.',
+      action: 'Connect',
+      label: (provider: string) => `Connect ${provider}`,
+    },
+  },
   hintRow: {
     defaultTitle: 'Try editing',
     defaultHint: 'app/index.tsx',
