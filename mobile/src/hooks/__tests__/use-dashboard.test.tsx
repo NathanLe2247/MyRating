@@ -42,7 +42,7 @@ describe('useDashboard', () => {
   afterEach(() => jest.clearAllMocks());
 
   it('returns the player rating', async () => {
-    mockRatingResponse({ data: { player_ratings: { rating: '4.18' } }, error: null });
+    mockRatingResponse({ data: { player_ratings: { rating: 4.18 } }, error: null });
 
     const result = await renderDashboard();
 
@@ -56,6 +56,23 @@ describe('useDashboard', () => {
     const result = await renderDashboard();
 
     expect(result.current.data?.rating).toBeNull();
+  });
+
+  it('accepts the embed as a one-element array', async () => {
+    mockRatingResponse({ data: { player_ratings: [{ rating: 1512.5 }] }, error: null });
+
+    const result = await renderDashboard();
+
+    expect(result.current.data?.rating).toBe(1512.5);
+  });
+
+  it('rejects a malformed row as a load error, not calibrating', async () => {
+    mockRatingResponse({ data: { player_ratings: { rating: 'not a number' } }, error: null });
+
+    const result = await renderDashboard();
+
+    expect(result.current.error).toBeTruthy();
+    expect(result.current.data?.rating).toBeUndefined();
   });
 
   it('leaves the rating unknown, not calibrating, when the fetch fails', async () => {
