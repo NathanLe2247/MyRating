@@ -67,6 +67,8 @@ export const Brand = {
   onLimeMuted: 'rgba(11, 14, 16, 0.72)',
   onLimeChip: 'rgba(11, 14, 16, 0.12)',
   onLimeDivider: 'rgba(11, 14, 16, 0.15)',
+  /** Match Found: chips and tracks that sit on a raised card. */
+  chipRaised: '#2B3136',
   /** Match Found: card drop shadow and the heavier top-bar shadow. */
   shadowSoft: 'rgba(0, 0, 0, 0.1)',
   shadowStrong: 'rgba(0, 0, 0, 0.35)',

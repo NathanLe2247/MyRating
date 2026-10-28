@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.half,
     borderRadius: BrandSizes.pillRadius,
-    backgroundColor: Brand.cardSelected,
+    backgroundColor: Brand.chipRaised,
   },
   verifiedLabel: {
     color: Brand.lime,

@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: BrandSizes.gapMid,
     paddingVertical: Spacing.one,
     borderRadius: BrandSizes.pillRadius,
-    backgroundColor: Brand.cardSelected,
+    backgroundColor: Brand.chipRaised,
   },
   ratingUnit: {
     textTransform: 'none',
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
     borderRadius: BrandSizes.pillRadius,
     overflow: 'hidden',
-    backgroundColor: Brand.cardSelected,
+    backgroundColor: Brand.chipRaised,
   },
   gaugePart: {
     height: '100%',

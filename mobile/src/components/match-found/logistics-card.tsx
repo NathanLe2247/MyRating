@@ -159,6 +159,6 @@ const styles = StyleSheet.create({
     borderRadius: BrandSizes.pillRadius,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Brand.cardSelected,
+    backgroundColor: Brand.chipRaised,
   },
 });
