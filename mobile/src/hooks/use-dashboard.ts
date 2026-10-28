@@ -1,9 +1,20 @@
 import { useAuth } from '@clerk/expo';
+import { PlayerRatingSchema, PlayerRatingSummarySchema } from '@myrating/shared';
 import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
 
 import { useSupabaseClient } from '@/config/supabase';
 import type { MatchFormat } from '@/constants/match';
 import type { Dashboard } from '@/types/dashboard';
+
+// `users` → `player_ratings(rating)`: the row is null when the user has no
+// `users` row yet, the embed is null until the player has a rating. It's a
+// one-to-one embed, so PostgREST returns an object, but the untyped client
+// can't tell, so accept a one-element array too.
+const RatingEmbedSchema = PlayerRatingSchema.pick({ rating: true });
+const RatingEmbedRowSchema = z
+  .object({ player_ratings: z.union([RatingEmbedSchema, z.array(RatingEmbedSchema).max(1)]).nullable() })
+  .nullable();
 
 /**
  * Home dashboard data. The player's rating comes from Supabase
@@ -25,12 +36,11 @@ export function useDashboard(_format: MatchFormat) {
         .eq('clerk_user_id', userId!)
         .maybeSingle();
       if (error) throw error;
-      // One-to-one embed: PostgREST returns an object (or null), but the
-      // untyped client can't tell, so handle the array shape too.
-      const embed = data?.player_ratings as { rating: number } | { rating: number }[] | null | undefined;
-      const row = Array.isArray(embed) ? embed[0] : embed;
-      // `numeric` columns come back as strings.
-      return row ? Number(row.rating) : null;
+      // A malformed row throws, so it surfaces as a load error (rating
+      // undefined), never as calibrating.
+      const row = RatingEmbedRowSchema.parse(data);
+      const embed = Array.isArray(row?.player_ratings) ? row.player_ratings[0] : row?.player_ratings;
+      return PlayerRatingSummarySchema.parse({ rating: embed?.rating ?? null }).rating;
     },
   });
 
