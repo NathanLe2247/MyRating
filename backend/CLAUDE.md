@@ -25,6 +25,11 @@ issuing its own sessions.
   availability, R2 avatar upload URLs, and saving the profile to
   `public.users` (plus Clerk `publicMetadata.profileCompletedAt`, which gates
   onboarding in the app). Verifies Clerk tokens itself (`verify_jwt = false`).
+- `supabase/functions/clerk-webhook/` — mirrors Clerk-owned fields (names,
+  email, phone, `login_method`) into `public.users` on user.created/updated,
+  and deletes the row on user.deleted. Svix-signature verified
+  (`verify_jwt = false`). Never writes player-entered fields.
+- `supabase/functions/_shared/` — helpers imported by more than one function.
 - `django/` — a separate Django service. **Ownership boundary vs. the edge
   functions above is not yet decided** — see `django/CLAUDE.md`. Don't
   assume it owns a piece of logic without confirming; check there first
