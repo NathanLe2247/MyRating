@@ -23,14 +23,18 @@ export type SupportedRatingSource = z.infer<typeof SupportedRatingSourceSchema>;
 export const PlayerRatingSchema = z.object({
   user_id: UuidSchema,
   rating: z.number(),
-  rating_deviation: z.number().nonnegative(),
+  rating_deviation: z.number(),
   updated_at: TimestampSchema,
 });
 export type PlayerRating = z.infer<typeof PlayerRatingSchema>;
 
 /**
  * What Home shows: the player's own `player_ratings.rating`, read through
- * `users → player_ratings` (`select('player_ratings(rating)')`).
+ * `users → player_ratings` (`select('player_ratings(rating)')`). `rating` is
+ * null until the player has a ratings row: calibration players get one only
+ * after their placement matches, and until then the embed comes back null.
  */
-export const PlayerRatingSummarySchema = PlayerRatingSchema.pick({ rating: true });
+export const PlayerRatingSummarySchema = z.object({
+  rating: PlayerRatingSchema.shape.rating.nullable(),
+});
 export type PlayerRatingSummary = z.infer<typeof PlayerRatingSummarySchema>;

@@ -70,6 +70,10 @@ describe('PlayerRatingSummarySchema', () => {
     assert.deepEqual(PlayerRatingSummarySchema.parse({ rating: 1500 }), { rating: 1500 });
   });
 
+  it('parses a player with no player_ratings row yet (rating null)', () => {
+    assert.deepEqual(PlayerRatingSummarySchema.parse({ rating: null }), { rating: null });
+  });
+
   it('rejects a missing rating', () => {
     assert.equal(PlayerRatingSummarySchema.safeParse({}).success, false);
   });

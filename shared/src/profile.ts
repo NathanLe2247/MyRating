@@ -14,8 +14,9 @@ export type DominantHand = z.infer<typeof DominantHandSchema>;
 
 // Mirrors the users_username_format check: 3–20 lowercase letters, digits, or
 // underscores.
-export const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
+export const USERNAME_MIN_LENGTH = 3;
 export const USERNAME_MAX_LENGTH = 20;
+export const USERNAME_PATTERN = new RegExp(`^[a-z0-9_]{${USERNAME_MIN_LENGTH},${USERNAME_MAX_LENGTH}}$`);
 export const UsernameSchema = z.string().regex(USERNAME_PATTERN);
 
 // Mirrors the users_date_of_birth_range check.
@@ -31,7 +32,7 @@ export const MIN_BIRTH_DATE = '1900-01-01';
  */
 export const PlayerProfileSchema = z.object({
   id: UuidSchema,
-  clerk_user_id: z.string().min(1),
+  clerk_user_id: z.string(),
   username: UsernameSchema.nullable(),
   first_name: z.string().nullable(),
   last_name: z.string().nullable(),
