@@ -34,6 +34,9 @@ const ICONS = {
   chevronDown: { ios: 'chevron.down', android: 'expand_more', web: 'expand_more' },
   trendUp: { ios: 'chart.line.uptrend.xyaxis', android: 'trending_up', web: 'trending_up' },
   history: { ios: 'clock.arrow.circlepath', android: 'history', web: 'history' },
+  health: { ios: 'heart.text.square', android: 'monitor_heart', web: 'monitor_heart' },
+  community: { ios: 'person.2', android: 'group', web: 'group' },
+  location: { ios: 'location.fill', android: 'location_on', web: 'location_on' },
 } satisfies Record<string, SymbolName>;
 
 export type BrandIconName = keyof typeof ICONS;

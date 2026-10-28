@@ -9,7 +9,6 @@ import { en } from '@/i18n/en';
 type DashboardHeaderProps = {
   format: MatchFormat;
   onFormatChange: (format: MatchFormat) => void;
-  courts: number;
   onCourtsPress?: () => void;
   onMenuPress: () => void;
 };
@@ -18,7 +17,6 @@ type DashboardHeaderProps = {
 export function DashboardHeader({
   format,
   onFormatChange,
-  courts,
   onCourtsPress,
   onMenuPress,
 }: DashboardHeaderProps) {
@@ -34,7 +32,7 @@ export function DashboardHeader({
       <View style={styles.actions}>
         <Pressable onPress={onCourtsPress} accessibilityRole="button" style={styles.courts}>
           <BrandIcon name="court" color={Brand.lime} size={14} />
-          <Text style={styles.courtsLabel}>{en.home.courts(courts)}</Text>
+          <Text style={styles.courtsLabel}>{en.home.courts}</Text>
           <BrandIcon name="chevronDown" color={Brand.lime} size={10} />
         </Pressable>
         <Pressable

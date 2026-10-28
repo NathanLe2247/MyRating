@@ -6,19 +6,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DashboardHeader } from '@/components/home/dashboard-header';
 import { LoadError } from '@/components/home/load-error';
+import { LocationPrompt } from '@/components/home/location-prompt';
 import { QueueCard } from '@/components/home/queue-card';
 import { RatingCard } from '@/components/home/rating-card';
 import { RecentMatches } from '@/components/home/recent-matches';
-import { DashboardPlaceholderData } from '@/constants/dashboard-placeholder';
 import type { MatchFormat } from '@/constants/match';
 import { BottomTabInset, Brand, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useDashboard } from '@/hooks/use-dashboard';
+import { useLocationPermission } from '@/hooks/use-location-permission';
 import { en } from '@/i18n/en';
 
 export default function HomeScreen() {
   const { signOut } = useClerk();
   const [format, setFormat] = useState<MatchFormat>('doubles');
   const { data, error, refetch } = useDashboard(format);
+  const location = useLocationPermission();
 
   // TODO: the header's options button is the only place to sign out until
   // there's a profile/settings screen.
@@ -41,16 +43,18 @@ export default function HomeScreen() {
         <DashboardHeader
           format={format}
           onFormatChange={setFormat}
-          courts={DashboardPlaceholderData.courts}
           onMenuPress={openAccountMenu}
         />
         {data ? (
           <>
             {error && <LoadError message={en.home.loadFailed} onRetry={() => refetch()} />}
-            <RatingCard summary={data.rating} />
+            {location.denied && (
+              <LocationPrompt canAskAgain={location.canAskAgain} onPress={location.request} />
+            )}
+            <RatingCard rating={data.rating} />
             {/* TODO: navigate to the queue screen once it exists. */}
-            <QueueCard summary={data.queue} />
-            <RecentMatches matches={data.recentMatches} />
+            <QueueCard calibrating={data.rating === null} />
+            {data.recentMatches.length > 0 && <RecentMatches matches={data.recentMatches} />}
           </>
         ) : (
           <ActivityIndicator color={Brand.lime} style={styles.loading} />

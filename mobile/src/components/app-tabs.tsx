@@ -1,33 +1,26 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { AppTabIcons, AppTabNames } from '@/constants/tabs';
+import { Brand, BrandFonts } from '@/constants/theme';
 import { en } from '@/i18n/en';
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
-
   return (
     <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>{en.tabs.home}</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label>{en.tabs.explore}</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
+      backgroundColor={Brand.background}
+      indicatorColor={Brand.limeSurface}
+      labelVisibilityMode="labeled"
+      iconColor={{ default: Brand.textFaint, selected: Brand.lime }}
+      labelStyle={{
+        default: { color: Brand.textFaint, fontFamily: BrandFonts.displaySemiBold },
+        selected: { color: Brand.lime, fontFamily: BrandFonts.displaySemiBold },
+      }}>
+      {AppTabNames.map((name) => (
+        <NativeTabs.Trigger key={name} name={name}>
+          <NativeTabs.Trigger.Label>{en.tabs[name]}</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon sf={AppTabIcons[name].sf} md={AppTabIcons[name].md} />
+        </NativeTabs.Trigger>
+      ))}
     </NativeTabs>
   );
 }

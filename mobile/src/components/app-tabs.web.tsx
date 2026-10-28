@@ -13,7 +13,9 @@ import { ExternalLink } from './external-link';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
+import { AppTabHrefs, AppTabNames } from '@/constants/tabs';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { en } from '@/i18n/en';
 
 export default function AppTabs() {
   return (
@@ -21,12 +23,11 @@ export default function AppTabs() {
       <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
         <CustomTabList>
-          <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
-          </TabTrigger>
-          <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>Explore</TabButton>
-          </TabTrigger>
+          {AppTabNames.map((name) => (
+            <TabTrigger key={name} name={name} href={AppTabHrefs[name]} asChild>
+              <TabButton>{en.tabs[name]}</TabButton>
+            </TabTrigger>
+          ))}
         </CustomTabList>
       </TabList>
     </Tabs>
