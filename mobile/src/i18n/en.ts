@@ -14,10 +14,6 @@ export const en = {
       title: 'Play',
       body: 'Find courts near you and queue up for rated matches.',
     },
-    health: {
-      title: 'Health',
-      body: 'Connect Apple Health or WHOOP to track recovery and strain alongside your matches.',
-    },
     community: {
       title: 'Community',
       body: 'Chat with players at your courts and see who’s around to play.',
@@ -295,6 +291,8 @@ export const en = {
       emptyTitle: 'No readiness data yet',
       emptyBody:
         'Connect a wearable to see your daily recovery, HRV, resting heart rate and sleep.',
+      /** Connected, but the wearable hasn't reported readiness yet. */
+      pendingBody: 'Your readiness will appear here after your wearable’s next sync.',
     },
     courtLoad: {
       eyebrow: 'Past 7 days',

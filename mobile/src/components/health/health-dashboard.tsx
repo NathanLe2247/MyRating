@@ -23,7 +23,7 @@ export function HealthDashboard({ summary, onConnect }: HealthDashboardProps) {
     <View style={styles.stack}>
       <HealthHeader />
       {summary && <SyncBar provider={summary.provider} syncedAt={summary.syncedAt} />}
-      <ReadinessCard readiness={summary?.readiness ?? null} />
+      <ReadinessCard readiness={summary?.readiness ?? null} connected={summary !== null} />
       {summary?.courtLoad && <CourtLoadCard load={summary.courtLoad} />}
       {!summary && <ConnectCard onConnect={onConnect} />}
     </View>

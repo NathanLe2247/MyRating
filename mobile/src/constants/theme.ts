@@ -128,8 +128,6 @@ export const BrandSizes = {
   readinessGlow: 176,
   /** Health: court load bar chart height (bars + labels). */
   courtChart: 112,
-  /** Health: wearable provider icon circle. */
-  providerIcon: 36,
 } as const;
 
 export const Fonts = Platform.select({

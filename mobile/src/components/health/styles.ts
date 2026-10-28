@@ -6,14 +6,13 @@ import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 export const healthStyles = StyleSheet.create({
   card: {
     backgroundColor: Brand.card,
-    borderRadius: BrandSizes.cardRadius,
+    borderRadius: BrandSizes.panelRadius,
     padding: Spacing.three,
     overflow: 'hidden',
   },
-  /** Recessed tile inside a card (metric pillars, summary cells). */
+  /** Recessed tile inside a card (metric pillars, summary cells); square in Figma. */
   inset: {
     backgroundColor: Brand.input,
-    borderRadius: BrandSizes.gapTight,
   },
   rowBetween: {
     flexDirection: 'row',

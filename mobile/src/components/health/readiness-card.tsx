@@ -10,12 +10,14 @@ import { ReadinessRing } from './readiness-ring';
 import { healthStyles } from './styles';
 
 type ReadinessCardProps = {
-  /** null when no wearable is connected: shows the empty ring and a prompt. */
+  /** null when there's no readiness yet: shows the empty ring and a message. */
   readiness: Readiness | null;
+  /** Whether a wearable is connected; picks the empty-state message. */
+  connected: boolean;
 };
 
 // Hero card: readiness ring, HRV / resting HR / sleep pillars, and a verdict.
-export function ReadinessCard({ readiness }: ReadinessCardProps) {
+export function ReadinessCard({ readiness, connected }: ReadinessCardProps) {
   const copy = en.health.readiness;
   return (
     <View style={healthStyles.card}>
@@ -58,7 +60,9 @@ export function ReadinessCard({ readiness }: ReadinessCardProps) {
         ) : (
           <View style={styles.emptyText}>
             <Text style={healthStyles.heading}>{copy.emptyTitle}</Text>
-            <Text style={healthStyles.caption}>{copy.emptyBody}</Text>
+            <Text style={healthStyles.caption}>
+              {connected ? copy.pendingBody : copy.emptyBody}
+            </Text>
           </View>
         )}
       </View>

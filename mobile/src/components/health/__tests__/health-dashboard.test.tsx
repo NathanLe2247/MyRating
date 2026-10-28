@@ -6,6 +6,9 @@ import type { HealthSummary } from '@/types/health';
 
 const copy = en.health;
 
+/** Matches the sync bar's "Synced with <provider>" prefix (the age follows it). */
+const syncedWith = (provider: string) => new RegExp(`^${copy.sync.synced(provider)}`);
+
 const summary: HealthSummary = {
   provider: 'whoop',
   syncedAt: new Date(Date.now() - 12 * 60_000).toISOString(),
@@ -39,6 +42,7 @@ describe('HealthDashboard', () => {
       render(<HealthDashboard summary={null} onConnect={jest.fn()} />);
 
       expect(screen.getByText(copy.readiness.emptyTitle)).toBeOnTheScreen();
+      expect(screen.getByText(copy.readiness.emptyBody)).toBeOnTheScreen();
       expect(screen.getByText(copy.readiness.empty)).toBeOnTheScreen();
       expect(screen.getByText(copy.connect.title)).toBeOnTheScreen();
       expect(
@@ -54,7 +58,8 @@ describe('HealthDashboard', () => {
 
       expect(screen.queryByText(copy.readiness.hrv)).toBeNull();
       expect(screen.queryByText(copy.courtLoad.title)).toBeNull();
-      expect(screen.queryByText(/Synced with/)).toBeNull();
+      expect(screen.queryByText(syncedWith(copy.providers.whoop))).toBeNull();
+      expect(screen.queryByText(syncedWith(copy.providers.apple_health))).toBeNull();
     });
 
     it('reports which provider was tapped', () => {
@@ -86,8 +91,8 @@ describe('HealthDashboard', () => {
     it('shows the sync source and age', () => {
       render(<HealthDashboard summary={summary} onConnect={jest.fn()} />);
 
-      expect(screen.getByText(/Synced with WHOOP/)).toBeOnTheScreen();
-      expect(screen.getByText(/12m ago/)).toBeOnTheScreen();
+      expect(screen.getByText(syncedWith(copy.providers.whoop))).toBeOnTheScreen();
+      expect(screen.getByText(new RegExp(copy.sync.minutesAgo(12)))).toBeOnTheScreen();
     });
 
     it('shows the court load chart and weekly totals', () => {
@@ -108,6 +113,20 @@ describe('HealthDashboard', () => {
 
       expect(screen.queryByText(copy.connect.title)).toBeNull();
       expect(screen.queryByText(copy.readiness.emptyTitle)).toBeNull();
+    });
+  });
+
+  describe('connected, no readiness yet', () => {
+    const partial: HealthSummary = { ...summary, readiness: null, courtLoad: null };
+
+    it('says readiness is pending instead of asking to connect', () => {
+      render(<HealthDashboard summary={partial} onConnect={jest.fn()} />);
+
+      expect(screen.getByText(copy.readiness.emptyTitle)).toBeOnTheScreen();
+      expect(screen.getByText(copy.readiness.pendingBody)).toBeOnTheScreen();
+      expect(screen.queryByText(copy.readiness.emptyBody)).toBeNull();
+      expect(screen.queryByText(copy.connect.title)).toBeNull();
+      expect(screen.getByText(syncedWith(copy.providers.whoop))).toBeOnTheScreen();
     });
   });
 });

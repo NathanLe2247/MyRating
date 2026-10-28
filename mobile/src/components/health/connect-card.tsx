@@ -77,14 +77,13 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
     paddingVertical: Spacing.two,
     backgroundColor: Brand.card,
-    borderRadius: BrandSizes.gapTight,
   },
   pressed: {
     opacity: 0.7,
   },
   iconCircle: {
-    width: BrandSizes.providerIcon,
-    height: BrandSizes.providerIcon,
+    width: BrandSizes.headerButton,
+    height: BrandSizes.headerButton,
     borderRadius: BrandSizes.pillRadius,
     backgroundColor: Brand.chip,
     alignItems: 'center',
