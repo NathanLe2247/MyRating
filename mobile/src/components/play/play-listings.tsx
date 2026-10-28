@@ -10,8 +10,9 @@ import type { PlayListings as PlayListingsData } from '@/types/play';
 
 const copy = en.play;
 
-// TODO: court and tournament detail screens don't exist yet; cards and their
-// actions (directions, check in, book) are no-ops until they do.
+// TODO: court and tournament detail screens don't exist yet. Tapping a card
+// is a no-op, and the card actions (directions, check in, book) get no
+// handler, so they show as disabled until those screens land.
 const noop = () => {};
 
 // Courts section then tournaments section, each with its designed empty state.
@@ -22,15 +23,7 @@ export function PlayListings({ courts, tournaments }: PlayListingsData) {
         title={copy.courts.title}
         badge={courts.length > 0 ? copy.courts.nearYou(courts.length) : undefined}>
         {courts.length > 0 ? (
-          courts.map((court) => (
-            <CourtCard
-              key={court.id}
-              court={court}
-              onPress={noop}
-              onDirections={noop}
-              onPrimaryAction={noop}
-            />
-          ))
+          courts.map((court) => <CourtCard key={court.id} court={court} onPress={noop} />)
         ) : (
           <PlayEmptyState
             icon="court"

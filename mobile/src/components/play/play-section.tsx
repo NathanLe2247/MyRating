@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
+import { Chip } from '@/components/play/chip';
+import { Brand, BrandFonts, Spacing } from '@/constants/theme';
 
 type PlaySectionProps = {
   title: string;
@@ -19,12 +20,9 @@ export function PlaySection({ title, badge, children }: PlaySectionProps) {
         <Text style={styles.title} accessibilityRole="header">
           {title}
         </Text>
-        {badge && (
-          <View style={styles.badge}>
-            <View style={styles.dot} />
-            <Text style={styles.badgeLabel}>{badge}</Text>
-          </View>
-        )}
+        {badge ? (
+          <Chip compact dot label={badge} color={Brand.lime} background={Brand.limeSurface} />
+        ) : null}
       </View>
       {children}
     </View>
@@ -48,28 +46,5 @@ const styles = StyleSheet.create({
     letterSpacing: 0.65,
     textTransform: 'uppercase',
     color: Brand.textMuted,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.half,
-    borderRadius: BrandSizes.pillRadius,
-    backgroundColor: Brand.limeSurface,
-  },
-  dot: {
-    width: BrandSizes.dot,
-    height: BrandSizes.dot,
-    borderRadius: BrandSizes.pillRadius,
-    backgroundColor: Brand.lime,
-  },
-  badgeLabel: {
-    fontFamily: BrandFonts.display,
-    fontSize: 13,
-    lineHeight: 14,
-    letterSpacing: 1.04,
-    textTransform: 'uppercase',
-    color: Brand.lime,
   },
 });

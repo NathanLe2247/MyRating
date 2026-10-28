@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BrandIcon, type BrandIconName } from '@/components/brand-icon';
+import { Chip } from '@/components/play/chip';
 import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 
 type PlayEmptyStateProps = {
@@ -16,9 +17,8 @@ type PlayEmptyStateProps = {
 export function PlayEmptyState({ icon, tag, title, body }: PlayEmptyStateProps) {
   return (
     <View style={styles.card}>
-      <View style={styles.tag}>
-        <View style={styles.dot} />
-        <Text style={styles.tagLabel}>{tag}</Text>
+      <View style={styles.tagRow}>
+        <Chip dot label={tag} color={Brand.lime} background={Brand.card} />
       </View>
       <View style={styles.content}>
         <View style={styles.iconCircle}>
@@ -40,29 +40,8 @@ const styles = StyleSheet.create({
     padding: BrandSizes.gapSnug,
     gap: Spacing.two,
   },
-  tag: {
-    alignSelf: 'flex-start',
+  tagRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: BrandSizes.gapTight,
-    paddingHorizontal: BrandSizes.gapMid,
-    paddingVertical: Spacing.one,
-    borderRadius: BrandSizes.pillRadius,
-    backgroundColor: Brand.card,
-  },
-  dot: {
-    width: Spacing.two,
-    height: Spacing.two,
-    borderRadius: BrandSizes.pillRadius,
-    backgroundColor: Brand.lime,
-  },
-  tagLabel: {
-    fontFamily: BrandFonts.display,
-    fontSize: 13,
-    lineHeight: 14,
-    letterSpacing: 1.04,
-    textTransform: 'uppercase',
-    color: Brand.lime,
   },
   content: {
     alignItems: 'center',

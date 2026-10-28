@@ -39,6 +39,8 @@ export type TournamentCardData = {
   name: string;
   /** ISO date-time the event starts. */
   startsAt: string;
+  /** Venue's IANA time zone; the date shows in the device zone without it. */
+  timeZone?: string;
   venue: string;
   /** Division or rating range, e.g. "DUPR 3.5 – 4.5". */
   division?: string;

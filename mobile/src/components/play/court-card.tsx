@@ -2,15 +2,18 @@ import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BrandIcon, type BrandIconName } from '@/components/brand-icon';
+import { Chip } from '@/components/play/chip';
+import { MetaLine } from '@/components/play/meta-line';
 import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 import { en } from '@/i18n/en';
-import type { CourtCardData, VenueTag, VenueTagTone } from '@/types/play';
+import type { CourtCardData, VenueTagTone } from '@/types/play';
 
 const copy = en.play.courts;
 
 type CourtCardProps = {
   court: CourtCardData;
   onPress?: () => void;
+  /** Omit to show the action disabled (no destination yet). */
   onDirections?: () => void;
   onPrimaryAction?: () => void;
 };
@@ -31,12 +34,15 @@ export function CourtCard({ court, onPress, onDirections, onPrimaryAction }: Cou
       ? { bg: Brand.limeSurface, fg: Brand.lime }
       : { bg: Brand.chip, fg: Brand.textMuted };
   const noteColor = indoor ? Brand.warm : court.featured ? Brand.lime : Brand.textMuted;
+  const booking = court.primaryAction === 'book';
 
+  // Optional strings are checked with ternaries, not `&&`: an empty string
+  // from the backend would otherwise render as a bare text node and crash.
   return (
     // The action row sits outside the card's pressable area: nested buttons
     // would be swallowed by the outer one for screen readers.
     <View style={styles.card}>
-      {court.featured && <View style={styles.accentBar} />}
+      {court.featured ? <View style={styles.accentBar} /> : null}
 
       <Pressable
         onPress={onPress}
@@ -49,48 +55,59 @@ export function CourtCard({ court, onPress, onDirections, onPrimaryAction }: Cou
               <Text style={styles.name} numberOfLines={2}>
                 {court.name}
               </Text>
-              {court.verified && <BrandIcon name="verified" color={Brand.lime} size={16} />}
+              {court.verified ? <BrandIcon name="verified" color={Brand.lime} size={16} /> : null}
             </View>
-            <View style={styles.metaRow}>
-              <BrandIcon name="location" color={Brand.textMuted} size={11} />
-              <Text style={styles.meta}>{copy.distance(court.distanceMiles)}</Text>
-              <Text style={[styles.meta, styles.separator]}>{en.play.separator}</Text>
-              <Text style={styles.meta}>{court.neighborhood}</Text>
-            </View>
+            <MetaLine
+              icon="location"
+              parts={[copy.distance(court.distanceMiles), court.neighborhood]}
+            />
           </View>
           <View style={styles.countBlock}>
-            <View style={[styles.countBadge, { backgroundColor: badge.bg }]}>
-              <Text style={[styles.chipLabel, { color: badge.fg }]}>
-                {indoor ? copy.indoorCount(court.courtCount) : copy.courtCount(court.courtCount)}
-              </Text>
-            </View>
-            {court.note && <Text style={[styles.note, { color: noteColor }]}>{court.note}</Text>}
+            <Chip
+              compact
+              label={
+                indoor ? copy.indoorCount(court.courtCount) : copy.courtCount(court.courtCount)
+              }
+              color={badge.fg}
+              background={badge.bg}
+            />
+            {court.note ? (
+              <Text style={[styles.note, { color: noteColor }]}>{court.note}</Text>
+            ) : null}
           </View>
         </View>
 
-        {court.photoUrl && (
+        {court.photoUrl ? (
           <View style={styles.photo}>
             <Image source={court.photoUrl} style={StyleSheet.absoluteFill} contentFit="cover" />
-            {court.photoCaption && (
+            {court.photoCaption ? (
               <View style={styles.caption}>
-                <View style={[styles.captionDot, { backgroundColor: accent }]} />
-                <Text style={[styles.chipLabel, { color: indoor ? Brand.indoor : Brand.text }]}>
-                  {court.photoCaption}
-                </Text>
+                <Chip
+                  dot
+                  label={court.photoCaption}
+                  color={indoor ? Brand.indoor : Brand.text}
+                  dotColor={accent}
+                  background={Brand.background}
+                />
               </View>
-            )}
+            ) : null}
           </View>
-        )}
+        ) : null}
 
-        {court.description && <Text style={styles.description}>{court.description}</Text>}
+        {court.description ? <Text style={styles.description}>{court.description}</Text> : null}
 
-        {court.tags.length > 0 && (
+        {court.tags.length > 0 ? (
           <View style={styles.tags}>
             {court.tags.map((tag) => (
-              <Tag key={tag.label} tag={tag} />
+              <Chip
+                key={tag.label}
+                label={tag.label}
+                icon={tag.icon}
+                color={TAG_COLORS[tag.tone ?? 'default']}
+              />
             ))}
           </View>
-        )}
+        ) : null}
       </Pressable>
 
       <View style={styles.actions}>
@@ -99,30 +116,22 @@ export function CourtCard({ court, onPress, onDirections, onPrimaryAction }: Cou
           label={
             court.primaryAction ? copy.directions : copy.directionsWithDistance(court.distanceMiles)
           }
+          a11yLabel={copy.a11y.directions(court.name)}
           background={Brand.chip}
           color={Brand.text}
           onPress={onDirections}
         />
-        {court.primaryAction && (
+        {court.primaryAction ? (
           <ActionButton
-            icon={court.primaryAction === 'book' ? 'calendar' : 'check'}
-            label={court.primaryAction === 'book' ? copy.bookCourt : copy.checkIn}
+            icon={booking ? 'calendar' : 'check'}
+            label={booking ? copy.bookCourt : copy.checkIn}
+            a11yLabel={booking ? copy.a11y.bookCourt(court.name) : copy.a11y.checkIn(court.name)}
             background={accent}
             color={indoor ? Brand.onIndoor : Brand.onLime}
             onPress={onPrimaryAction}
           />
-        )}
+        ) : null}
       </View>
-    </View>
-  );
-}
-
-function Tag({ tag }: { tag: VenueTag }) {
-  const color = TAG_COLORS[tag.tone ?? 'default'];
-  return (
-    <View style={styles.tag}>
-      {tag.icon && <BrandIcon name={tag.icon} color={color} size={12} />}
-      <Text style={[styles.chipLabel, { color }]}>{tag.label}</Text>
     </View>
   );
 }
@@ -130,16 +139,23 @@ function Tag({ tag }: { tag: VenueTag }) {
 type ActionButtonProps = {
   icon: BrandIconName;
   label: string;
+  /** Names the court, since every card has the same button labels. */
+  a11yLabel: string;
   background: string;
   color: string;
   onPress?: () => void;
 };
 
-function ActionButton({ icon, label, background, color, onPress }: ActionButtonProps) {
+function ActionButton({ icon, label, a11yLabel, background, color, onPress }: ActionButtonProps) {
+  const disabled = !onPress;
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityHint={disabled ? copy.a11y.comingSoon : undefined}
+      accessibilityState={{ disabled }}
       style={({ pressed }) => [
         styles.action,
         { backgroundColor: background },
@@ -199,36 +215,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: Brand.text,
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  meta: {
-    fontFamily: BrandFonts.body,
-    fontSize: 12,
-    lineHeight: 16,
-    letterSpacing: 0.12,
-    color: Brand.textMuted,
-  },
-  separator: {
-    opacity: 0.4,
-    paddingHorizontal: Spacing.one,
-  },
   countBlock: {
     alignItems: 'flex-end',
-  },
-  countBadge: {
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.half,
-    borderRadius: BrandSizes.pillRadius,
-  },
-  chipLabel: {
-    fontFamily: BrandFonts.display,
-    fontSize: 13,
-    lineHeight: 14,
-    letterSpacing: 1.04,
-    textTransform: 'uppercase',
   },
   note: {
     fontFamily: BrandFonts.bodySemiBold,
@@ -245,18 +233,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: Spacing.two,
     bottom: Spacing.two,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: BrandSizes.gapTight,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
-    borderRadius: BrandSizes.pillRadius,
-    backgroundColor: Brand.background,
-  },
-  captionDot: {
-    width: Spacing.two,
-    height: Spacing.two,
-    borderRadius: BrandSizes.pillRadius,
   },
   description: {
     fontFamily: BrandFonts.body,
@@ -269,15 +245,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
-  },
-  tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingHorizontal: BrandSizes.gapMid,
-    paddingVertical: Spacing.one,
-    borderRadius: BrandSizes.pillRadius,
-    backgroundColor: Brand.chip,
   },
   actions: {
     flexDirection: 'row',
