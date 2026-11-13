@@ -22,11 +22,11 @@ export function GroupChips({ groups, activeId, onSelect }: GroupChipsProps) {
       <View style={styles.summary}>
         <View style={communityStyles.row}>
           <Text style={communityText.label}>{t.joined}</Text>
-          {active?.area && (
+          {active?.area ? (
             <View style={communityStyles.pill}>
               <Text style={communityText.stat}>{active.area}</Text>
             </View>
-          )}
+          ) : null}
         </View>
         {active && (
           <Text style={[communityText.meta, styles.activeSquad]} numberOfLines={1}>

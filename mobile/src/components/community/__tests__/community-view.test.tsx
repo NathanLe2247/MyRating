@@ -1,7 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Image } from 'expo-image';
 
 import { ChatInputBar } from '@/components/community/chat-input-bar';
 import { CommunityView } from '@/components/community/community-view';
+import { GroupChips } from '@/components/community/group-chips';
+import { PlayerAvatar } from '@/components/community/player-avatar';
+import { RoomHeader } from '@/components/community/room-header';
 import { en } from '@/i18n/en';
 import type { ChatItem, CommunityGroup } from '@/types/community';
 
@@ -157,5 +161,48 @@ describe('ChatInputBar', () => {
 
     expect(onSend).toHaveBeenCalledWith('see you at 5');
     expect(screen.getByLabelText(copy.input.placeholder)).toHaveDisplayValue('');
+  });
+});
+
+describe('GroupChips', () => {
+  it('renders without an area pill when the area is an empty string', () => {
+    const group: CommunityGroup = { id: 'g3', name: 'Blank Area', memberCount: 1, onlineCount: 0, area: '' };
+    render(<GroupChips groups={[group]} activeId="g3" onSelect={noop} />);
+
+    expect(screen.getByText(copy.joined)).toBeOnTheScreen();
+    expect(screen.getByRole('tab', { name: copy.a11y.memberCount('Blank Area', 1) })).toBeSelected();
+  });
+
+  it('pluralizes the member count label', () => {
+    expect(copy.a11y.memberCount('Solo', 1)).toBe('Solo, 1 member');
+    expect(copy.a11y.memberCount('Duo', 2)).toBe('Duo, 2 members');
+  });
+});
+
+describe('PlayerAvatar', () => {
+  it('shows the initial when a shaded avatar has an empty-string photo', () => {
+    render(<PlayerAvatar name="Zed" photoUrl="" size={48} shaded />);
+
+    expect(screen.getByText('Z')).toBeOnTheScreen();
+  });
+
+  it('falls back to the initial when the photo fails to load', () => {
+    render(<PlayerAvatar name="Zed" photoUrl="https://example.invalid/zed.png" size={48} shaded />);
+    expect(screen.queryByText('Z')).toBeNull();
+
+    // Image load failure is a native boundary event; there's no user-facing query for it.
+    const photo = screen.UNSAFE_getByType(Image);
+    act(() => photo.props.onError({ error: 'not found' }));
+
+    expect(screen.getByText('Z')).toBeOnTheScreen();
+  });
+});
+
+describe('RoomHeader', () => {
+  it('marks its actions disabled until they are wired', () => {
+    render(<RoomHeader group={groups[0]} />);
+
+    expect(screen.getByRole('button', { name: copy.a11y.groupDetails })).toBeDisabled();
+    expect(screen.getByRole('button', { name: copy.a11y.notifications })).toBeDisabled();
   });
 });
