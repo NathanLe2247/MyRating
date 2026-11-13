@@ -1,5 +1,7 @@
-// View-model shapes for the home dashboard. These are screen-local — once
-// matches/ratings have cross-app shapes in `shared/`, build these from those.
+// View-model shapes for the home dashboard. The rating comes from the shared
+// `PlayerRatingSummary`; `RecentMatch` stays screen-local until matches have a
+// cross-app shape in `shared/`.
+import type { PlayerRatingSummary } from '@myrating/shared';
 
 export type RecentMatch = {
   id: string;
@@ -18,9 +20,10 @@ export type RecentMatch = {
 
 export type Dashboard = {
   /**
-   * From `player_ratings.rating`; null while the player is still calibrating,
-   * undefined when it couldn't be loaded (don't show that as calibrating).
+   * The shared `PlayerRatingSummary.rating`: null while the player is still
+   * calibrating. Undefined (mobile-only) when it couldn't be loaded or parsed;
+   * don't show that as calibrating.
    */
-  rating: number | null | undefined;
+  rating: PlayerRatingSummary['rating'] | undefined;
   recentMatches: RecentMatch[];
 };

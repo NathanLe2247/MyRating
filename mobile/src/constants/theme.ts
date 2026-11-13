@@ -128,6 +128,13 @@ export const BrandSizes = {
   /** Play: venue photo height on a court card, and its top accent bar. */
   venuePhoto: 112,
   accentBar: 4,
+  /** Health: readiness ring diameter and stroke. */
+  readinessRing: 128,
+  readinessRingStroke: 10,
+  /** Health: ambient glow behind the readiness ring card's corner. */
+  readinessGlow: 176,
+  /** Health: court load bar chart height (bars + labels). */
+  courtChart: 112,
 } as const;
 
 export const Fonts = Platform.select({

@@ -39,6 +39,13 @@ const ICONS = {
   location: { ios: 'location.fill', android: 'location_on', web: 'location_on' },
   directions: { ios: 'arrow.turn.up.right', android: 'directions', web: 'directions' },
   calendar: { ios: 'calendar', android: 'calendar_month', web: 'calendar_month' },
+  heart: { ios: 'heart', android: 'favorite', web: 'favorite' },
+  heartFill: { ios: 'heart.fill', android: 'favorite', web: 'favorite' },
+  hrv: { ios: 'waveform.path.ecg', android: 'ecg_heart', web: 'ecg_heart' },
+  sleep: { ios: 'moon.fill', android: 'bedtime', web: 'bedtime' },
+  flame: { ios: 'flame.fill', android: 'local_fire_department', web: 'local_fire_department' },
+  watch: { ios: 'applewatch', android: 'watch', web: 'watch' },
+  sensors: { ios: 'sensor', android: 'sensors', web: 'sensors' },
 } satisfies Record<string, SymbolName>;
 
 export type BrandIconName = keyof typeof ICONS;

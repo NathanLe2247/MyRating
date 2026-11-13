@@ -8,11 +8,18 @@
       ],
       "@/assets/*": [
         "./assets/*"
+      ],
+      "@myrating/shared": [
+        "../shared/src/index.ts"
+      ],
+      "zod": [
+        "./node_modules/zod"
       ]
     },
     "types": [
       "jest"
-    ]
+    ],
+    "allowImportingTsExtensions": true
   },
   "include": [
     "**/*.ts",

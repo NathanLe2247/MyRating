@@ -1,3 +1,4 @@
+import type { RatingSource } from '@myrating/shared';
 import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -14,7 +15,6 @@ import { Brand, BrandFonts, BrandSizes } from '@/constants/theme';
 import { useOnboarding } from '@/hooks/use-onboarding';
 import { useSaveRatingSource } from '@/hooks/use-save-rating-source';
 import { en } from '@/i18n/en';
-import type { RatingSource } from '@/types/profile';
 
 const copy = en.onboarding.rating;
 
