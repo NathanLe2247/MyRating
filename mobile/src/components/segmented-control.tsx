@@ -32,7 +32,9 @@ export function SegmentedControl<T extends string>({
             key={option}
             onPress={() => onChange(option)}
             accessibilityRole={tabs ? 'tab' : 'radio'}
-            accessibilityState={tabs ? { selected } : { checked: selected }}
+            // aria-* rather than accessibilityState: react-native-web only maps these to ARIA.
+            aria-selected={tabs ? selected : undefined}
+            aria-checked={tabs ? undefined : selected}
             style={[tabs ? styles.tab : styles.segment, selected && (tabs ? styles.tabSelected : styles.selected)]}>
             <Text style={[styles.label, tabs && styles.tabLabel, selected && styles.selectedLabel]}>
               {labels[option]}
