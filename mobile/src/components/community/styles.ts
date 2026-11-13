@@ -1,6 +1,14 @@
 import { StyleSheet } from 'react-native';
 
-import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
+import { Brand, BrandFonts, BrandSizes, MaxContentWidth, Spacing } from '@/constants/theme';
+
+/** Centered, width-capped column every Community tab view lays out in. */
+export const communityContent = {
+  width: '100%',
+  maxWidth: MaxContentWidth,
+  alignSelf: 'center',
+  paddingHorizontal: Spacing.three,
+} as const;
 
 // Type and chip styles repeated across the Community tab's components.
 export const communityText = StyleSheet.create({

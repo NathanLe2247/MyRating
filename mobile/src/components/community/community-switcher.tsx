@@ -1,47 +1,73 @@
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BrandIcon } from '@/components/brand-icon';
 import { communityStyles, communityText } from '@/components/community/styles';
+import type { CommunitySection } from '@/constants/community';
 import { Brand, BrandSizes, Spacing } from '@/constants/theme';
 import { en } from '@/i18n/en';
 
 type CommunitySwitcherProps = {
   groupCount: number;
-  /** Opens group discovery (#46). Shown disabled until that screen exists. */
+  /** Which half of the Community tab is showing. */
+  section?: CommunitySection;
+  /** Switches back to the player's own groups. */
+  onMinePress?: () => void;
+  /** Opens group discovery. Shown disabled when not wired. */
   onDiscoverPress?: () => void;
 };
 
-// "My communities" (this screen, always selected) and the entry point to
-// discover & search.
-export function CommunitySwitcher({ groupCount, onDiscoverPress }: CommunitySwitcherProps) {
+// "My communities" and "Discover & search" halves of the Community tab.
+export function CommunitySwitcher({
+  groupCount,
+  section = 'mine',
+  onMinePress,
+  onDiscoverPress,
+}: CommunitySwitcherProps) {
   const t = en.community.sections;
+  const mineSelected = section === 'mine';
   return (
     <View style={styles.track} accessibilityRole="tablist">
-      <View
-        accessible
-        accessibilityRole="tab"
-        accessibilityState={{ selected: true }}
-        style={[styles.segment, styles.selected]}>
-        <BrandIcon name="community" color={Brand.onLime} size={16} />
-        <Text style={[communityText.button, communityText.onLime]} numberOfLines={1}>
+      <Segment selected={mineSelected} onPress={onMinePress}>
+        <BrandIcon name="community" color={mineSelected ? Brand.onLime : Brand.textMuted} size={16} />
+        <Text style={[communityText.button, mineSelected && communityText.onLime]} numberOfLines={1}>
           {t.mine}
         </Text>
-        <View style={[communityStyles.pill, communityStyles.pillOnLime]}>
+        <View style={[communityStyles.pill, mineSelected && communityStyles.pillOnLime]}>
           <Text style={communityText.stat}>{groupCount}</Text>
         </View>
-      </View>
-      <Pressable
-        onPress={onDiscoverPress}
-        disabled={!onDiscoverPress}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: false, disabled: !onDiscoverPress }}
-        style={[styles.segment, !onDiscoverPress && communityStyles.disabled]}>
-        <BrandIcon name="explore" color={Brand.textMuted} size={15} />
-        <Text style={communityText.button} numberOfLines={1}>
+      </Segment>
+      <Segment selected={!mineSelected} onPress={onDiscoverPress}>
+        <BrandIcon name="explore" color={mineSelected ? Brand.textMuted : Brand.onLime} size={15} />
+        <Text style={[communityText.button, !mineSelected && communityText.onLime]} numberOfLines={1}>
           {t.discover}
         </Text>
-      </Pressable>
+      </Segment>
     </View>
+  );
+}
+
+function Segment({
+  selected,
+  onPress,
+  children,
+}: {
+  selected: boolean;
+  onPress?: () => void;
+  children: ReactNode;
+}) {
+  // The selected segment is the current view, so it's never "disabled"; an
+  // unselected one without a handler has nowhere to go yet.
+  const disabled = !selected && !onPress;
+  return (
+    <Pressable
+      onPress={selected ? undefined : onPress}
+      disabled={disabled}
+      accessibilityRole="tab"
+      accessibilityState={{ selected, disabled }}
+      style={[styles.segment, selected && styles.selected, disabled && communityStyles.disabled]}>
+      {children}
+    </Pressable>
   );
 }
 
