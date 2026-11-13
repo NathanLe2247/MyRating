@@ -142,6 +142,13 @@ export const BrandSizes = {
   challengeAccent: 6,
   /** Left indent of a challenge card so it lines up with message bubbles. */
   chatIndent: 44,
+  /** Health: readiness ring diameter and stroke. */
+  readinessRing: 128,
+  readinessRingStroke: 10,
+  /** Health: ambient glow behind the readiness ring card's corner. */
+  readinessGlow: 176,
+  /** Health: court load bar chart height (bars + labels). */
+  courtChart: 112,
 } as const;
 
 export const Fonts = Platform.select({

@@ -1,9 +1,17 @@
-import type { DominantHand, RatingSource } from '@/types/profile';
+import {
+  DOMINANT_HANDS,
+  MIN_BIRTH_DATE,
+  SUPPORTED_RATING_SOURCES,
+  USERNAME_MAX_LENGTH,
+  USERNAME_PATTERN,
+  type DominantHand,
+  type RatingSource,
+} from '@myrating/shared';
 
-// Handles are 3–20 lowercase letters, digits, or underscores. Keep in sync
-// with the `player-profile` edge function and the users_username_format check.
-export const UsernamePattern = /^[a-z0-9_]{3,20}$/;
-export const UsernameMaxLength = 20;
+// Handles are 3–20 lowercase letters, digits, or underscores; shared/ mirrors
+// the users_username_format check.
+export const UsernamePattern = USERNAME_PATTERN;
+export const UsernameMaxLength = USERNAME_MAX_LENGTH;
 // Wait this long after the last keystroke before checking availability.
 export const UsernameCheckDebounceMs = 400;
 
@@ -15,9 +23,9 @@ export function normalizeUsername(text: string): string {
     .slice(0, UsernameMaxLength);
 }
 
-export const DominantHands: readonly DominantHand[] = ['left', 'ambi', 'right'];
+export const DominantHands: readonly DominantHand[] = DOMINANT_HANDS;
 
-export const MinBirthYear = 1900;
+export const MinBirthYear = Number(MIN_BIRTH_DATE.slice(0, 4));
 export const BirthYearLength = 4;
 export const BirthDayLength = 2;
 
@@ -45,9 +53,8 @@ export const OnboardingStepCount = 2;
 export const ProfileCompletedKey = 'profileCompletedAt';
 export const OnboardingCompletedKey = 'onboardingCompletedAt';
 
-// Step 2 options the app can submit; the others render disabled. Subset of
-// public.rating_source.
-export const SupportedRatingSources: readonly RatingSource[] = ['calibration'];
+// Step 2 options the app can submit; the others render disabled.
+export const SupportedRatingSources: readonly RatingSource[] = SUPPORTED_RATING_SOURCES;
 export const PlacementGameCount = 3;
 
 // Image types the edge function will issue an upload URL for.
