@@ -28,7 +28,9 @@ issuing its own sessions.
 - `supabase/functions/clerk-webhook/` — mirrors Clerk-owned fields (names,
   email, phone, `login_method`) into `public.users` on user.created/updated,
   and deletes the row on user.deleted. Svix-signature verified
-  (`verify_jwt = false`). Never writes player-entered fields.
+  (`verify_jwt = false`). Never writes player-entered fields. Logic is in
+  `handler.ts` (tested by `handler.test.ts`: `deno test
+  supabase/functions/clerk-webhook/`); `index.ts` only wires env and the DB.
 - `supabase/functions/_shared/` — helpers imported by more than one function.
 - `django/` — a separate Django service. **Ownership boundary vs. the edge
   functions above is not yet decided** — see `django/CLAUDE.md`. Don't
