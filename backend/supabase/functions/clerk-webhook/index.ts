@@ -12,7 +12,9 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { createHandler } from './handler.ts';
 
-const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+  auth: { persistSession: false },
+});
 
 Deno.serve(
   createHandler({
@@ -21,6 +23,11 @@ Deno.serve(
       // ON CONFLICT DO UPDATE sets only the columns in the row, so
       // player-owned columns on an existing row are left as they are.
       upsertByClerkId: (row) => db.from('users').upsert(row, { onConflict: 'clerk_user_id' }),
+      updateByClerkId: async (row) => {
+        const { clerk_user_id, ...fields } = row;
+        const { data, error } = await db.from('users').update(fields).eq('clerk_user_id', clerk_user_id).select('id');
+        return { error, matched: data?.length ?? 0 };
+      },
       deleteByClerkId: (clerkUserId) => db.from('users').delete().eq('clerk_user_id', clerkUserId),
     },
   }),

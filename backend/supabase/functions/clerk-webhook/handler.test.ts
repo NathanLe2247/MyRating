@@ -2,8 +2,9 @@
 //
 // Requests are signed for real with standardwebhooks (what Svix and
 // @clerk/backend's verifyWebhook use), so the signature check is exercised,
-// not stubbed. public.users is an in-memory fake with Postgres upsert
-// semantics: ON CONFLICT DO UPDATE sets only the columns in the row.
+// not stubbed. public.users is an in-memory fake with Postgres semantics:
+// upsert's ON CONFLICT DO UPDATE and update both set only the given columns,
+// and update never inserts.
 import { assert, assertEquals } from 'jsr:@std/assert@1';
 import { Webhook } from 'npm:standardwebhooks@1';
 
@@ -27,18 +28,29 @@ type Row = Record<string, unknown>;
 function fakeUsers(seed: Row[] = []) {
   const rows = new Map<string, Row>(seed.map((r) => [r.clerk_user_id as string, { ...r }]));
   const upserts: ClerkUserRow[] = [];
+  const updates: ClerkUserRow[] = [];
+  const deletes: string[] = [];
   const table: UsersTable = {
     upsertByClerkId(row) {
       upserts.push(row);
       rows.set(row.clerk_user_id, { ...(rows.get(row.clerk_user_id) ?? {}), ...row });
       return Promise.resolve({ error: null });
     },
+    updateByClerkId(row) {
+      updates.push(row);
+      const existing = rows.get(row.clerk_user_id);
+      if (!existing) return Promise.resolve({ error: null, matched: 0 });
+      rows.set(row.clerk_user_id, { ...existing, ...row });
+      return Promise.resolve({ error: null, matched: 1 });
+    },
     deleteByClerkId(clerkUserId) {
+      deletes.push(clerkUserId);
       rows.delete(clerkUserId);
       return Promise.resolve({ error: null });
     },
   };
-  return { table, rows, upserts };
+  const writeCount = () => upserts.length + updates.length + deletes.length;
+  return { table, rows, upserts, updates, deletes, writeCount };
 }
 
 function signedRequest(payload: unknown, secret = SECRET): Request {
@@ -90,7 +102,7 @@ Deno.test('rejects a request signed with the wrong secret (401) and writes nothi
   const res = await handler(signedRequest(event('user.created', clerkUser()), OTHER_SECRET));
 
   assertEquals(res.status, 401);
-  assertEquals(users.upserts.length, 0);
+  assertEquals(users.writeCount(), 0);
   assertEquals(users.rows.size, 0);
 });
 
@@ -106,6 +118,7 @@ Deno.test('rejects a request with no signature headers (401)', async () => {
   );
 
   assertEquals(res.status, 401);
+  assertEquals(users.writeCount(), 0);
   assertEquals(users.rows.size, 0);
 });
 
@@ -144,18 +157,21 @@ Deno.test('rejects non-POST methods (405)', async () => {
 Deno.test('user.created inserts the Clerk-owned fields, using the primary email', async () => {
   const users = fakeUsers();
   const handler = createHandler({ signingSecret: SECRET, users: users.table });
+  const before = new Date().toISOString();
 
   const res = await handler(signedRequest(event('user.created', clerkUser())));
 
   assertEquals(res.status, 200);
-  assertEquals(users.rows.get('user_abc'), {
+  const { updated_at, ...row } = users.rows.get('user_abc')!;
+  // Server time, not Clerk's updated_at, so the column never moves backwards.
+  assert(typeof updated_at === 'string' && updated_at >= before, `updated_at ${updated_at} is not server time`);
+  assertEquals(row, {
     clerk_user_id: 'user_abc',
     first_name: 'Ada',
     last_name: 'Lovelace',
     email: 'ada@example.com',
     phone_number: null,
     login_method: 'email',
-    updated_at: new Date(UPDATED_AT).toISOString(),
   });
 });
 
@@ -228,7 +244,8 @@ Deno.test('user.updated never overwrites player-owned columns', async () => {
   const res = await handler(signedRequest(event('user.updated', clerkUser({ first_name: 'Augusta' }))));
 
   assertEquals(res.status, 200);
-  assertEquals(Object.keys(users.upserts[0]).sort(), CLERK_OWNED_COLUMNS);
+  assertEquals(users.upserts.length, 0);
+  assertEquals(Object.keys(users.updates[0]).sort(), CLERK_OWNED_COLUMNS);
   const row = users.rows.get('user_abc')!;
   assertEquals(row.first_name, 'Augusta');
   for (const [column, value] of Object.entries(playerOwned)) {
@@ -250,13 +267,50 @@ Deno.test('user.deleted removes the row', async () => {
   assert(users.rows.has('user_other'));
 });
 
+Deno.test('user.updated after user.deleted does not resurrect the row', async () => {
+  const users = fakeUsers();
+  const handler = createHandler({ signingSecret: SECRET, users: users.table });
+  await handler(signedRequest(event('user.created', clerkUser())));
+  await handler(signedRequest(event('user.deleted', { object: 'user', id: 'user_abc', deleted: true })));
+
+  // A Svix retry or late delivery of an update made before the delete.
+  const res = await handler(signedRequest(event('user.updated', clerkUser())));
+
+  assertEquals(res.status, 200);
+  assertEquals(users.rows.size, 0);
+});
+
+Deno.test('user.updated for an unknown user inserts nothing and is acknowledged', async () => {
+  const users = fakeUsers();
+  const handler = createHandler({ signingSecret: SECRET, users: users.table });
+
+  const res = await handler(signedRequest(event('user.updated', clerkUser({ id: 'user_unknown' }))));
+
+  assertEquals(res.status, 200);
+  assertEquals(users.upserts.length, 0);
+  assertEquals(users.rows.size, 0);
+});
+
+Deno.test('user.deleted without an id deletes nothing and is acknowledged', async () => {
+  const users = fakeUsers([{ clerk_user_id: 'user_abc' }]);
+  const handler = createHandler({ signingSecret: SECRET, users: users.table });
+
+  const res = await handler(signedRequest(event('user.deleted', { object: 'user', deleted: true })));
+
+  assertEquals(res.status, 200);
+  assertEquals(users.deletes.length, 0);
+  assert(users.rows.has('user_abc'));
+});
+
 Deno.test('a failed write answers 500 so Svix retries', async () => {
   const failing: UsersTable = {
     upsertByClerkId: () => Promise.resolve({ error: { message: 'boom' } }),
+    updateByClerkId: () => Promise.resolve({ error: { message: 'boom' }, matched: 0 }),
     deleteByClerkId: () => Promise.resolve({ error: { message: 'boom' } }),
   };
   const handler = createHandler({ signingSecret: SECRET, users: failing });
 
+  assertEquals((await handler(signedRequest(event('user.created', clerkUser())))).status, 500);
   assertEquals((await handler(signedRequest(event('user.updated', clerkUser())))).status, 500);
   assertEquals(
     (await handler(signedRequest(event('user.deleted', { object: 'user', id: 'user_abc', deleted: true })))).status,
@@ -271,5 +325,5 @@ Deno.test('other event types are acknowledged and ignored', async () => {
   const res = await handler(signedRequest(event('session.created', { object: 'session', id: 'sess_1' })));
 
   assertEquals(res.status, 200);
-  assertEquals(users.upserts.length, 0);
+  assertEquals(users.writeCount(), 0);
 });

@@ -3,7 +3,7 @@
 import type { UserJSON } from 'npm:@clerk/backend@3';
 import { verifyWebhook } from 'npm:@clerk/backend@3/webhooks';
 
-import { loginMethodFor } from '../_shared/login-method.ts';
+import { type LoginMethod, loginMethodFor } from '../_shared/login-method.ts';
 
 /**
  * The only public.users columns this function writes. Everything else
@@ -17,15 +17,19 @@ export type ClerkUserRow = {
   last_name: string | null;
   email: string | null;
   phone_number: string | null;
-  login_method: ReturnType<typeof loginMethodFor>;
+  login_method: LoginMethod;
   updated_at: string;
 };
 
-/** The two writes the handler needs; index.ts backs them with supabase-js. */
+type WriteResult = { error: { message: string } | null };
+
+/** The writes the handler needs; index.ts backs them with supabase-js. */
 export type UsersTable = {
   /** Insert, or on clerk_user_id conflict update only the given columns. */
-  upsertByClerkId(row: ClerkUserRow): PromiseLike<{ error: { message: string } | null }>;
-  deleteByClerkId(clerkUserId: string): PromiseLike<{ error: { message: string } | null }>;
+  upsertByClerkId(row: ClerkUserRow): PromiseLike<WriteResult>;
+  /** Update only the given columns of an existing row; never inserts. */
+  updateByClerkId(row: ClerkUserRow): PromiseLike<WriteResult & { matched: number }>;
+  deleteByClerkId(clerkUserId: string): PromiseLike<WriteResult>;
 };
 
 export function toUserRow(user: UserJSON): ClerkUserRow {
@@ -39,7 +43,9 @@ export function toUserRow(user: UserJSON): ClerkUserRow {
     email,
     phone_number: phoneNumber,
     login_method: loginMethodFor(email, phoneNumber),
-    updated_at: new Date(user.updated_at).toISOString(),
+    // Server time, like player-profile writes, so the column never moves
+    // backwards when an older Clerk event is delivered late.
+    updated_at: new Date().toISOString(),
   };
 }
 
@@ -64,9 +70,11 @@ export function createHandler(deps: { signingSecret: string | undefined; users: 
       return new Response('Verification failed', { status: 401 });
     }
 
-    // Upserts keyed on the Clerk id make Svix retries and created/updated
-    // deliveries idempotent. Non-2xx responses make Svix retry.
-    if (evt.type === 'user.created' || evt.type === 'user.updated') {
+    // Non-2xx responses make Svix retry, so only real failures return 5xx.
+
+    // user.created is the only insert path. Upserting on the Clerk id makes
+    // Svix retries idempotent.
+    if (evt.type === 'user.created') {
       const { error } = await deps.users.upsertByClerkId(toUserRow(evt.data));
       if (error) {
         log({ event: 'clerk_webhook_sync_failed', type: evt.type, clerk_user_id: evt.data.id, err: error.message });
@@ -74,8 +82,26 @@ export function createHandler(deps: { signingSecret: string | undefined; users: 
       }
     }
 
-    // Cascades to player_ratings and anything else keyed on users.id.
-    if (evt.type === 'user.deleted' && evt.data.id) {
+    // user.updated never inserts: a late or retried update arriving after
+    // user.deleted must not bring the deleted user's row (and their email /
+    // phone) back. No matching row is acknowledged, not retried.
+    if (evt.type === 'user.updated') {
+      const { error, matched } = await deps.users.updateByClerkId(toUserRow(evt.data));
+      if (error) {
+        log({ event: 'clerk_webhook_sync_failed', type: evt.type, clerk_user_id: evt.data.id, err: error.message });
+        return new Response('Sync failed', { status: 500 });
+      }
+      if (matched === 0) log({ event: 'clerk_webhook_update_no_row', clerk_user_id: evt.data.id });
+    }
+
+    if (evt.type === 'user.deleted') {
+      if (!evt.data.id) {
+        log({ event: 'clerk_webhook_delete_missing_id' });
+        return new Response('OK', { status: 200 });
+      }
+      // Removes the public.users row; player_ratings goes with it (ON DELETE
+      // CASCADE). Nothing else references users.id yet, and the player's R2
+      // avatar objects (avatars/<clerk_user_id>/) are not removed.
       const { error } = await deps.users.deleteByClerkId(evt.data.id);
       if (error) {
         log({ event: 'clerk_webhook_delete_failed', clerk_user_id: evt.data.id, err: error.message });
