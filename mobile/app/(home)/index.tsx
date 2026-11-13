@@ -14,6 +14,7 @@ import type { MatchFormat } from '@/constants/match';
 import { BottomTabInset, Brand, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useDashboard } from '@/hooks/use-dashboard';
 import { useLocationPermission } from '@/hooks/use-location-permission';
+import { useMatchFoundPreview } from '@/hooks/use-match-found-preview';
 import { en } from '@/i18n/en';
 
 export default function HomeScreen() {
@@ -21,6 +22,7 @@ export default function HomeScreen() {
   const [format, setFormat] = useState<MatchFormat>('doubles');
   const { data, error, refetch } = useDashboard(format);
   const location = useLocationPermission();
+  const previewMatchFound = useMatchFoundPreview();
 
   // TODO: the header's options button is the only place to sign out until
   // there's a profile/settings screen.
@@ -53,7 +55,7 @@ export default function HomeScreen() {
             )}
             <RatingCard rating={data.rating} />
             {/* TODO: navigate to the queue screen once it exists. */}
-            <QueueCard calibrating={data.rating === null} />
+            <QueueCard calibrating={data.rating === null} onPress={previewMatchFound} />
             {data.recentMatches.length > 0 && <RecentMatches matches={data.recentMatches} />}
           </>
         ) : (

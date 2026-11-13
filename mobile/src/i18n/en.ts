@@ -1,5 +1,9 @@
 // English strings for the mobile app. Import as `en` and reference nested
 // keys from screens/components instead of inlining literal UI text.
+
+/** Joins inline parts of a line, e.g. "w/ Sam · 4.1 → 4.2". */
+const SEPARATOR = ' · ';
+
 export const en = {
   brand: 'myRating',
   // Keyed by route name (see AppTabNames).
@@ -11,10 +15,6 @@ export const en = {
   },
   comingSoon: {
     tag: 'Coming soon',
-    play: {
-      title: 'Play',
-      body: 'Find courts near you and queue up for rated matches.',
-    },
   },
   auth: {
     fields: {
@@ -229,7 +229,7 @@ export const en = {
       partner: (name: string) => `w/ ${name}`,
       versus: 'vs.',
       opponentsJoin: ' & ',
-      separator: ' · ',
+      separator: SEPARATOR,
       ratingChange: (before: string, after: string) => `${before} → ${after}`,
     },
     loadFailed: 'Couldn’t load your rating.',
@@ -292,6 +292,86 @@ export const en = {
       dropChallenge: 'Drop match challenge',
       attachPhoto: 'Attach photo',
       send: 'Send message',
+    },
+  },
+  matchFound: {
+    header: 'Active match session',
+    back: 'Go back',
+    searching: (miles: number) => `Searching nearby · ${miles} mile radius`,
+    elapsed: (time: string) => `Elapsed: ${time}`,
+    leave: 'Leave',
+    leaveLabel: 'Leave queue',
+    title: 'Match found!',
+    celebrate: '🎉',
+    parity: (gap: string) => `Close skill match (${gap} rating gap)`,
+    parityCalibrating: 'Paired while ratings calibrate',
+    verified: 'DUPR verified',
+    courtReady: 'Court sync ready',
+    you: 'You',
+    streak: (wins: number) => `${wins}W streak`,
+    ratingUnit: 'DUPR',
+    unrated: 'NR',
+    vs: 'VS',
+    winProbability: 'Win prob.',
+    winProbabilitySlash: '/',
+    percent: (value: number) => `${value}%`,
+    evenMatchup: 'Even matchup',
+    ratingImpact: (impact: string) => `Rating impact up to ±${impact}`,
+    subtextJoin: ' · ',
+    logistics: 'Logistics & venue',
+    autoCheckIn: 'Auto-check-in enabled',
+    venueEmpty: 'Venue to be confirmed',
+    venueEmptyBody: 'We’ll pick a court near you both.',
+    distance: (miles: string) => `${miles} mi away`,
+    drive: (minutes: number) => `${minutes} min drive`,
+    dot: '•',
+    openMap: 'Open map',
+    formatTitle: (format: string, official: boolean, games: number | undefined) =>
+      [format, official && (games ? `Official DUPR ${games}-game series` : 'Official DUPR')]
+        .filter(Boolean)
+        .join(' · '),
+    rules: (games: number, pointsTo: number, winBy: number) =>
+      `Best ${Math.floor(games / 2) + 1} of ${games} · Rally scoring to ${pointsTo} (Win by ${winBy})`,
+    rulesEmpty: 'Scoring rules confirmed at the court',
+    accept: 'Accept match',
+    decline: 'Decline',
+    empty: {
+      title: 'No match yet',
+      body: 'Queue up from Home and we’ll pair you with a player near your rating.',
+      back: 'Back to home',
+    },
+  },
+  play: {
+    brand: 'myRating',
+    title: 'Play',
+    courts: {
+      title: 'Courts near you',
+      nearYou: (count: number) => `${count} near you`,
+      courtCount: (count: number) => `${count} courts`,
+      indoorCount: (count: number) => `${count} indoor`,
+      distance: (miles: string) => `${miles} mi away`,
+      directions: 'Directions',
+      directionsWithDistance: (miles: string) => `Directions${SEPARATOR}${miles} mi`,
+      checkIn: 'Check in',
+      bookCourt: 'Book court',
+      a11y: {
+        directions: (court: string) => `Directions to ${court}`,
+        checkIn: (court: string) => `Check in at ${court}`,
+        bookCourt: (court: string) => `Book a court at ${court}`,
+        comingSoon: 'Coming soon',
+      },
+      emptyTag: 'Radar',
+      emptyTitle: 'No courts yet',
+      emptyBody: 'Courts near you will show up here once the court directory is live.',
+    },
+    tournaments: {
+      title: 'Upcoming tournaments',
+      /** Shown when a tournament's start date is missing or unparseable. */
+      dateTbd: 'Date TBD',
+      spotsLeft: (count: number) => `${count} spots left`,
+      emptyTag: 'Schedule',
+      emptyTitle: 'No tournaments yet',
+      emptyBody: 'Upcoming tournaments near you will be listed here.',
     },
   },
   health: {

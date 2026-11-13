@@ -73,6 +73,15 @@ export const Brand = {
   challengeSky: '#9CF0FF',
   /** Bottom fade over a group photo, so the presence dot reads. */
   photoShade: 'rgba(0, 0, 0, 0.6)',
+  /** Match Found: chips and tracks that sit on a raised card. */
+  chipRaised: '#2B3136',
+  /** Match Found: card drop shadow and the heavier top-bar shadow. */
+  shadowSoft: 'rgba(0, 0, 0, 0.1)',
+  shadowStrong: 'rgba(0, 0, 0, 0.35)',
+  // Play tab: indoor venues use a light cyan accent in place of lime.
+  indoor: '#9CF0FF',
+  indoorSurface: 'rgba(156, 240, 255, 0.2)',
+  onIndoor: '#001F24',
 } as const;
 
 /**
@@ -142,6 +151,16 @@ export const BrandSizes = {
   challengeAccent: 6,
   /** Left indent of a challenge card so it lines up with message bubbles. */
   chatIndent: 44,
+  /** Match Found: player photo, VS disc, and header profile photo diameters. */
+  matchAvatar: 64,
+  vsBadge: 44,
+  headerAvatar: 32,
+  /** Match Found: top bar height and its minimum tap target. */
+  topBar: 64,
+  minTouch: 44,
+  /** Play: venue photo height on a court card, and its top accent bar. */
+  venuePhoto: 112,
+  accentBar: 4,
   /** Health: readiness ring diameter and stroke. */
   readinessRing: 128,
   readinessRingStroke: 10,
