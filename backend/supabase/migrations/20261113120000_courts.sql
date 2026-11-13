@@ -2,8 +2,6 @@
 -- The full courts catalog (address, surfaces, photos, import source) is still
 -- TBD per agent/skills/courts-catalog; extend this table, the view below and
 -- the shared schema in the same PR when that lands.
---
--- Ported from stale PR #12 (feat/shared-court-type).
 
 create extension if not exists postgis with schema extensions;
 
@@ -12,7 +10,10 @@ create table public.courts (
   -- CourtSchema requires a non-empty name.
   name text not null check (name <> ''),
   -- [lng, lat] in WGS 84. Geography so ST_DWithin radii are in metres.
-  location extensions.geography(point, 4326) not null,
+  -- POINT EMPTY is valid geography but serializes as `coordinates: []`,
+  -- which CourtSchema rejects. (ST_IsEmpty only takes geometry.)
+  location extensions.geography(point, 4326) not null
+    check (not extensions.st_isempty(location::extensions.geometry)),
   is_active boolean not null default true,
   created_at timestamptz not null default now()
 );
@@ -56,5 +57,6 @@ create view public.courts_geojson
 comment on view public.courts_geojson is
   'public.courts with location as a GeoJSON Point. Rows match CourtSchema in shared/src/court.ts.';
 
+-- Read-only for everyone: service_role writes go to public.courts, not the view.
 revoke all on public.courts_geojson from anon, authenticated;
 grant select on public.courts_geojson to anon, authenticated, service_role;

@@ -5,7 +5,14 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(12);
+select plan(19);
+
+-- If the view ran as its owner (security definer), it would bypass the
+-- caller's grants and RLS, and every read assertion below would still pass.
+select ok(
+  (select reloptions @> array['security_invoker=true'] from pg_class where oid = 'public.courts_geojson'::regclass),
+  'courts_geojson is security_invoker'
+);
 
 -- Seeded as the migration owner, which bypasses RLS.
 insert into public.courts (id, name, location)
@@ -83,19 +90,50 @@ select throws_ok(
   'authenticated cannot update public.courts'
 );
 
+select throws_ok(
+  $$delete from public.courts where id = 'c0000000-0000-4000-8000-000000000001'$$,
+  '42501',
+  null,
+  'authenticated cannot delete from public.courts'
+);
+
 reset role;
 
--- service_role: writes
+-- service_role: writes, checked by their effect (lives_ok alone passes on 0 rows)
 set local role service_role;
 
 select lives_ok(
-  $$insert into public.courts (name, location) values ('service court', 'SRID=4326;POINT(-73.9857 40.7484)')$$,
+  $$insert into public.courts (id, name, location)
+    values ('c0000000-0000-4000-8000-000000000002', 'service court', 'SRID=4326;POINT(-73.9857 40.7484)')$$,
   'service_role can insert into public.courts'
 );
 
+select is(
+  (select location from public.courts_geojson where id = 'c0000000-0000-4000-8000-000000000002'),
+  '{"type":"Point","coordinates":[-73.9857,40.7484]}'::jsonb,
+  'the service_role insert is visible'
+);
+
 select lives_ok(
-  $$update public.courts set is_active = false where name = 'service court'$$,
+  $$update public.courts set is_active = false where id = 'c0000000-0000-4000-8000-000000000002'$$,
   'service_role can update public.courts'
+);
+
+select is(
+  (select is_active from public.courts where id = 'c0000000-0000-4000-8000-000000000002'),
+  false,
+  'the service_role update took effect'
+);
+
+select lives_ok(
+  $$delete from public.courts where id = 'c0000000-0000-4000-8000-000000000002'$$,
+  'service_role can delete from public.courts'
+);
+
+select is(
+  (select count(*)::int from public.courts where id = 'c0000000-0000-4000-8000-000000000002'),
+  0,
+  'the service_role delete took effect'
 );
 
 reset role;
@@ -106,6 +144,14 @@ select throws_ok(
   '23514',
   null,
   'empty court name is rejected'
+);
+
+-- POINT EMPTY would serialize as `coordinates: []`, which CourtSchema rejects.
+select throws_ok(
+  $$insert into public.courts (name, location) values ('nowhere', 'SRID=4326;POINT EMPTY')$$,
+  '23514',
+  null,
+  'empty point location is rejected'
 );
 
 select * from finish();
