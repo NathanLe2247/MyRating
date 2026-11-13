@@ -14,6 +14,30 @@ export type CommunityGroup = {
   verified?: boolean;
 };
 
+/** Rating band a group plays at; `max` is null for an open-ended minimum. */
+export type GroupRatingRange = {
+  min: number;
+  max: number | null;
+};
+
+/** A group the player hasn't joined, as listed on Discover & search. */
+export type DiscoverGroup = CommunityGroup & {
+  ratingRange?: GroupRatingRange;
+  /** Home courts, e.g. "Zilker Park Courts". */
+  courts?: string;
+  /** When it plays, e.g. "Weekly Sun king-of-the-court". */
+  schedule?: string;
+  /** Short vibe tags, e.g. "Friendly", "Skill building". */
+  tags?: string[];
+};
+
+/** Discover & search results for the current query. */
+export type DiscoverResults = {
+  groups: DiscoverGroup[];
+  /** True while a search for the latest query hasn't settled yet. */
+  loading: boolean;
+};
+
 export type ChatPlayer = {
   name: string;
   /** Player rating; null while they're still calibrating. */

@@ -78,6 +78,8 @@ export const Brand = {
   /** Match Found: card drop shadow and the heavier top-bar shadow. */
   shadowSoft: 'rgba(0, 0, 0, 0.1)',
   shadowStrong: 'rgba(0, 0, 0, 0.35)',
+  /** Discover: recessed details panel inside a group card. */
+  inset: 'rgba(11, 14, 16, 0.6)',
   // Play tab: indoor venues use a light cyan accent in place of lime.
   indoor: '#9CF0FF',
   indoorSurface: 'rgba(156, 240, 255, 0.2)',
@@ -151,6 +153,12 @@ export const BrandSizes = {
   challengeAccent: 6,
   /** Left indent of a challenge card so it lines up with message bubbles. */
   chatIndent: 44,
+  /** Discover: group card and "start your own squad" banner corners. */
+  discoverCardRadius: 32,
+  /** Discover: corners of the recessed details panel in a group card. */
+  insetRadius: 6,
+  /** Discover: thin divider between the search field and the filter button. */
+  searchDivider: 16,
   /** Match Found: player photo, VS disc, and header profile photo diameters. */
   matchAvatar: 64,
   vsBadge: 44,

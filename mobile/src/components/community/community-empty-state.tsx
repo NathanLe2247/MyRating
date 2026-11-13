@@ -6,7 +6,7 @@ import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 import { en } from '@/i18n/en';
 
 type CommunityEmptyStateProps = {
-  /** Opens group discovery (#46). The button is disabled until it exists. */
+  /** Opens group discovery. The button is disabled when not wired. */
   onDiscoverPress?: () => void;
 };
 

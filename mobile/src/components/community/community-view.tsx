@@ -9,8 +9,8 @@ import { CommunitySwitcher } from '@/components/community/community-switcher';
 import { GroupChips } from '@/components/community/group-chips';
 import { PostMatchPrompt } from '@/components/community/post-match-prompt';
 import { RoomHeader } from '@/components/community/room-header';
-import { communityText } from '@/components/community/styles';
-import { BottomTabInset, Brand, BrandSizes, MaxContentWidth, Spacing } from '@/constants/theme';
+import { communityContent, communityText } from '@/components/community/styles';
+import { BottomTabInset, Brand, BrandSizes, Spacing } from '@/constants/theme';
 import { en } from '@/i18n/en';
 import type { ChatItem, CommunityGroup } from '@/types/community';
 
@@ -85,12 +85,7 @@ function ChatRow({ item }: { item: ChatItem }) {
   }
 }
 
-const content = {
-  width: '100%',
-  maxWidth: MaxContentWidth,
-  alignSelf: 'center',
-  paddingHorizontal: Spacing.three,
-} as const;
+const content = communityContent;
 
 const styles = StyleSheet.create({
   screen: {

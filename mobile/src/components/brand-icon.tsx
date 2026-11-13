@@ -47,6 +47,7 @@ const ICONS = {
   explore: { ios: 'safari', android: 'explore', web: 'explore' },
   info: { ios: 'info.circle', android: 'info', web: 'info' },
   bell: { ios: 'bell', android: 'notifications', web: 'notifications' },
+  search: { ios: 'magnifyingglass', android: 'search', web: 'search' },
   more: { ios: 'ellipsis', android: 'more_vert', web: 'more_vert' },
   personAdd: { ios: 'person.badge.plus', android: 'person_add', web: 'person_add' },
   clock: { ios: 'clock', android: 'schedule', web: 'schedule' },
