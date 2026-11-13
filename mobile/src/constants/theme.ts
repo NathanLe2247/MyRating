@@ -67,6 +67,23 @@ export const Brand = {
   onLimeMuted: 'rgba(11, 14, 16, 0.72)',
   onLimeChip: 'rgba(11, 14, 16, 0.12)',
   onLimeDivider: 'rgba(11, 14, 16, 0.15)',
+  // Community tab
+  /** Middle and end stops of the challenge card's accent bar (starts at `lime`). */
+  challengeAmber: '#FFB800',
+  challengeSky: '#9CF0FF',
+  /** Bottom fade over a group photo, so the presence dot reads. */
+  photoShade: 'rgba(0, 0, 0, 0.6)',
+  /** Match Found: chips and tracks that sit on a raised card. */
+  chipRaised: '#2B3136',
+  /** Match Found: card drop shadow and the heavier top-bar shadow. */
+  shadowSoft: 'rgba(0, 0, 0, 0.1)',
+  shadowStrong: 'rgba(0, 0, 0, 0.35)',
+  /** Discover: recessed details panel inside a group card. */
+  inset: 'rgba(11, 14, 16, 0.6)',
+  // Play tab: indoor venues use a light cyan accent in place of lime.
+  indoor: '#9CF0FF',
+  indoorSurface: 'rgba(156, 240, 255, 0.2)',
+  onIndoor: '#001F24',
 } as const;
 
 /**
@@ -121,6 +138,44 @@ export const BrandSizes = {
   ratingBar: 8,
   /** Home: win/loss result disc in a match row. */
   resultBadge: 52,
+  // Community tab
+  /** Group photo in the room header and challenger photo on a challenge card. */
+  groupAvatar: 48,
+  /** Sender photo next to a chat message. */
+  chatAvatar: 36,
+  /** Online dot on a chat or group photo. */
+  presenceBadge: 12,
+  /** Round buttons in the chat input bar. */
+  chatAction: 40,
+  /** "VS" disc on a challenge card. */
+  versusBadge: 32,
+  /** Height of the challenge card's top accent bar. */
+  challengeAccent: 6,
+  /** Left indent of a challenge card so it lines up with message bubbles. */
+  chatIndent: 44,
+  /** Discover: group card and "start your own squad" banner corners. */
+  discoverCardRadius: 32,
+  /** Discover: corners of the recessed details panel in a group card. */
+  insetRadius: 6,
+  /** Discover: thin divider between the search field and the filter button. */
+  searchDivider: 16,
+  /** Match Found: player photo, VS disc, and header profile photo diameters. */
+  matchAvatar: 64,
+  vsBadge: 44,
+  headerAvatar: 32,
+  /** Match Found: top bar height and its minimum tap target. */
+  topBar: 64,
+  minTouch: 44,
+  /** Play: venue photo height on a court card, and its top accent bar. */
+  venuePhoto: 112,
+  accentBar: 4,
+  /** Health: readiness ring diameter and stroke. */
+  readinessRing: 128,
+  readinessRingStroke: 10,
+  /** Health: ambient glow behind the readiness ring card's corner. */
+  readinessGlow: 176,
+  /** Health: court load bar chart height (bars + labels). */
+  courtChart: 112,
 } as const;
 
 export const Fonts = Platform.select({

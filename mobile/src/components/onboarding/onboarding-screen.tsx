@@ -16,7 +16,6 @@ type OnboardingScreenProps = {
   headerSubtitle: string;
   title: string;
   subtitle: string;
-  onSkip: () => void;
   /** Omitted when there's nothing to go back to (e.g. step 1 right after sign-up). */
   onBack?: () => void;
   children: ReactNode;
@@ -24,15 +23,14 @@ type OnboardingScreenProps = {
   footer: ReactNode;
 };
 
-// Shared shell for onboarding steps: brand header, step progress with "skip",
-// a big title, the form, and a pinned footer. Always dark, like (auth).
+// Shared shell for onboarding steps: brand header, step progress, a big
+// title, the form, and a pinned footer. Always dark, like (auth).
 export function OnboardingScreen({
   step,
   stepLabel,
   headerSubtitle,
   title,
   subtitle,
-  onSkip,
   onBack,
   children,
   footer,
@@ -69,9 +67,6 @@ export function OnboardingScreen({
               <Text style={styles.stepNumber}>{en.onboarding.step(step, OnboardingStepCount)}</Text>
               {` • ${stepLabel}`}
             </Text>
-            <Pressable onPress={onSkip} hitSlop={Spacing.two} accessibilityRole="button">
-              <Text style={styles.skip}>{en.onboarding.skip}</Text>
-            </Pressable>
           </View>
           <View style={styles.track}>
             <View style={[styles.fill, { width: `${(step / OnboardingStepCount) * 100}%` }]} />
@@ -161,13 +156,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
     color: Brand.lime,
-  },
-  skip: {
-    fontFamily: BrandFonts.display,
-    fontSize: 14,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: Brand.textMuted,
   },
   track: {
     height: BrandSizes.progressBar,
