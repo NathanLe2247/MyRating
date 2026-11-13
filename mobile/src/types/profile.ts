@@ -1,8 +1,6 @@
-// Mirrors public.rating_source.
-export type RatingSource = 'dupr' | 'usa_pickleball' | 'calibration';
-
-// Mirrors public.dominant_hand.
-export type DominantHand = 'left' | 'ambi' | 'right';
+// Mobile-only onboarding UI state. Cross-app shapes (`DominantHand`,
+// `RatingSource`, `PlayerProfile`, ...) come from `@myrating/shared`.
+import type { DominantHand } from '@myrating/shared';
 
 /** A photo picked on-device, not yet uploaded. */
 export type PickedAvatar = {

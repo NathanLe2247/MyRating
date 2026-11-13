@@ -72,6 +72,10 @@ export const Brand = {
   /** Match Found: card drop shadow and the heavier top-bar shadow. */
   shadowSoft: 'rgba(0, 0, 0, 0.1)',
   shadowStrong: 'rgba(0, 0, 0, 0.35)',
+  // Play tab: indoor venues use a light cyan accent in place of lime.
+  indoor: '#9CF0FF',
+  indoorSurface: 'rgba(156, 240, 255, 0.2)',
+  onIndoor: '#001F24',
 } as const;
 
 /**
@@ -133,6 +137,16 @@ export const BrandSizes = {
   /** Match Found: top bar height and its minimum tap target. */
   topBar: 64,
   minTouch: 44,
+  /** Play: venue photo height on a court card, and its top accent bar. */
+  venuePhoto: 112,
+  accentBar: 4,
+  /** Health: readiness ring diameter and stroke. */
+  readinessRing: 128,
+  readinessRingStroke: 10,
+  /** Health: ambient glow behind the readiness ring card's corner. */
+  readinessGlow: 176,
+  /** Health: court load bar chart height (bars + labels). */
+  courtChart: 112,
 } as const;
 
 export const Fonts = Platform.select({
