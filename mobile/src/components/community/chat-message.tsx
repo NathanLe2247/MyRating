@@ -42,6 +42,8 @@ export function ChatMessage({ message, onMorePress }: ChatMessageProps) {
                 disabled={!onMorePress}
                 accessibilityRole="button"
                 accessibilityLabel={en.community.a11y.moreOptions}
+                accessibilityState={{ disabled: !onMorePress }}
+                style={!onMorePress && communityStyles.disabled}
                 hitSlop={Spacing.two}>
                 <BrandIcon name="more" color={Brand.textMuted} size={14} />
               </Pressable>

@@ -257,7 +257,7 @@ export const en = {
       notifications: 'Group notifications',
       verified: 'Verified group',
       moreOptions: 'More options',
-      memberCount: (name: string, count: number) => `${name}, ${count} members`,
+      memberCount: (name: string, count: number) => `${name}, ${count} ${count === 1 ? 'member' : 'members'}`,
     },
     empty: {
       title: 'No groups yet',

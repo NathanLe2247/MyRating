@@ -67,7 +67,8 @@ function ActionButton({
       disabled={!onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={styles.action}>
+      accessibilityState={{ disabled: !onPress }}
+      style={[styles.action, !onPress && communityStyles.disabled]}>
       <BrandIcon name={icon} color={Brand.lime} size={18} />
     </Pressable>
   );

@@ -45,7 +45,8 @@ export function RoomHeader({ group, onDetailsPress, onNotificationsPress }: Room
           disabled={!onDetailsPress}
           accessibilityRole="button"
           accessibilityLabel={t.a11y.groupDetails}
-          style={communityStyles.iconButton}>
+          accessibilityState={{ disabled: !onDetailsPress }}
+          style={[communityStyles.iconButton, !onDetailsPress && communityStyles.disabled]}>
           <BrandIcon name="info" color={Brand.textMuted} size={17} />
         </Pressable>
         <Pressable
@@ -53,7 +54,8 @@ export function RoomHeader({ group, onDetailsPress, onNotificationsPress }: Room
           disabled={!onNotificationsPress}
           accessibilityRole="button"
           accessibilityLabel={t.a11y.notifications}
-          style={communityStyles.iconButton}>
+          accessibilityState={{ disabled: !onNotificationsPress }}
+          style={[communityStyles.iconButton, !onNotificationsPress && communityStyles.disabled]}>
           <BrandIcon name="bell" color={Brand.textMuted} size={17} />
         </Pressable>
       </View>

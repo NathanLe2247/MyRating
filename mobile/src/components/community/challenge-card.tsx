@@ -71,6 +71,7 @@ export function ChallengeCard({ challenge, onAccept, onDecline }: ChallengeCardP
               onPress={onAccept}
               disabled={!onAccept}
               accessibilityRole="button"
+              accessibilityState={{ disabled: !onAccept }}
               style={[styles.accept, !onAccept && communityStyles.disabled]}>
               <BrandIcon name="checkCircle" color={Brand.onLime} size={15} />
               <Text style={[communityText.button, communityText.onLime]}>{t.accept}</Text>
@@ -79,6 +80,7 @@ export function ChallengeCard({ challenge, onAccept, onDecline }: ChallengeCardP
               onPress={onDecline}
               disabled={!onDecline}
               accessibilityRole="button"
+              accessibilityState={{ disabled: !onDecline }}
               style={[styles.decline, !onDecline && communityStyles.disabled]}>
               <Text style={communityText.button}>{t.decline}</Text>
             </Pressable>

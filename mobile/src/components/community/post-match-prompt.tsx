@@ -24,6 +24,7 @@ export function PostMatchPrompt({ onPress }: PostMatchPromptProps) {
         onPress={onPress}
         disabled={!onPress}
         accessibilityRole="button"
+        accessibilityState={{ disabled: !onPress }}
         style={[styles.button, !onPress && communityStyles.disabled]}>
         <Text style={[communityText.label, communityText.onLime]}>{t.cta}</Text>
       </Pressable>
