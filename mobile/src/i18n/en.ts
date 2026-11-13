@@ -287,6 +287,32 @@ export const en = {
       body: 'Want to issue a group-wide challenge?',
       cta: '+ Post match',
     },
+    discover: {
+      searchPlaceholder: 'Search clubs, home courts, or vibe…',
+      searchLabel: 'Search groups',
+      clearSearch: 'Clear search',
+      filter: 'Filter groups',
+      builder: {
+        tag: 'Club builder',
+        title: 'Start your own squad',
+        badge: 'Instant setup',
+        body: 'Lock in your local home courts, dial in exact minimum & maximum DUPR tiers, and auto-sync live king-of-the-court queues.',
+        cta: '+ Create community',
+      },
+      recommended: 'Recommended for you',
+      results: 'Results',
+      loading: 'Searching groups…',
+      empty: {
+        title: 'Nothing to discover yet',
+        body: 'Groups near your courts will show up here as players start them. Start your own squad to get things going.',
+      },
+      noResults: {
+        title: 'No matches',
+        body: (query: string) => `No groups match “${query}”. Try a club name, court, or area.`,
+      },
+      ratingRange: (min: string, max: string) => `DUPR ${min} – ${max}`,
+      ratingMin: (min: string) => `DUPR min ${min}+`,
+    },
     input: {
       placeholder: 'Send a message or drop challenge…',
       dropChallenge: 'Drop match challenge',
