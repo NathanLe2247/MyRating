@@ -30,6 +30,15 @@ issuing its own sessions.
   assume it owns a piece of logic without confirming; check there first
   before adding anything.
 
+## Deploying
+
+Merging to `main` deploys the hosted Supabase project via
+`.github/workflows/deploy-supabase.yml`: `supabase db push` for new
+migrations, then every edge function with an `index.ts`. Don't deploy by hand
+from a feature branch — that's how the hosted project drifted from `main`
+before. To redeploy without a code change, run the workflow manually
+(Actions → Deploy Supabase → Run workflow).
+
 ## Conventions
 
 - Row shapes must match the Zod schemas in `shared/` — migrations and

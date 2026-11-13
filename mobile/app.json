@@ -34,7 +34,13 @@
         }
       ],
       "expo-secure-store",
-      "@clerk/expo"
+      "@clerk/expo",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "myRating uses your location to find courts and players near you."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

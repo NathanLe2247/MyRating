@@ -1,3 +1,4 @@
+import type { DominantHand } from '@myrating/shared';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -13,11 +14,10 @@ import { SegmentedControl } from '@/components/segmented-control';
 import { UsernameField } from '@/components/onboarding/username-field';
 import { BirthYearLength, DominantHands, toBirthDate } from '@/constants/profile';
 import { Brand, BrandFonts, BrandSizes } from '@/constants/theme';
-import { useOnboarding } from '@/hooks/use-onboarding';
 import { useSavePlayerProfile } from '@/hooks/use-save-player-profile';
 import { useUsernameAvailability } from '@/hooks/use-username-availability';
 import { en } from '@/i18n/en';
-import type { DominantHand, PickedAvatar } from '@/types/profile';
+import type { PickedAvatar } from '@/types/profile';
 
 const copy = en.onboarding.profile;
 
@@ -26,7 +26,6 @@ const copy = en.onboarding.profile;
 // function, then moves on to step 2 (rating calibration).
 export default function OnboardingProfileScreen() {
   const router = useRouter();
-  const onboarding = useOnboarding();
   const { save, saving, errorCode } = useSavePlayerProfile();
 
   const [avatar, setAvatar] = useState<PickedAvatar | null>(null);
@@ -35,7 +34,6 @@ export default function OnboardingProfileScreen() {
   const [day, setDay] = useState('');
   const [year, setYear] = useState('');
   const [hand, setHand] = useState<DominantHand | null>(null);
-  const [skipping, setSkipping] = useState(false);
 
   const usernameStatus = useUsernameAvailability(username);
   const dateOfBirth = toBirthDate(month, day, year);
@@ -51,16 +49,6 @@ export default function OnboardingProfileScreen() {
     if (saved) router.push('/onboarding/rating');
   };
 
-  const handleSkip = async () => {
-    setSkipping(true);
-    try {
-      await onboarding.skip();
-      router.replace('/');
-    } finally {
-      setSkipping(false);
-    }
-  };
-
   return (
     <OnboardingScreen
       step={1}
@@ -68,7 +56,6 @@ export default function OnboardingProfileScreen() {
       headerSubtitle={copy.headerSubtitle}
       title={copy.title}
       subtitle={copy.subtitle}
-      onSkip={handleSkip}
       onBack={router.canGoBack() ? router.back : undefined}
       footer={
         <>
@@ -77,7 +64,7 @@ export default function OnboardingProfileScreen() {
             label={copy.continue}
             onPress={handleContinue}
             loading={saving}
-            disabled={!canContinue || skipping}
+            disabled={!canContinue}
             trailing={<BrandIcon name="arrowRight" color={Brand.onLime} size={20} />}
           />
           <View style={styles.nextStep}>

@@ -67,26 +67,36 @@ mkdir -p $DRIVER/shots && cd $DRIVER && node auth-smoke.mjs $DRIVER/shots
 Run it in the background for long runs and read the JSON when it finishes —
 a foreground run can be cut off mid-way.
 
-### Account flows need a Clerk testing token
+### Account flows need the dev Clerk secret key
 
-Sign-up is behind Clerk bot protection (a Cloudflare "Verify you are human"
-widget), which headless Chromium can't pass. Without a token the script runs
-the 11 no-account checks and marks the 7 account flows `skip`.
+Without `CLERK_SECRET_KEY` the script runs the 11 no-account checks and marks
+the 7 account flows `skip`. The key does two jobs:
 
-To run everything, provide the **dev** instance secret key — the script
-mints a [testing token](https://clerk.com/docs/testing/overview) and adds it
-to every Frontend API request (as `@clerk/testing` does), and also sets
-`captcha_enabled: false` in the intercepted `/v1/environment` response. The token
-alone isn't enough: clerk-js still renders the Turnstile widget and waits on
-it.
+- **Bot protection.** Sign-up is behind a Cloudflare "Verify you are human"
+  widget that headless Chromium can't pass. The script mints a
+  [testing token](https://clerk.com/docs/testing/overview), adds it to every
+  Frontend API request (as `@clerk/testing` does), and sets
+  `captcha_enabled: false` in the intercepted `/v1/environment` response. The
+  token alone isn't enough: clerk-js still renders the Turnstile widget and
+  waits on it.
+- **Onboarding.** Onboarding is required (no "Skip for now"), so every new
+  test account lands on step 1. The script marks it onboarded through the
+  Backend API instead of filling in the steps (see Gotchas).
+
+Read the key from the untracked backend env file at run time, without
+echoing it:
 
 ```bash
-CLERK_SECRET_KEY=sk_test_... node auth-smoke.mjs $DRIVER/shots
+CLERK_SECRET_KEY=$(grep '^CLERK_SECRET_KEY=' /Users/quan/myRating/backend/.env.local | cut -d= -f2- | tr -d "\"'") \
+  node auth-smoke.mjs $DRIVER/shots
 ```
 
-Never commit the key or paste it into chat; read it from an untracked env
-file. Alternative: temporarily disable *Bot sign-up protection* in the Clerk
-dashboard (Configure → Attack protection) and re-enable it after.
+Never commit the key or paste it into chat. It must be the **dev** instance
+key (`sk_test_…`) that matches `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`. The script
+refuses to start with any other key, refuses account flows when the app's
+publishable key isn't `pk_test_…`, and only writes metadata for users whose
+every identifier is a Clerk test email or phone (below). Testing-token values
+are redacted from the reported console errors.
 
 Test credentials (dev instances only — nothing is actually sent):
 - email: any `…+clerk_test@example.com`, code `424242`
@@ -111,12 +121,19 @@ identifier hiding the password field ("Text me a code"), Google button
 opening `accounts.google.com`, and the `/sso-callback` page Google returns to
 (showing "Finishing Google sign-in", not "Unmatched Route").
 
-With a token: email sign-up → verify → onboarding step 1 → "Skip for now"
-→ home (builds without onboarding go straight home; the note says which).
-Every later sign-in also passes through onboarding, because a skip only lasts
-for that session; the notes show "via onboarding step 1 (skipped)" each time; wrong password; email +
-password sign-in; phone sign-up with no password (same onboarding handling); phone sign-in with a wrong
-then correct code; forgot-password reset and sign-in with the new password.
+With the key: email sign-up → verify → onboarding step 1 → marked onboarded
+→ home (the note says "via onboarding step 1 (marked onboarded via Clerk
+API)"); wrong password; email + password sign-in, which goes straight home and
+then screenshots Home and opens the Play, Health and Community tabs. Each tab
+is opened by its tab-bar link (`a[href="/play"]` etc.); the step waits for the
+URL and for the page to settle and checks nothing on the screen itself, so it
+keeps working as real screens replace the placeholders. Screenshots:
+(`NN-home.png`, `NN-tab-play.png`, `NN-tab-health.png`,
+`NN-tab-community.png`, numbered like that step; builds before the tabs
+existed note "pre-#13 build" instead); `/sso-callback` with an unfinished
+account (onboarding metadata cleared first) going to onboarding; phone sign-up
+with no password (same onboarding handling); phone sign-in with a wrong then
+correct code; forgot-password reset and sign-in with the new password.
 
 Not covered (needs a device/simulator or real accounts): completing Google
 OAuth, the native iOS/Android paths (`useSSO` browser warm-up, SF/Material
@@ -128,18 +145,25 @@ symbols), real SMS delivery, the "keep me logged in" checkbox (not wired).
   but hidden; a plain `getByPlaceholder(...).first()` matches the hidden one
   and times out. Every locator in the script filters `{ visible: true }` —
   keep that when adding steps.
-- **Steps start fresh.** Each step reloads `/`, skips onboarding and signs
-  out if needed, then goes to sign-in (via "Log in" when `/` lands on
+- **Steps start fresh.** Each step reloads `/`, gets past onboarding and
+  signs out if needed, then goes to sign-in (via "Log in" when `/` lands on
   sign-up), so one failure doesn't cascade.
-- **Onboarding is skipped, not completed.** "Continue" needs the
-  `player-profile` edge function, which may not be deployed where
-  `EXPO_PUBLIC_SUPABASE_URL` points; "Skip for now" only writes Clerk
-  `unsafeMetadata`. Test the Continue path against a local stack
-  (`supabase functions serve player-profile`) separately.
-- **Home is the dashboard**, detected by its "Recent matches" heading
-  (older builds: the template's "Sign out" row). Sign-out sits behind the
-  dashboard's options menu (a browser `confirm` on web), so the script signs
-  out with `window.Clerk.signOut()` instead of the UI.
+- **Onboarding is marked done, not filled in.** The app treats onboarding as
+  done when Clerk `publicMetadata.onboardingCompletedAt` is set
+  (`useOnboarding()`, keys in `mobile/src/constants/profile.ts`). Normally the
+  `player-profile` edge function sets it (and `profileCompletedAt`), but that
+  may not be deployed where `EXPO_PUBLIC_SUPABASE_URL` points. So on
+  onboarding step 1 the script `PATCH`es `/v1/users/{id}/metadata` with both
+  keys, calls `window.Clerk.user.reload()`, and reloads `/`. No Supabase row
+  is created, so Home shows the rating as unavailable/calibrating. If those
+  keys are renamed, update `ONBOARDING_KEYS` in the script. Test the
+  Continue path against a local stack (`supabase functions serve
+  player-profile`) separately.
+- **Home is the dashboard**, detected by its header's "Account options"
+  button, which renders before the rating loads ("Recent matches" only shows
+  once there are matches; older builds: the template's "Sign out" row).
+  Sign-out sits behind that options menu (a browser `confirm` on web), so the
+  script signs out with `window.Clerk.signOut()` instead of the UI.
 - **A Supabase 401 in `consoleErrors`** is the dashboard's rating fetch:
   the Supabase project isn't accepting Clerk session tokens (Clerk
   third-party auth not enabled there). Home still renders, with the rating
