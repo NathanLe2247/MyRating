@@ -1,5 +1,9 @@
 // English strings for the mobile app. Import as `en` and reference nested
 // keys from screens/components instead of inlining literal UI text.
+
+/** Joins inline parts of a line, e.g. "w/ Sam · 4.1 → 4.2". */
+const SEPARATOR = ' · ';
+
 export const en = {
   brand: 'myRating',
   // Keyed by route name (see AppTabNames).
@@ -11,10 +15,6 @@ export const en = {
   },
   comingSoon: {
     tag: 'Coming soon',
-    play: {
-      title: 'Play',
-      body: 'Find courts near you and queue up for rated matches.',
-    },
     community: {
       title: 'Community',
       body: 'Chat with players at your courts and see who’s around to play.',
@@ -233,7 +233,7 @@ export const en = {
       partner: (name: string) => `w/ ${name}`,
       versus: 'vs.',
       opponentsJoin: ' & ',
-      separator: ' · ',
+      separator: SEPARATOR,
       ratingChange: (before: string, after: string) => `${before} → ${after}`,
     },
     loadFailed: 'Couldn’t load your rating.',
@@ -245,6 +245,39 @@ export const en = {
       openSettings: 'Open settings',
     },
   },
+  play: {
+    brand: 'myRating',
+    title: 'Play',
+    courts: {
+      title: 'Courts near you',
+      nearYou: (count: number) => `${count} near you`,
+      courtCount: (count: number) => `${count} courts`,
+      indoorCount: (count: number) => `${count} indoor`,
+      distance: (miles: string) => `${miles} mi away`,
+      directions: 'Directions',
+      directionsWithDistance: (miles: string) => `Directions${SEPARATOR}${miles} mi`,
+      checkIn: 'Check in',
+      bookCourt: 'Book court',
+      a11y: {
+        directions: (court: string) => `Directions to ${court}`,
+        checkIn: (court: string) => `Check in at ${court}`,
+        bookCourt: (court: string) => `Book a court at ${court}`,
+        comingSoon: 'Coming soon',
+      },
+      emptyTag: 'Radar',
+      emptyTitle: 'No courts yet',
+      emptyBody: 'Courts near you will show up here once the court directory is live.',
+    },
+    tournaments: {
+      title: 'Upcoming tournaments',
+      /** Shown when a tournament's start date is missing or unparseable. */
+      dateTbd: 'Date TBD',
+      spotsLeft: (count: number) => `${count} spots left`,
+      emptyTag: 'Schedule',
+      emptyTitle: 'No tournaments yet',
+      emptyBody: 'Upcoming tournaments near you will be listed here.',
+      },
+    },
   health: {
     brand: 'myRating',
     title: 'Health',
