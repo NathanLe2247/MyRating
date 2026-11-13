@@ -13,9 +13,6 @@ export const en = {
     health: 'Health',
     community: 'Community',
   },
-  comingSoon: {
-    tag: 'Coming soon',
-  },
   auth: {
     fields: {
       passwordLabel: 'Password',
