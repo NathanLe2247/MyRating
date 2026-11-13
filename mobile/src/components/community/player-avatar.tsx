@@ -25,6 +25,8 @@ export function PlayerAvatar({ name, photoUrl, size, online, shaded }: PlayerAva
       <View style={[styles.circle, frame]}>
         {showPhoto ? (
           <Image
+            // One Image per URL, so a late error from the old load can't reach the new URL's handler.
+            key={photoUrl}
             source={{ uri: photoUrl }}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
