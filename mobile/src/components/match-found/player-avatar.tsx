@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { isR2PublicUrl } from '@/config/r2';
@@ -11,11 +12,24 @@ type PlayerAvatarProps = {
 };
 
 // Round player photo; falls back to the player's initials when there's no
-// photo, or when the URL isn't in the app's R2 bucket (never load arbitrary
-// remote images).
+// photo, when the photo fails to load, or when the URL isn't in the app's R2
+// bucket (never load arbitrary remote images).
 export function PlayerAvatar({ name, uri, size }: PlayerAvatarProps) {
   const frame = { width: size, height: size, borderRadius: size / 2 };
-  if (uri && isR2PublicUrl(uri)) return <Image source={{ uri }} style={[styles.base, frame]} contentFit="cover" />;
+  // Remember which URL failed so a new uri gets a fresh attempt.
+  const [failedUrl, setFailedUrl] = useState<string>();
+  if (uri && uri !== failedUrl && isR2PublicUrl(uri)) {
+    return (
+      <Image
+        // One Image per URL, so a late error from the old load can't reach the new URL's handler.
+        key={uri}
+        source={{ uri }}
+        style={[styles.base, frame]}
+        contentFit="cover"
+        onError={() => setFailedUrl(uri)}
+      />
+    );
+  }
 
   const initials = name
     .split(/\s+/)
