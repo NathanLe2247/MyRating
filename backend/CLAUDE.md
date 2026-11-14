@@ -42,6 +42,12 @@ issuing its own sessions.
   (`login-method.ts`, `r2.ts` for the R2 client and avatar cleanup).
 - `supabase/tests/` — pgTAP tests, run against the local stack with
   `supabase test db --local`.
+- Courts data is split in two. Real catalog courts (8 Montgomery County, MD
+  parks with pickleball) are inserted by the migration
+  `20261114120000_courts_silver_spring.sql`, so they reach the hosted project.
+  `supabase/seed.sql` is local only (`db reset` loads it, `db push` never
+  does) and holds just an inactive test court. `tests/courts_seed.test.sql`
+  checks both by their fixed ids.
 - `django/` — a separate Django service. **Ownership boundary vs. the edge
   functions above is not yet decided** — see `django/CLAUDE.md`. Don't
   assume it owns a piece of logic without confirming; check there first
