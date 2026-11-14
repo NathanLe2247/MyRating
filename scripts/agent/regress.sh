@@ -152,7 +152,19 @@ if [ $FULL = 1 ] || touched 'shared/|backend/supabase/migrations/'; then check_n
 if touched 'backend/supabase/functions/'; then
   if command -v deno >/dev/null; then
     for f in $(echo "$CHANGED" | grep -E '^backend/supabase/functions/.*\.ts$'); do
-      [ -f "$f" ] && run "deno check $f" . deno check "$f"
+      [ -f "$f" ] || continue
+      # A function with its own deno.json (e.g. the import map for shared/,
+      # see backend/CLAUDE.md) is checked with it, as deploy and serve do;
+      # Deno only discovers config from the cwd, which is the repo root here.
+      cfg_dir=$(dirname "$f")
+      while [ ! -f "$cfg_dir/deno.json" ] && [ "$cfg_dir" != backend/supabase/functions ] && [ "$cfg_dir" != . ]; do
+        cfg_dir=$(dirname "$cfg_dir")
+      done
+      if [ -f "$cfg_dir/deno.json" ]; then
+        run "deno check $f" . deno check --config "$cfg_dir/deno.json" "$f"
+      else
+        run "deno check $f" . deno check "$f"
+      fi
     done
   else
     result SKIP "edge functions: deno not installed"

@@ -425,3 +425,9 @@ verify_jwt = false
 [functions.clerk-webhook]
 enabled = true
 verify_jwt = false
+
+# Verifies Clerk session tokens itself with CLERK_SECRET_KEY, like
+# player-profile. Imports shared/ through functions/matchmaking/deno.json.
+[functions.matchmaking]
+enabled = true
+verify_jwt = false
