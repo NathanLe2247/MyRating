@@ -19,3 +19,13 @@ export const CourtSchema = z.object({
   created_at: TimestampSchema,
 });
 export type Court = z.infer<typeof CourtSchema>;
+
+/**
+ * A row of the `public.nearby_courts(lat, lng, radius_m, max_results)` RPC:
+ * a court plus its distance in metres from the requested point. Rows arrive
+ * nearest first, and only active courts are returned.
+ */
+export const NearbyCourtSchema = CourtSchema.extend({
+  distance_m: z.number().nonnegative(),
+});
+export type NearbyCourt = z.infer<typeof NearbyCourtSchema>;

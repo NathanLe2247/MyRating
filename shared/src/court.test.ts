@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { GeoJsonPointSchema } from './common.ts';
-import { CourtSchema } from './court.ts';
+import { CourtSchema, NearbyCourtSchema } from './court.ts';
 
 // Shaped like a public.courts_geojson row from PostgREST.
 const validCourt = {
@@ -65,6 +65,29 @@ describe('CourtSchema', () => {
   it('rejects a missing column', () => {
     const { is_active: _, ...row } = validCourt;
     assert.equal(CourtSchema.safeParse(row).success, false);
+  });
+});
+
+describe('NearbyCourtSchema', () => {
+  const nearby = { ...validCourt, distance_m: 998.6 };
+
+  it('parses a nearby_courts row', () => {
+    assert.deepEqual(NearbyCourtSchema.parse(nearby), nearby);
+  });
+
+  it('accepts distance 0 (court at the requested point)', () => {
+    assert.equal(NearbyCourtSchema.safeParse({ ...nearby, distance_m: 0 }).success, true);
+  });
+
+  it('rejects a negative, missing, or non-numeric distance', () => {
+    assert.equal(NearbyCourtSchema.safeParse({ ...nearby, distance_m: -1 }).success, false);
+    assert.equal(NearbyCourtSchema.safeParse(validCourt).success, false);
+    assert.equal(NearbyCourtSchema.safeParse({ ...nearby, distance_m: '998.6' }).success, false);
+  });
+
+  it('applies the CourtSchema rules to the court columns', () => {
+    const bad = { ...nearby, location: { type: 'Point', coordinates: [0, 91] } };
+    assert.equal(NearbyCourtSchema.safeParse(bad).success, false);
   });
 });
 
