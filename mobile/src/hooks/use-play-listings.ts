@@ -1,15 +1,14 @@
 import type { PlayListings } from '@/types/play';
 
-const NO_LISTINGS: PlayListings = { courts: [], tournaments: [] };
+const NO_LISTINGS: PlayListings = { tournaments: [] };
 
 /**
- * Courts and tournaments for the Play tab.
+ * Tournaments for the Play tab. (Its courts come from `useNearbyCourts`.)
  *
- * TODO: there's no courts or tournaments table or endpoint yet, so this
- * always returns empty lists and the screen shows its empty states. Once
- * `Court`/`Tournament` exist in `shared/` and the backend serves them, query
- * them here (nearby courts per `agent/skills/courts-catalog`) and map them
- * into the card display models. Never return placeholder venues.
+ * TODO: there's no tournaments table or endpoint yet, so this always returns
+ * an empty list and the screen shows its empty state. Once `Tournament`
+ * exists in `shared/` and the backend serves it, query it here and map it
+ * into the card display model. Never return placeholder events.
  */
 export function usePlayListings(): PlayListings {
   return NO_LISTINGS;

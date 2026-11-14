@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AuthButton } from '@/components/auth/auth-button';
@@ -5,16 +6,30 @@ import { BrandIcon } from '@/components/brand-icon';
 import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 import { en } from '@/i18n/en';
 
+type LocationPromptCopy = {
+  title: string;
+  body: string;
+  allow: string;
+  openSettings: string;
+};
+
 type LocationPromptProps = {
   /** False once the OS won't show the dialog again — the button opens Settings instead. */
   canAskAgain: boolean;
   onPress: () => void;
+  /** Defaults to Home's wording. */
+  copy?: LocationPromptCopy;
+  /** Extra actions under the button, e.g. a fallback without location. */
+  children?: ReactNode;
 };
 
-const copy = en.home.location;
-
-// Shown on Home when location access was denied.
-export function LocationPrompt({ canAskAgain, onPress }: LocationPromptProps) {
+// Shown on Home and in the courts list when location access was denied.
+export function LocationPrompt({
+  canAskAgain,
+  onPress,
+  copy = en.home.location,
+  children,
+}: LocationPromptProps) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -31,6 +46,7 @@ export function LocationPrompt({ canAskAgain, onPress }: LocationPromptProps) {
         onPress={onPress}
         variant="secondary"
       />
+      {children}
     </View>
   );
 }

@@ -27,6 +27,8 @@ export const en = {
       hidePassword: 'Hide password',
     },
     or: 'Or',
+    /** Footer link from sign-up / log in back to the public courts screen. */
+    browseCourts: 'Browse courts near you',
     signIn: {
       title: 'Welcome back',
       subtitle: 'Log in to your myRating account to queue for matches and check your rating.',
@@ -384,8 +386,8 @@ export const en = {
         comingSoon: 'Coming soon',
       },
       emptyTag: 'Radar',
-      emptyTitle: 'No courts yet',
-      emptyBody: 'Courts near you will show up here once the court directory is live.',
+      emptyTitle: 'No courts nearby',
+      emptyBody: (miles: string) => `There are no courts in our directory within ${miles} miles yet.`,
     },
     tournaments: {
       title: 'Upcoming tournaments',
@@ -395,6 +397,33 @@ export const en = {
       emptyTag: 'Schedule',
       emptyTitle: 'No tournaments yet',
       emptyBody: 'Upcoming tournaments near you will be listed here.',
+    },
+  },
+  // Nearby courts list (public courts screen and Play) and the signed-out
+  // courts screen around it. Card and empty-state copy is under `play.courts`.
+  courts: {
+    title: 'Courts near you',
+    asking: 'Asking for your location…',
+    loading: 'Finding courts near you…',
+    loadError: "Couldn't load courts. Check your connection and try again.",
+    denied: {
+      title: 'Location is off',
+      body: 'myRating uses your location only to find courts near you. Turn it on in Settings, or browse courts in Burtonsville, MD instead.',
+      allow: 'Allow location',
+      openSettings: 'Open settings',
+      showDefaultArea: 'Browse Burtonsville, MD',
+    },
+    defaultArea: {
+      title: 'Courts in Burtonsville, MD',
+      body: 'Turn on location to see courts near you.',
+    },
+    signedOut: {
+      tagline: 'Find a court. Get rated.',
+      ctaTitle: 'Track your rating',
+      ctaBody: 'Sign up to join the queue, play rated matches, and climb the leaderboard.',
+      signUp: 'Sign up',
+      logInPrompt: 'Already have an account?',
+      logIn: 'Log in',
     },
   },
   health: {

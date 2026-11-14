@@ -69,7 +69,7 @@ a foreground run can be cut off mid-way.
 
 ### Account flows need the dev Clerk secret key
 
-Without `CLERK_SECRET_KEY` the script runs the 11 no-account checks and marks
+Without `CLERK_SECRET_KEY` the script runs the 13 no-account checks and marks
 the 7 account flows `skip`. The key does two jobs:
 
 - **Bot protection.** Sign-up is behind a Cloudflare "Verify you are human"
@@ -112,8 +112,14 @@ git -C /Users/quan/myRating worktree remove --force $RUN
 
 ## What it covers
 
-No account needed: where a signed-out visit lands (sign-up on current
-builds, sign-in on builds before onboarding; the note says which),
+No account needed: where a signed-out visit lands (the public "Courts near
+you" screen on current builds, detected by its "Find a court. Get rated."
+tagline; sign-up or sign-in on builds before #70, noted as such). On the
+courts screen it waits for the nearby list (or its "No courts nearby" empty
+state) at a mocked location, then checks that "Sign up" opens sign-up,
+sign-up's "Browse courts near you" returns, and "Log in" opens sign-in. It
+also checks that signed-out `/play` and `/match/found` redirect to sign-up.
+Then:
 sign-in ↔ sign-up ↔ forgot-password links (including the
 `dismissTo` back links), sign-up phone/email toggle and phone formatting,
 log-in disabled until filled, unknown email/phone/reset errors, phone
@@ -146,8 +152,15 @@ symbols), real SMS delivery, the "keep me logged in" checkbox (not wired).
   and times out. Every locator in the script filters `{ visible: true }` —
   keep that when adding steps.
 - **Steps start fresh.** Each step reloads `/`, gets past onboarding and
-  signs out if needed, then goes to sign-in (via "Log in" when `/` lands on
-  sign-up), so one failure doesn't cascade.
+  signs out if needed, then goes to sign-in (via the "Log in" link when `/`
+  lands on the courts screen or sign-up), so one failure doesn't cascade.
+- **Mocked location.** The browser context grants geolocation at a public
+  anchor, Columbia Local Park in Burtonsville, MD (39.1022, -76.9441), so the courts screen never waits on a
+  permission prompt. The list reads the `nearby_courts` RPC with the anon key
+  at `EXPO_PUBLIC_SUPABASE_URL`; with no active courts within 25 km there it
+  shows the empty state, which still passes (the note says which). If the
+  RPC fails, the screen shows "Couldn't load courts" and the landing step
+  fails.
 - **Onboarding is marked done, not filled in.** The app treats onboarding as
   done when Clerk `publicMetadata.onboardingCompletedAt` is set
   (`useOnboarding()`, keys in `mobile/src/constants/profile.ts`). Normally the

@@ -4,9 +4,14 @@ import { BrandIcon } from '@/components/brand-icon';
 import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 import { en } from '@/i18n/en';
 
+type PlayHeaderProps = {
+  /** Line under the brand; defaults to the tab name. */
+  title?: string;
+};
+
 // Brand mark with the tab name under it. The design's streak chip and avatar
 // are left out until there's match-history and profile data to back them.
-export function PlayHeader() {
+export function PlayHeader({ title = en.play.title }: PlayHeaderProps) {
   return (
     <View style={styles.row}>
       <View style={styles.logo}>
@@ -18,7 +23,7 @@ export function PlayHeader() {
           <View style={styles.dot} />
         </View>
         <Text style={styles.title} accessibilityRole="header">
-          {en.play.title}
+          {title}
         </Text>
       </View>
     </View>

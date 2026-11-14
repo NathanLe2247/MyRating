@@ -1,19 +1,14 @@
-import { useAuth } from '@clerk/expo';
 import { Redirect } from 'expo-router';
 
 import AppTabs from '@/components/app-tabs';
-import { useOnboarding } from '@/hooks/use-onboarding';
+import { useSignedInGate } from '@/hooks/use-route-gate';
 
+// Signed out: `/` goes to the public courts screen, other tabs to sign-up.
+// The tab bar only renders for signed-in, onboarded players.
 export default function HomeLayout() {
-  const { isLoaded, isSignedIn } = useAuth();
-  const onboarding = useOnboarding();
+  const gate = useSignedInGate();
 
-  if (!isLoaded) return null;
-  if (!isSignedIn) return <Redirect href="/(auth)/sign-up" />;
-  if (!onboarding.isLoaded) return null;
-  // Onboarding is required: accounts (email, phone, or Google) land on it
-  // until they finish both steps.
-  if (onboarding.needsOnboarding) return <Redirect href={onboarding.nextStep} />;
-
+  if (gate.status === 'pending') return null;
+  if (gate.status === 'redirect') return <Redirect href={gate.href} />;
   return <AppTabs />;
 }

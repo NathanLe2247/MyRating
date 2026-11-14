@@ -6,7 +6,7 @@ import { PlayListings } from '@/components/play/play-listings';
 import { PlaySection } from '@/components/play/play-section';
 import { TournamentCard } from '@/components/play/tournament-card';
 import { en } from '@/i18n/en';
-import type { CourtCardData, TournamentCardData } from '@/types/play';
+import type { CourtCardData, NearbyCourtsState, TournamentCardData } from '@/types/play';
 
 const copy = en.play;
 
@@ -54,9 +54,11 @@ const tournament: TournamentCardData = {
   spotsLeft: 6,
 };
 
+const loaded = (courts: CourtCardData[]): NearbyCourtsState => ({ status: 'loaded', courts });
+
 describe('PlayListings', () => {
   it('shows both empty states when there are no courts or tournaments', () => {
-    render(<PlayListings courts={[]} tournaments={[]} />);
+    render(<PlayListings courts={loaded([])} tournaments={[]} />);
 
     expect(screen.getByText(copy.courts.title)).toBeOnTheScreen();
     expect(screen.getByText(copy.courts.emptyTitle)).toBeOnTheScreen();
@@ -66,7 +68,7 @@ describe('PlayListings', () => {
   });
 
   it('lists courts and tournaments when loaded', () => {
-    render(<PlayListings courts={[outdoor, indoor]} tournaments={[tournament]} />);
+    render(<PlayListings courts={loaded([outdoor, indoor])} tournaments={[tournament]} />);
 
     expect(screen.getByText(copy.courts.nearYou(2))).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: outdoor.name })).toBeOnTheScreen();
@@ -78,14 +80,14 @@ describe('PlayListings', () => {
   });
 
   it('keeps one empty state when only the other section has data', () => {
-    render(<PlayListings courts={[]} tournaments={[tournament]} />);
+    render(<PlayListings courts={loaded([])} tournaments={[tournament]} />);
 
     expect(screen.getByText(copy.courts.emptyTitle)).toBeOnTheScreen();
     expect(screen.queryByText(copy.tournaments.emptyTitle)).toBeNull();
   });
 
   it('disables the card actions until detail screens exist, but keeps cards tappable', () => {
-    render(<PlayListings courts={[outdoor]} tournaments={[tournament]} />);
+    render(<PlayListings courts={loaded([outdoor])} tournaments={[tournament]} />);
 
     expect(
       screen.getByRole('button', { name: copy.courts.a11y.directions(outdoor.name) }),
@@ -134,6 +136,14 @@ describe('CourtCard', () => {
     ).toBeOnTheScreen();
     expect(screen.queryByText(copy.courts.checkIn)).toBeNull();
     expect(screen.queryByText(copy.courts.bookCourt)).toBeNull();
+  });
+
+  it('leaves out the count badge and neighborhood when they are unknown', () => {
+    render(<CourtCard court={{ id: 'c4', name: 'Minimal Court', distanceMiles: '0.4', tags: [] }} />);
+
+    expect(screen.getByText(copy.courts.distance('0.4'))).toBeOnTheScreen();
+    expect(screen.queryByText(/courts$|indoor$/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Minimal Court' })).toBeOnTheScreen();
   });
 
   // The test renderer drops empty strings, so these can't reproduce the native

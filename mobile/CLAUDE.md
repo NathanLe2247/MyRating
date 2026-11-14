@@ -37,6 +37,26 @@ already configured in `tsconfig.json`.
 `create-expo-app`'s default (Expo Router) template. The template's placeholder
 screens are gone; `app/(home)/` holds the tab screens.
 
+### Route groups and signed-out access
+
+- `app/(public)/` — the only screens that work without an account. Today
+  that's `courts.tsx` ("Courts near you", `/courts`), which reads courts with
+  the anon key via `useNearbyCourts`. Its layout sends signed-in players to
+  Play, which shows the same list.
+- `app/(auth)/` — sign-up, sign-in, forgot password. Signed-in users are
+  sent to `/`.
+- `app/(home)/` (tabs), `app/match/`, `app/onboarding/` — need an account.
+  The tab and match layouts use `useSignedInGate` (`src/hooks/use-route-gate.ts`):
+  signed out, `/` redirects to `/courts` and every other route to sign-up
+  (`signedOutRedirect` in `src/constants/routes.ts`); signed in, onboarding
+  is enforced. Gate in the layout, before any screen renders, so no user or
+  rating data reaches a signed-out session.
+- A new public screen goes in `(public)/` and must only read data the anon
+  key can see. Anything else goes behind the signed-in gate.
+- Demo location: set `EXPO_PUBLIC_DEMO_LAT` / `EXPO_PUBLIC_DEMO_LNG` (see
+  `.env.example`, `src/config/demo-location.ts`) and `useNearbyCourts` uses
+  that point as the user's location, with no permission prompt or GPS.
+
 ## Testing
 
 Jest via `jest-expo` with React Native Testing Library. `npm test` runs it;
