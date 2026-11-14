@@ -1,9 +1,9 @@
 import { createClerkClient, verifyToken } from 'npm:@clerk/backend@3';
 
+import { type LoginMethod, loginMethodFor } from '../_shared/login-method.ts';
+
 const secretKey = Deno.env.get('CLERK_SECRET_KEY')!;
 const clerk = createClerkClient({ secretKey });
-
-export type LoginMethod = 'phone' | 'email' | 'both';
 
 export type ClerkIdentity = {
   clerkUserId: string;
@@ -12,6 +12,8 @@ export type ClerkIdentity = {
   email: string | null;
   phoneNumber: string | null;
   loginMethod: LoginMethod;
+  /** Clerk's updated_at for this data, ISO. Stamps public.users.clerk_updated_at. */
+  clerkUpdatedAt: string;
 };
 
 /**
@@ -31,7 +33,11 @@ export async function authenticate(req: Request): Promise<string | null> {
   }
 }
 
-/** What Clerk already knows about the user, read server-side so it can't be spoofed. */
+/**
+ * What Clerk already knows about the user, read server-side so it can't be
+ * spoofed. Throws for a deleted user (Clerk answers 404), so a session token
+ * that outlived its user can't recreate their row.
+ */
 export async function getClerkIdentity(clerkUserId: string): Promise<ClerkIdentity> {
   const user = await clerk.users.getUser(clerkUserId);
   const email = user.primaryEmailAddress?.emailAddress ?? null;
@@ -43,8 +49,8 @@ export async function getClerkIdentity(clerkUserId: string): Promise<ClerkIdenti
     lastName: user.lastName,
     email,
     phoneNumber,
-    // Google sign-in counts as email (see public.users.login_method).
-    loginMethod: email && phoneNumber ? 'both' : phoneNumber ? 'phone' : 'email',
+    loginMethod: loginMethodFor(email, phoneNumber),
+    clerkUpdatedAt: new Date(user.updatedAt).toISOString(),
   };
 }
 
