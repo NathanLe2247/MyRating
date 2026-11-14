@@ -14,3 +14,12 @@ Types, Zod schemas, and constants used by `frontend/`, `mobile/`, and
 - Changing a shape here is a breaking change for every consumer — update
   `backend/supabase/migrations/` in the same PR, and check `frontend/` and
   `mobile/` usages before merging.
+
+## Shapes and where to read them
+
+- `Court` / `NearbyCourt` (`src/court.ts`) — read courts from the
+  `public.courts_geojson` view or the `public.nearby_courts(lat, lng,
+  radius_m, max_results)` RPC, never `public.courts` directly (PostgREST
+  returns its `location` as WKB hex, which won't parse as `GeoJsonPoint`).
+  Only active courts are visible to clients. The shape is deliberately
+  minimal until the catalog is designed — see `agent/skills/courts-catalog`.
