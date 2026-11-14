@@ -150,8 +150,11 @@ cp mobile/.env.local "$T/mobile/" 2>/dev/null   # Clerk key for the smoke test
 ```
 
 1. **Regression:** `regress.sh --full` must exit 0. It covers every app, plus
-   a local `supabase db reset` when migrations changed. Only one gate runs at
-   a time because the local Supabase stack is shared.
+   a local `supabase db reset` (migrations + `seed.sql`) followed by the
+   pgTAP suite (`supabase test db --local`) when anything under
+   `backend/supabase/migrations/`, `seed.sql` or `tests/` changed. A failing
+   pgTAP test fails the gate. Only one gate runs at a time because the local
+   Supabase stack is shared.
 2. **Smoke:** if `mobile/` changed, run the `mobile-auth-smoke` skill against
    `$T`. It boots the app on web and drives the sign-in and sign-up flows, so
    it also catches a broken app shell. Look at the screenshots for any step
