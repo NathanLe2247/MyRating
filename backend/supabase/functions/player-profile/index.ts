@@ -1,7 +1,7 @@
 // Onboarding steps 1 ("Create your profile") and 2 ("What's your pickleball
 // rating?"). All routes require a Clerk session token:
 //
-//   POST /player-profile                    save the profile (upserts public.users)
+//   POST /player-profile                    save the profile (writes public.users)
 //   POST /player-profile/username           { username } -> { available }
 //   POST /player-profile/avatar-upload-url  { contentType } -> { uploadUrl, key, publicUrl }
 //   POST /player-profile/rating-source      { source } -> finishes onboarding
@@ -84,25 +84,33 @@ async function saveProfile(clerkUserId: string, body: Record<string, unknown>) {
   const identity = await getClerkIdentity(clerkUserId);
   const now = new Date().toISOString();
 
+  // Clerk-owned columns go through the same guarded write as clerk-webhook:
+  // it inserts the row if needed, only overwrites when this Clerk read is
+  // newer than what's stored (advancing clerk_updated_at), and refuses a
+  // deleted (tombstoned) user.
+  const { data: sync, error: syncError } = await db.rpc('clerk_sync_user', {
+    p_clerk_user_id: identity.clerkUserId,
+    p_first_name: identity.firstName,
+    p_last_name: identity.lastName,
+    p_email: identity.email,
+    p_phone_number: identity.phoneNumber,
+    p_login_method: identity.loginMethod,
+    p_clerk_updated_at: identity.clerkUpdatedAt,
+  });
+  if (syncError) throw syncError;
+  if ((sync as { outcome: string } | null)?.outcome === 'deleted') return json(410, { error: 'user_deleted' });
+
   const { data, error } = await db
     .from('users')
-    .upsert(
-      {
-        clerk_user_id: identity.clerkUserId,
-        first_name: identity.firstName,
-        last_name: identity.lastName,
-        email: identity.email,
-        phone_number: identity.phoneNumber,
-        login_method: identity.loginMethod,
-        username: input.username,
-        date_of_birth: input.dateOfBirth,
-        dominant_hand: input.dominantHand,
-        avatar_key: input.avatarKey,
-        profile_completed_at: now,
-        updated_at: now,
-      },
-      { onConflict: 'clerk_user_id' },
-    )
+    .update({
+      username: input.username,
+      date_of_birth: input.dateOfBirth,
+      dominant_hand: input.dominantHand,
+      avatar_key: input.avatarKey,
+      profile_completed_at: now,
+      updated_at: now,
+    })
+    .eq('clerk_user_id', identity.clerkUserId)
     .select('id')
     .single();
 
@@ -112,7 +120,7 @@ async function saveProfile(clerkUserId: string, body: Record<string, unknown>) {
     throw error;
   }
 
-  // After the DB write: if this fails the client retries, and the upsert is idempotent.
+  // After the DB write: if this fails the client retries, and both writes are idempotent.
   await markProfileCompleted(clerkUserId, now);
 
   // No PII in logs — just what was recorded, for tracing onboarding.

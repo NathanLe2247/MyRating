@@ -25,15 +25,19 @@ issuing its own sessions.
   availability, R2 avatar upload URLs, and saving the profile to
   `public.users` (plus Clerk `publicMetadata.profileCompletedAt`, which gates
   onboarding in the app). Verifies Clerk tokens itself (`verify_jwt = false`).
+  Writes the Clerk-owned columns through `public.clerk_sync_user`, like
+  clerk-webhook, and only the player-entered ones directly.
 - `supabase/functions/clerk-webhook/` — mirrors Clerk-owned fields (names,
   email, phone, `login_method`) into `public.users` on user.created/updated
-  through `public.clerk_sync_user`, which skips events whose Clerk
-  `updated_at` isn't newer than `users.clerk_updated_at` (only user.created
-  may insert). On user.deleted it hard-deletes the row, then the player's R2
-  avatars. Svix-signature verified (`verify_jwt = false`). Never writes
+  through `public.clerk_sync_user`, which inserts a missing row, skips
+  events whose Clerk `updated_at` isn't newer than `users.clerk_updated_at`,
+  and refuses users tombstoned in `deleted_clerk_users`. On user.deleted,
+  `public.clerk_delete_user` tombstones the id and hard-deletes the row in
+  one transaction, then the player's R2 avatars are removed.
+  Svix-signature verified (`verify_jwt = false`). Never writes
   player-entered fields. Logic is in `handler.ts` (tested by
-  `handler.test.ts`: `deno test supabase/functions/clerk-webhook/`);
-  `index.ts` only wires env, the DB and R2.
+  `handler.test.ts`: `deno test --allow-env supabase/functions/clerk-webhook/
+  supabase/functions/_shared/`); `index.ts` only wires env, the DB and R2.
 - `supabase/functions/_shared/` — helpers imported by more than one function
   (`login-method.ts`, `r2.ts` for the R2 client and avatar cleanup).
 - `supabase/tests/` — pgTAP tests, run against the local stack with
@@ -55,7 +59,10 @@ before. To redeploy without a code change, run the workflow manually
 ## Conventions
 
 - **User deletion is a hard delete.** When Clerk deletes a user,
-  clerk-webhook deletes their `public.users` row (and their R2 avatars).
+  clerk-webhook deletes their `public.users` row (and their R2 avatars) and
+  records a PII-free tombstone in `deleted_clerk_users` so late events can't
+  recreate them. Anything that writes Clerk-owned `users` columns must go
+  through `public.clerk_sync_user`.
   Every table that references `users.id` must declare `ON DELETE CASCADE`;
   without it the delete fails and the webhook keeps retrying.
 - Row shapes must match the Zod schemas in `shared/` — migrations and
