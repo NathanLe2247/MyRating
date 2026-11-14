@@ -4,12 +4,15 @@ import { describe, it } from 'node:test';
 import {
   GAMES_TO_WIN_MATCH,
   MAX_GAMES,
+  MAX_QUEUE_RADIUS_M,
+  MatchGameRowSchema,
   MatchGameSchema,
   MatchResultSubmissionSchema,
   MatchSchema,
   POINTS_TO_WIN,
   QueueEntrySchema,
   RatingChangeSchema,
+  RatingHistoryRowSchema,
   matchWinner,
   WIN_BY,
 } from './index.ts';
@@ -43,6 +46,7 @@ describe('QueueEntrySchema', () => {
     radius_m: 5000,
     status: 'waiting',
     created_at: '2026-11-14T10:00:00+00:00',
+    updated_at: '2026-11-14T10:00:00+00:00',
   };
 
   it('parses a waiting entry', () => {
@@ -54,6 +58,18 @@ describe('QueueEntrySchema', () => {
       assert.equal(QueueEntrySchema.safeParse({ ...entry, status }).success, true);
     }
     assert.equal(QueueEntrySchema.safeParse({ ...entry, status: 'playing' }).success, false);
+  });
+
+  it('accepts the largest radius and rejects one past it', () => {
+    assert.equal(MAX_QUEUE_RADIUS_M, 100_000);
+    assert.equal(QueueEntrySchema.safeParse({ ...entry, radius_m: MAX_QUEUE_RADIUS_M }).success, true);
+    assert.equal(QueueEntrySchema.safeParse({ ...entry, radius_m: MAX_QUEUE_RADIUS_M + 1 }).success, false);
+  });
+
+  it('rejects a fractional radius and a missing updated_at', () => {
+    assert.equal(QueueEntrySchema.safeParse({ ...entry, radius_m: 1500.5 }).success, false);
+    const { updated_at: _, ...row } = entry;
+    assert.equal(QueueEntrySchema.safeParse(row).success, false);
   });
 
   it('rejects a non-positive radius and a non-uuid player', () => {
@@ -69,6 +85,9 @@ describe('MatchSchema', () => {
     player_b_id: PLAYER_B,
     court_id: null,
     status: 'proposed',
+    player_a_accepted_at: null,
+    player_b_accepted_at: null,
+    reported_by: null,
     created_at: '2026-11-14T10:00:00+00:00',
     updated_at: '2026-11-14T10:00:00Z',
   };
@@ -81,15 +100,33 @@ describe('MatchSchema', () => {
     for (const status of [
       'proposed',
       'accepted',
-      'declined',
-      'awaiting_result',
       'awaiting_confirmation',
       'confirmed',
       'disputed',
+      'declined',
+      'cancelled',
     ]) {
       assert.equal(MatchSchema.safeParse({ ...match, status }).success, true);
     }
+    assert.equal(MatchSchema.safeParse({ ...match, status: 'awaiting_result' }).success, false);
     assert.equal(MatchSchema.safeParse({ ...match, status: 'finished' }).success, false);
+  });
+
+  it('parses a reported match with both acceptances', () => {
+    const reported = {
+      ...match,
+      status: 'awaiting_confirmation',
+      player_a_accepted_at: '2026-11-14T10:01:00+00:00',
+      player_b_accepted_at: '2026-11-14T10:02:00+00:00',
+      reported_by: PLAYER_B,
+    };
+    assert.deepEqual(MatchSchema.parse(reported), reported);
+  });
+
+  it('rejects a reporter who is not in the match', () => {
+    const result = MatchSchema.safeParse({ ...match, reported_by: MATCH_ID });
+    assert.deepEqual(messages(result), ['Only a player in the match can report its result.']);
+    assert.deepEqual(result.error?.issues[0]?.path, ['reported_by']);
   });
 
   it('rejects a player matched against themselves', () => {
@@ -106,6 +143,7 @@ describe('MatchGameSchema', () => {
     [11, 0],
     [11, 9],
     [12, 10],
+    [13, 11],
     [15, 13],
     [13, 15],
   ] as const) {
@@ -119,12 +157,14 @@ describe('MatchGameSchema', () => {
     [10, 8, 'go to 11'],
     [11, 11, 'tied'],
     [15, 11, 'ends as soon as'],
+    [12, 9, 'ends as soon as'],
     [9, 12, 'ends as soon as'],
   ] as const) {
     it(`rejects ${a}–${b} with a clear message`, () => {
       const result = MatchGameSchema.safeParse(game(a, b));
       assert.equal(result.success, false);
-      assert.match(messages(result).join(' '), new RegExp(why));
+      assert.equal(messages(result).length, 1);
+      assert.match(messages(result)[0] ?? '', new RegExp(why));
     });
   }
 
@@ -155,10 +195,30 @@ describe('MatchResultSubmissionSchema', () => {
     assert.deepEqual(result.error?.issues[0]?.path, ['games', 2]);
   });
 
+  it('rejects a 3rd game after side b won 2–0', () => {
+    const result = MatchResultSubmissionSchema.safeParse(submission([7, 11], [9, 11], [11, 3]));
+    assert.deepEqual(messages(result), ["The match was already won 2–0; game 3 shouldn't have been played."]);
+    assert.deepEqual(result.error?.issues[0]?.path, ['games', 2]);
+  });
+
+  it('reports only the tied game, not a false 1–1 split', () => {
+    const result = MatchResultSubmissionSchema.safeParse(submission([11, 7], [11, 11]));
+    assert.equal(result.error?.issues.length, 1);
+    assert.match(messages(result)[0] ?? '', /tied/);
+    assert.deepEqual(result.error?.issues[0]?.path, ['games', 1]);
+  });
+
+  it('reports only the unfinished game, not a false "already won 2–0"', () => {
+    const result = MatchResultSubmissionSchema.safeParse(submission([11, 7], [11, 10], [11, 3]));
+    assert.equal(result.error?.issues.length, 1);
+    assert.match(messages(result)[0] ?? '', /won by 2/);
+    assert.deepEqual(result.error?.issues[0]?.path, ['games', 1]);
+  });
+
   it('rejects two winners (games split 1–1)', () => {
     const result = MatchResultSubmissionSchema.safeParse(submission([11, 7], [7, 11]));
     assert.equal(result.success, false);
-    assert.match(messages(result).join(' '), /split 1–1/);
+    assert.deepEqual(messages(result), ['Games are split 1–1; the match winner has to win more games.']);
   });
 
   it('rejects an invalid game and points at it', () => {
@@ -196,6 +256,22 @@ describe('RatingChangeSchema', () => {
     );
   });
 
+  it('accepts a delta within 0.005 of after - before', () => {
+    assert.equal(
+      RatingChangeSchema.safeParse({ match_id: MATCH_ID, player_id: PLAYER_A, before: 1500, after: 1523.45, delta: 23.455 })
+        .success,
+      true,
+    );
+  });
+
+  it('rejects a delta off by a cent', () => {
+    assert.equal(
+      RatingChangeSchema.safeParse({ match_id: MATCH_ID, player_id: PLAYER_A, before: 1500, after: 1523.45, delta: 23.44 })
+        .success,
+      false,
+    );
+  });
+
   it('rejects an inconsistent delta', () => {
     assert.equal(
       RatingChangeSchema.safeParse({ match_id: MATCH_ID, player_id: PLAYER_A, before: 1500, after: 1520, delta: 25 }).success,
@@ -224,5 +300,46 @@ describe('matchWinner', () => {
 
   it('throws on split games instead of guessing', () => {
     assert.throws(() => matchWinner({ games: [game(11, 7), game(7, 11)] }), /split 1–1/);
+  });
+});
+
+describe('MatchGameRowSchema', () => {
+  const row = { match_id: MATCH_ID, game_number: 1, player_a_points: 11, player_b_points: 9 };
+
+  it('parses a stored game', () => {
+    assert.deepEqual(MatchGameRowSchema.parse(row), row);
+  });
+
+  it('rejects game numbers outside 1–3', () => {
+    assert.equal(MatchGameRowSchema.safeParse({ ...row, game_number: 0 }).success, false);
+    assert.equal(MatchGameRowSchema.safeParse({ ...row, game_number: 4 }).success, false);
+    assert.equal(MatchGameRowSchema.safeParse({ ...row, game_number: 3 }).success, true);
+  });
+
+  it('applies the same score rules as MatchGame', () => {
+    const result = MatchGameRowSchema.safeParse({ ...row, player_b_points: 10 });
+    assert.equal(result.success, false);
+    assert.match(result.error?.issues[0]?.message ?? '', /won by 2/);
+  });
+});
+
+describe('RatingHistoryRowSchema', () => {
+  const row = {
+    match_id: MATCH_ID,
+    player_id: PLAYER_A,
+    before: 1500,
+    after: 1488.12,
+    delta: -11.88,
+    created_at: '2026-11-14T11:00:00+00:00',
+  };
+
+  it('parses a stored rating change', () => {
+    assert.deepEqual(RatingHistoryRowSchema.parse(row), row);
+  });
+
+  it('rejects a missing created_at and an inconsistent delta', () => {
+    const { created_at: _, ...noTime } = row;
+    assert.equal(RatingHistoryRowSchema.safeParse(noTime).success, false);
+    assert.equal(RatingHistoryRowSchema.safeParse({ ...row, delta: -12 }).success, false);
   });
 });
