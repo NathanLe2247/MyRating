@@ -165,6 +165,23 @@ export const MatchResultSubmissionSchema = z
   });
 export type MatchResultSubmission = z.infer<typeof MatchResultSubmissionSchema>;
 
+/** Which side of a match: `player_a_id` or `player_b_id`. */
+export type MatchSide = 'a' | 'b';
+
+/**
+ * The winner of a result that already passed `MatchResultSubmissionSchema`:
+ * the side that won more games. Throws if the games are split, which a parsed
+ * submission never is, so call it only on parsed data.
+ */
+export function matchWinner({ games }: Pick<MatchResultSubmission, 'games'>): MatchSide {
+  const aWins = games.filter((g) => g.player_a_points > g.player_b_points).length;
+  const bWins = games.length - aWins;
+  if (aWins === bWins) {
+    throw new Error(`matchWinner: games are split ${aWins}–${bWins}; parse with MatchResultSubmissionSchema first.`);
+  }
+  return aWins > bWins ? 'a' : 'b';
+}
+
 // ---------------------------------------------------------------------------
 // Rating change
 // ---------------------------------------------------------------------------
@@ -173,10 +190,12 @@ export type MatchResultSubmission = z.infer<typeof MatchResultSubmissionSchema>;
  * How a confirmed match moved one player's visible rating
  * (`player_ratings.rating`), for the result screen. Computed only by the
  * `ratings` edge function (agent/skills/ratings-engine); clients just display
- * it. `delta` is `after - before`.
+ * it. `match_id` is the confirmed match that caused it; `delta` is
+ * `after - before`.
  */
 export const RatingChangeSchema = z
   .object({
+    match_id: UuidSchema,
     player_id: UuidSchema,
     before: z.number(),
     after: z.number(),

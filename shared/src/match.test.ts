@@ -10,6 +10,7 @@ import {
   POINTS_TO_WIN,
   QueueEntrySchema,
   RatingChangeSchema,
+  matchWinner,
   WIN_BY,
 } from './index.ts';
 
@@ -177,21 +178,51 @@ describe('MatchResultSubmissionSchema', () => {
 
 describe('RatingChangeSchema', () => {
   it('parses a change whose delta is after - before', () => {
-    const change = { player_id: PLAYER_A, before: 1500, after: 1523.45, delta: 23.45 };
+    const change = { match_id: MATCH_ID, player_id: PLAYER_A, before: 1500, after: 1523.45, delta: 23.45 };
     assert.deepEqual(RatingChangeSchema.parse(change), change);
   });
 
   it('parses a loss', () => {
     assert.equal(
-      RatingChangeSchema.safeParse({ player_id: PLAYER_B, before: 1500, after: 1480, delta: -20 }).success,
+      RatingChangeSchema.safeParse({ match_id: MATCH_ID, player_id: PLAYER_B, before: 1500, after: 1480, delta: -20 }).success,
       true,
+    );
+  });
+
+  it('rejects a missing match_id', () => {
+    assert.equal(
+      RatingChangeSchema.safeParse({ player_id: PLAYER_A, before: 1500, after: 1520, delta: 20 }).success,
+      false,
     );
   });
 
   it('rejects an inconsistent delta', () => {
     assert.equal(
-      RatingChangeSchema.safeParse({ player_id: PLAYER_A, before: 1500, after: 1520, delta: 25 }).success,
+      RatingChangeSchema.safeParse({ match_id: MATCH_ID, player_id: PLAYER_A, before: 1500, after: 1520, delta: 25 }).success,
       false,
     );
+  });
+});
+
+describe('matchWinner', () => {
+  const winnerOf = (...games: [number, number][]) =>
+    matchWinner(MatchResultSubmissionSchema.parse(submission(...games)));
+
+  it('returns the side that won 2–0', () => {
+    assert.equal(winnerOf([11, 7], [12, 10]), 'a');
+    assert.equal(winnerOf([7, 11], [13, 15]), 'b');
+  });
+
+  it('returns the side that won 2–1, whatever the game order', () => {
+    assert.equal(winnerOf([7, 11], [11, 5], [12, 10]), 'a');
+    assert.equal(winnerOf([11, 7], [5, 11], [10, 12]), 'b');
+  });
+
+  it('returns the winner of a single-game result', () => {
+    assert.equal(winnerOf([9, 11]), 'b');
+  });
+
+  it('throws on split games instead of guessing', () => {
+    assert.throws(() => matchWinner({ games: [game(11, 7), game(7, 11)] }), /split 1–1/);
   });
 });

@@ -44,6 +44,9 @@ Types, Zod schemas, and constants used by `frontend/`, `mobile/`, and
     the match winner wins more games; nothing after a player reaches
     `GAMES_TO_WIN_MATCH` (2), so no 3rd game after 2–0. A single game is a
     valid result.
-  - `RatingChange` (`player_id`, `before`, `after`, `delta` = after −
-    before) — display-only; only the `ratings` edge function computes it
+  - `matchWinner(submission)` → `MatchSide` (`'a' | 'b'`): the winner of a
+    parsed result. Use it everywhere (backend and mobile) instead of
+    counting games yourself; it throws on split games, so parse first.
+  - `RatingChange` (`match_id`, `player_id`, `before`, `after`, `delta` =
+    after − before) — display-only; only the `ratings` edge function computes it
     (`agent/skills/ratings-engine`).
