@@ -23,3 +23,27 @@ Types, Zod schemas, and constants used by `frontend/`, `mobile/`, and
   returns its `location` as WKB hex, which won't parse as `GeoJsonPoint`).
   Only active courts are visible to clients. The shape is deliberately
   minimal until the catalog is designed — see `agent/skills/courts-catalog`.
+- Queue, match, and result shapes (`src/match.ts`) — the demo flow queue →
+  match → report score → confirm → rating update. The tables don't exist
+  yet: the backend migration that adds them must match these names, enums,
+  and nullability. Player ids are always `public.users.id` (uuid), never
+  `clerk_user_id`.
+  - `QueueEntry` (`id`, `player_id`, `location` GeoJSON point, `radius_m`,
+    `status`: `QUEUE_ENTRY_STATUSES` = `waiting | matched | left`,
+    `created_at`). Read `location` through a view/RPC, like courts.
+  - `Match` (`id`, `player_a_id`, `player_b_id` — must differ, `court_id`
+    nullable, `status`: `MATCH_STATUSES` = `proposed | accepted | declined |
+    awaiting_result | awaiting_confirmation | confirmed | disputed`,
+    `created_at`, `updated_at`).
+  - `MatchGame` (`player_a_points`, `player_b_points`, in the match's a/b
+    order) and `MatchResultSubmission` (`match_id`, `games`: 1–`MAX_GAMES`).
+    The scoring rules live in these schemas, so every app validates the same
+    way and mobile can show the issue messages directly: a game goes to
+    `POINTS_TO_WIN` (11), won by `WIN_BY` (2), and past 11 ends the moment
+    the lead is 2 (12–10, 15–13 valid; 11–10, 10–8, 15–11 not); no ties;
+    the match winner wins more games; nothing after a player reaches
+    `GAMES_TO_WIN_MATCH` (2), so no 3rd game after 2–0. A single game is a
+    valid result.
+  - `RatingChange` (`player_id`, `before`, `after`, `delta` = after −
+    before) — display-only; only the `ratings` edge function computes it
+    (`agent/skills/ratings-engine`).
