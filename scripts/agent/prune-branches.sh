@@ -9,12 +9,15 @@
 #                   with no PR, like worktree-agent-*) the tip is already
 #                   on origin/main. Uses `git branch -d`, which refuses
 #                   unmerged work.
-#   agent worktree  .claude/worktrees/agent-* only, clean, and its HEAD is
-#                   on origin/main. Removed without --force.
+#   agent worktree  .claude/worktrees/agent-* only, not locked, clean, and
+#                   its HEAD is on origin/main. Removed without --force.
 #
 # Kept: main, branches with an open PR, closed-but-unmerged PRs, branches
-# with commits after the merge, branches with no PR and unmerged work, and
-# anything checked out in a worktree that isn't an agent worktree.
+# with commits after the merge, branches with no PR and unmerged work,
+# anything checked out in a worktree that isn't an agent worktree, and locked
+# worktrees plus the branches checked out in them. A locked worktree is in use
+# (a running agent); a fresh one has no commits yet, so its HEAD is on main
+# and would otherwise look prunable (#84).
 #
 #   scripts/agent/prune-branches.sh            # delete
 #   scripts/agent/prune-branches.sh --dry-run  # only print
@@ -50,9 +53,27 @@ EOF
   echo "$ok"
 }
 
-# 1. Agent worktrees whose work is on main.
-git worktree list --porcelain | awk '/^worktree /{print substr($0,10)}' | while read -r wt; do
+# Prints one "<path> TAB <locked|-> TAB <branch|->" line per worktree from
+# the porcelain records. A "locked" line, with an optional reason, follows the
+# worktree/HEAD/branch lines of its record; records end with a blank line.
+worktrees() {
+  git worktree list --porcelain | awk '
+    function emit() { if (wt != "") printf "%s\t%s\t%s\n", wt, lk, br; wt = "" }
+    /^worktree /   { emit(); wt = substr($0, 10); lk = "-"; br = "-"; next }
+    /^branch /     { br = substr($0, 8); sub("^refs/heads/", "", br); next }
+    /^locked( |$)/ { lk = "locked"; next }
+    /^$/           { emit() }
+    END            { emit() }'
+}
+TAB=$(printf '\t')
+
+# Branches checked out in locked worktrees, read before anything is removed.
+LOCKED_BRANCHES=$(worktrees | awk -F'\t' '$2 == "locked" && $3 != "-" {print $3}')
+
+# 1. Agent worktrees whose work is on main. Locked ones are in use.
+worktrees | while IFS=$TAB read -r wt lk _; do
   case $wt in "$ROOT"/.claude/worktrees/agent-*) ;; *) continue ;; esac
+  [ "$lk" = locked ] && { echo "keep worktree $wt (locked: in use)"; continue; }
   [ -n "$(git -C "$wt" status --porcelain 2>/dev/null)" ] && { echo "keep worktree $wt (uncommitted changes)"; continue; }
   if on_main "$(git -C "$wt" rev-parse HEAD)"; then
     run "removed worktree $wt" git worktree remove "$wt"
@@ -62,7 +83,7 @@ git worktree list --porcelain | awk '/^worktree /{print substr($0,10)}' | while 
 done
 git worktree prune
 
-CHECKED_OUT=$(git worktree list --porcelain | awk '/^branch /{sub("refs/heads/","",$2); print $2}')
+CHECKED_OUT=$(worktrees | awk -F'\t' '$3 != "-" {print $3}'; printf '%s\n' "$LOCKED_BRANCHES")
 
 # 2. Remote branches.
 git for-each-ref --format='%(refname:strip=3) %(objectname)' refs/remotes/origin | while read -r b tip; do
