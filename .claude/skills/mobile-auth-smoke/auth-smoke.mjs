@@ -14,6 +14,7 @@
 // Uses Clerk dev-instance test credentials: `+clerk_test` emails and
 // +1 555-555-01xx phones, which accept code 424242 and send nothing.
 import { chromium } from 'playwright';
+import { isPhoneTaken } from './phone-taken.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:8099';
 const OUT = process.argv[2] ?? '.';
@@ -439,7 +440,7 @@ await step(
         .then(() => true)
         .catch(() => false);
       if (ok) phone = digits;
-      else if (!/already has an account/i.test((await alertText()) ?? '')) await orFail('send code failed')();
+      else if (!isPhoneTaken(await alertText())) await orFail('send code failed')();
     }
     if (!phone) throw new Error('every tried test number already has an account');
     await enterCode();
