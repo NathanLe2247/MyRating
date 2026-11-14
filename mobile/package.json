@@ -72,7 +72,8 @@
       "^@/assets/(.*)$": "<rootDir>/assets/$1",
       "^@/(.*)$": "<rootDir>/src/$1",
       "^@myrating/shared$": "<rootDir>/../shared/src/index.ts",
-      "^zod$": "<rootDir>/node_modules/zod"
+      "^zod$": "<rootDir>/node_modules/zod",
+      "^@babel/runtime/(.*)$": "<rootDir>/node_modules/@babel/runtime/$1"
     }
   }
 }
