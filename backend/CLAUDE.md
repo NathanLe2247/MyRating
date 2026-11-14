@@ -16,8 +16,28 @@ issuing its own sessions.
 - `supabase/functions/ratings/` — Glicko-2 rating updates. Follows
   `agent/skills/ratings-engine` conventions; this is the only place ratings
   get written.
-- `supabase/functions/matchmaking/` — PostGIS radius queries for the mobile queue.
-  Follows `agent/skills/geospatial-matching`.
+- `supabase/functions/matchmaking/` — the mobile match queue. Follows
+  `agent/skills/geospatial-matching` (queue shape, radius query, courts,
+  timing, Realtime). One endpoint, `POST /matchmaking`, Clerk token
+  verified in the function (`verify_jwt = false`, `CLERK_SECRET_KEY`). The
+  body is a `MatchmakingRequest` and every 200 is a `MatchmakingState`
+  (`shared/src/matchmaking.ts`, validated with those schemas in the
+  function): `join` (`lat`, `lng`, `radius_m`), `poll`, `leave`, `accept` /
+  `decline` (`match_id`). Errors are `{ error }` with the codes in
+  `MATCHMAKING_ERRORS`. Logic is in `handler.ts` (tested by
+  `handler.test.ts` with a fake store); `index.ts` wires Clerk and the
+  `public.matchmaking_*` SQL functions, which hold the pairing rules
+  (tested by `tests/matchmaking.test.sql`). Never log coordinates.
+  - **Demo Tester bot**: a `public.users` row (fixed id
+    `00000000-0000-4000-8000-0000000000d1`, `clerk_user_id = 'demo_tester'`,
+    a rating near the median) inserted by the queue migration, so it exists
+    on the hosted project. With the function secret `DEMO_BOT_ENABLED=true`,
+    a player still unpaired 5 s after joining is paired with it on their next
+    `join`/`poll`, and it has already accepted. Any other value (or unset)
+    and it never pairs. There is no timer: pairing runs on each call, and
+    mobile polls every few seconds while searching.
+  - Realtime: `public.matches` is published; RLS limits events to the
+    player's own matches.
 - `supabase/functions/dupr-import/` — importing/reconciling DUPR ratings.
 - `supabase/functions/whoop-oauth/` — WHOOP OAuth flow, token exchange/refresh for
   `agent/skills/health-integrations`.
@@ -40,6 +60,28 @@ issuing its own sessions.
   supabase/functions/_shared/`); `index.ts` only wires env, the DB and R2.
 - `supabase/functions/_shared/` — helpers imported by more than one function
   (`login-method.ts`, `r2.ts` for the R2 client and avatar cleanup).
+  `_shared/myrating-shared` is a symlink to `../../../../shared/src`.
+- **Importing `shared/` in an edge function**: give the function a
+  `deno.json` like `functions/matchmaking/deno.json`:
+
+  ```json
+  { "imports": { "@myrating/shared": "../_shared/myrating-shared/index.ts",
+                 "zod": "npm:zod@^4.1.0" },
+    "lock": false }
+  ```
+
+  then `import { MatchSchema } from '@myrating/shared'`. Why the symlink:
+  `supabase functions deploy --use-api` (run from `backend/`) uploads each
+  file under its path relative to `backend/` and refuses paths with `..`,
+  so `../shared/src` can't be uploaded directly; through the symlink the
+  path stays inside `backend/` while the real file is still in the repo.
+  `supabase functions serve` follows it too. `zod` must be mapped because
+  the shared sources import it bare. `"lock": false` because a `deno.lock`
+  written by a newer local Deno breaks the edge runtime's boot. Run Deno
+  from the function's folder (or with `--config <its deno.json>`) so the
+  import map applies: `cd supabase/functions/matchmaking && deno test`.
+  Older functions (`login-method.ts`) still copy shared rules by hand;
+  move them to this pattern when touched.
 - `supabase/tests/` — pgTAP tests, run against the local stack with
   `supabase test db --local`.
 - Courts data is split in two. Real catalog courts (8 Montgomery County, MD
