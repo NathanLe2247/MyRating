@@ -5,7 +5,7 @@
 import { assertEquals, assertRejects } from 'jsr:@std/assert@1';
 import type { AwsClient } from 'npm:aws4fetch@1';
 
-import { deleteAvatars, type R2 } from './r2.ts';
+import { deleteAvatars, isSafeKeyUnder, type R2 } from './r2.ts';
 
 const ENDPOINT = 'https://acct.r2.cloudflarestorage.com';
 const BUCKET = 'myrating';
@@ -87,4 +87,33 @@ Deno.test('a failed list or delete throws', async () => {
     Error,
     'R2 delete',
   );
+});
+
+Deno.test('a truncated listing without a continuation token throws instead of stopping early', async () => {
+  const xml = listXml(['avatars/user_abc/1.jpg']).replace('<IsTruncated>false', '<IsTruncated>true');
+  const client = { fetch: () => Promise.resolve(new Response(xml, { status: 200 })) };
+  const r2: R2 = { client: client as unknown as AwsClient, endpoint: ENDPOINT, bucket: BUCKET };
+
+  await assertRejects(() => deleteAvatars(r2, 'user_abc'), Error, 'truncated without a continuation token');
+});
+
+Deno.test('keys outside the user prefix or with dot/empty segments abort before any delete', async () => {
+  const badKeys = [
+    'avatars/user_other/1.jpg',
+    'avatars/user_abc/../user_other/1.jpg',
+    'avatars/user_abc/./1.jpg',
+    'avatars/user_abc//1.jpg',
+  ];
+  for (const bad of badKeys) {
+    const { r2, deleted } = fakeR2({ '': { keys: ['avatars/user_abc/ok.jpg', bad] } });
+    await assertRejects(() => deleteAvatars(r2, 'user_abc'), Error, 'outside the prefix');
+    assertEquals(deleted, [], bad);
+  }
+});
+
+Deno.test('isSafeKeyUnder', () => {
+  assertEquals(isSafeKeyUnder('avatars/u/', 'avatars/u/a.jpg'), true);
+  assertEquals(isSafeKeyUnder('avatars/u/', 'avatars/u/'), false);
+  assertEquals(isSafeKeyUnder('avatars/u/', 'avatars/u2/a.jpg'), false);
+  assertEquals(isSafeKeyUnder('avatars/u/', 'avatars/u/../v/a.jpg'), false);
 });

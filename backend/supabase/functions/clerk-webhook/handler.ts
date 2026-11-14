@@ -27,20 +27,21 @@ type ClerkFields = Omit<ClerkUserRow, 'clerk_user_id'>;
 
 /** What public.clerk_sync_user returns (see its migration). */
 export type SyncResult =
-  | { outcome: 'inserted' | 'updated' | 'missing' }
+  | { outcome: 'inserted' | 'updated' | 'deleted' }
   | { outcome: 'stale'; stored: Omit<ClerkFields, 'clerk_updated_at'> & { clerk_updated_at: string | null } };
 
 type DbError = { message: string } | null;
 
-/** The writes the handler needs; index.ts backs them with supabase-js. */
+/** The writes the handler needs; index.ts backs them with the RPCs. */
 export type UsersTable = {
   /**
-   * Writes the row only if the stored clerk_updated_at is null or older than
-   * the row's. `allowInsert` lets user.created insert a missing row; without
-   * it a missing row is left missing.
+   * public.clerk_sync_user: inserts a missing row, or writes the Clerk-owned
+   * columns only if the stored clerk_updated_at is null or older than the
+   * row's. Never writes a tombstoned (deleted) user.
    */
-  sync(row: ClerkUserRow, opts: { allowInsert: boolean }): PromiseLike<{ error: DbError; result: SyncResult | null }>;
-  deleteByClerkId(clerkUserId: string): PromiseLike<{ error: DbError }>;
+  sync(row: ClerkUserRow): PromiseLike<{ error: DbError; result: SyncResult | null }>;
+  /** public.clerk_delete_user: tombstone + delete the row, in one transaction. */
+  deleteUser(clerkUserId: string): PromiseLike<{ error: DbError }>;
 };
 
 /** Removes a deleted user's files; index.ts backs it with R2. Throws on failure. */
@@ -48,7 +49,13 @@ export type AvatarStore = {
   deleteAll(clerkUserId: string): Promise<number>;
 };
 
+export class InvalidEventError extends Error {}
+
 export function toUserRow(user: UserJSON): ClerkUserRow {
+  // The stale-event guard depends on it; refuse rather than write a bogus stamp.
+  if (typeof user.updated_at !== 'number' || !Number.isFinite(user.updated_at)) {
+    throw new InvalidEventError(`invalid updated_at: ${JSON.stringify(user.updated_at)}`);
+  }
   const email = user.email_addresses.find((e) => e.id === user.primary_email_address_id)?.email_address ?? null;
   const phoneNumber = user.phone_numbers.find((p) => p.id === user.primary_phone_number_id)?.phone_number ?? null;
 
@@ -102,20 +109,27 @@ export function createHandler(deps: { signingSecret: string | undefined; users: 
 
     // Non-2xx responses make Svix retry, so only real failures return 5xx.
 
-    // user.created is the only event that may insert. user.updated never does:
-    // a late or retried update arriving after user.deleted must not bring the
-    // deleted user's row (and their email / phone) back. Both only apply when
-    // newer than what's stored, so Svix retries (equal timestamp) and
-    // out-of-order deliveries (older timestamp) are no-ops.
+    // Both events may insert, so a user.updated delivered before user.created
+    // creates the row and the older user.created is then stale. Writes only
+    // apply when newer than what's stored, so Svix retries (equal timestamp)
+    // and out-of-order deliveries (older timestamp) are no-ops, and nothing
+    // recreates a user after user.deleted (tombstone).
     if (evt.type === 'user.created' || evt.type === 'user.updated') {
-      const row = toUserRow(evt.data);
-      const { error, result } = await deps.users.sync(row, { allowInsert: evt.type === 'user.created' });
+      let row: ClerkUserRow;
+      try {
+        row = toUserRow(evt.data);
+      } catch (err) {
+        // Retrying the same payload can't succeed, so 400 rather than 5xx.
+        log({ event: 'clerk_webhook_sync_failed', type: evt.type, clerk_user_id: evt.data?.id, err: String(err) });
+        return new Response('Invalid event', { status: 400 });
+      }
+      const { error, result } = await deps.users.sync(row);
       if (error || !result) {
         log({ event: 'clerk_webhook_sync_failed', type: evt.type, clerk_user_id: row.clerk_user_id, err: error?.message ?? 'no result' });
         return new Response('Sync failed', { status: 500 });
       }
-      if (result.outcome === 'missing') {
-        log({ event: 'clerk_webhook_update_no_row', type: evt.type, clerk_user_id: row.clerk_user_id });
+      if (result.outcome === 'deleted') {
+        log({ event: 'clerk_webhook_event_after_delete', type: evt.type, clerk_user_id: row.clerk_user_id });
       }
       if (result.outcome === 'stale') {
         log({
@@ -136,10 +150,11 @@ export function createHandler(deps: { signingSecret: string | undefined; users: 
         return new Response('OK', { status: 200 });
       }
 
-      // Deletion policy is a hard delete: the public.users row goes, and
-      // player_ratings with it (ON DELETE CASCADE). Every table that
-      // references users.id must use ON DELETE CASCADE too (backend/CLAUDE.md).
-      const { error } = await deps.users.deleteByClerkId(clerkUserId);
+      // Deletion policy is a hard delete: the Clerk id is tombstoned and the
+      // public.users row deleted in one transaction, and player_ratings goes
+      // with it (ON DELETE CASCADE). Every table that references users.id must
+      // use ON DELETE CASCADE too (backend/CLAUDE.md).
+      const { error } = await deps.users.deleteUser(clerkUserId);
       if (error) {
         log({ event: 'clerk_webhook_delete_failed', clerk_user_id: clerkUserId, err: error.message });
         return new Response('Delete failed', { status: 500 });

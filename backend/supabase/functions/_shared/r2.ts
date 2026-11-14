@@ -57,11 +57,20 @@ export async function listKeys(r2: R2, prefix: string): Promise<string[]> {
     if (!res.ok) throw new Error(`R2 list ${prefix} failed: ${res.status} ${body.slice(0, 200)}`);
 
     keys.push(...xmlValues(body, 'Key'));
-    continuationToken = xmlValues(body, 'IsTruncated')[0] === 'true'
-      ? xmlValues(body, 'NextContinuationToken')[0]
-      : undefined;
+    continuationToken = undefined;
+    if (xmlValues(body, 'IsTruncated')[0] === 'true') {
+      continuationToken = xmlValues(body, 'NextContinuationToken')[0];
+      // Stopping here would silently leave the remaining objects behind.
+      if (!continuationToken) throw new Error(`R2 list ${prefix}: truncated without a continuation token`);
+    }
   } while (continuationToken);
   return keys;
+}
+
+/** `key` is under `prefix` and has no empty, `.` or `..` path segments. */
+export function isSafeKeyUnder(prefix: string, key: string): boolean {
+  if (!key.startsWith(prefix) || key.length === prefix.length) return false;
+  return key.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..');
 }
 
 /**
@@ -71,7 +80,11 @@ export async function listKeys(r2: R2, prefix: string): Promise<string[]> {
  * calling it again resumes, since already-deleted keys are no longer listed.
  */
 export async function deleteAvatars(r2: R2, clerkUserId: string): Promise<number> {
-  const keys = await listKeys(r2, avatarPrefix(clerkUserId));
+  const prefix = avatarPrefix(clerkUserId);
+  const keys = await listKeys(r2, prefix);
+  // Never delete outside the user's prefix, whatever the listing returned.
+  const unsafe = keys.filter((key) => !isSafeKeyUnder(prefix, key));
+  if (unsafe.length > 0) throw new Error(`R2 list ${prefix} returned ${unsafe.length} key(s) outside the prefix`);
   for (const key of keys) {
     const res = await r2.client.fetch(objectUrl(r2, key), { method: 'DELETE' });
     // S3 DELETE is 204 even for a missing key; 404 is tolerated for safety.

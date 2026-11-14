@@ -22,9 +22,9 @@ Deno.serve(
   createHandler({
     signingSecret: Deno.env.get('CLERK_WEBHOOK_SECRET'),
     users: {
-      // public.clerk_sync_user does the stale check and the write in one
-      // statement each, so concurrent deliveries can't interleave them.
-      sync: async (row, { allowInsert }) => {
+      // The RPCs hold a per-user advisory lock, so concurrent deliveries
+      // (including a sync racing a delete) can't interleave.
+      sync: async (row) => {
         const { data, error } = await db.rpc('clerk_sync_user', {
           p_clerk_user_id: row.clerk_user_id,
           p_first_name: row.first_name,
@@ -33,11 +33,10 @@ Deno.serve(
           p_phone_number: row.phone_number,
           p_login_method: row.login_method,
           p_clerk_updated_at: row.clerk_updated_at,
-          p_allow_insert: allowInsert,
         });
         return { error, result: (data as SyncResult | null) ?? null };
       },
-      deleteByClerkId: (clerkUserId) => db.from('users').delete().eq('clerk_user_id', clerkUserId),
+      deleteUser: (clerkUserId) => db.rpc('clerk_delete_user', { p_clerk_user_id: clerkUserId }),
     },
     // getR2() is called per delete so missing R2 secrets only fail cleanup.
     avatars: { deleteAll: (clerkUserId) => deleteAvatars(getR2(), clerkUserId) },

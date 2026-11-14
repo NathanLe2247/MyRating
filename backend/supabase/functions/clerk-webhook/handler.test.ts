@@ -3,9 +3,10 @@
 // Requests are signed for real with standardwebhooks (what Svix and
 // @clerk/backend's verifyWebhook use), so the signature check is exercised,
 // not stubbed. public.users is an in-memory fake of public.clerk_sync_user
-// (its SQL is covered by supabase/tests/clerk_sync_user.test.sql): writes only
-// when the stored clerk_updated_at is null or older, inserts only when
-// allowed, and touches only the columns it's given. R2 is a fake AvatarStore.
+// and clerk_delete_user (their SQL is covered by
+// supabase/tests/clerk_sync_user.test.sql): inserts a missing row, writes only
+// when the stored clerk_updated_at is null or older, touches only the columns
+// it's given, and refuses tombstoned users. R2 is a fake AvatarStore.
 import { assert, assertEquals } from 'jsr:@std/assert@1';
 import { Webhook } from 'npm:standardwebhooks@1';
 
@@ -28,16 +29,19 @@ type Row = Record<string, unknown>;
 
 function fakeUsers(seed: Row[] = []) {
   const rows = new Map<string, Row>(seed.map((r) => [r.clerk_user_id as string, { ...r }]));
-  const syncs: { row: ClerkUserRow; allowInsert: boolean }[] = [];
+  const syncs: ClerkUserRow[] = [];
   const deletes: string[] = [];
+  const tombstones = new Set<string>();
   const table: UsersTable = {
-    sync(row, { allowInsert }) {
-      syncs.push({ row, allowInsert });
+    sync(row) {
+      syncs.push(row);
       const existing = rows.get(row.clerk_user_id);
       let result: SyncResult;
-      if (!existing) {
-        if (allowInsert) rows.set(row.clerk_user_id, { ...row });
-        result = { outcome: allowInsert ? 'inserted' : 'missing' };
+      if (tombstones.has(row.clerk_user_id)) {
+        result = { outcome: 'deleted' };
+      } else if (!existing) {
+        rows.set(row.clerk_user_id, { ...row });
+        result = { outcome: 'inserted' };
       } else if (existing.clerk_updated_at == null || (existing.clerk_updated_at as string) < row.clerk_updated_at) {
         rows.set(row.clerk_user_id, { ...existing, ...row });
         result = { outcome: 'updated' };
@@ -53,14 +57,15 @@ function fakeUsers(seed: Row[] = []) {
       }
       return Promise.resolve({ error: null, result });
     },
-    deleteByClerkId(clerkUserId) {
+    deleteUser(clerkUserId) {
       deletes.push(clerkUserId);
+      tombstones.add(clerkUserId);
       rows.delete(clerkUserId);
       return Promise.resolve({ error: null });
     },
   };
   const writeCount = () => syncs.length + deletes.length;
-  return { table, rows, syncs, deletes, writeCount };
+  return { table, rows, syncs, deletes, tombstones, writeCount };
 }
 
 function fakeAvatars(objects: Record<string, string[]> = {}, opts: { fail?: boolean } = {}) {
@@ -204,7 +209,6 @@ Deno.test('user.created inserts the Clerk-owned fields, using the primary email'
   const res = await handler(signedRequest(event('user.created', clerkUser())));
 
   assertEquals(res.status, 200);
-  assertEquals(users.syncs[0].allowInsert, true);
   assertEquals(users.rows.get('user_abc'), {
     clerk_user_id: 'user_abc',
     first_name: 'Ada',
@@ -236,7 +240,6 @@ Deno.test('a newer user.updated changes the existing row', async () => {
   );
 
   assertEquals(res.status, 200);
-  assertEquals(users.syncs[1].allowInsert, false);
   const row = users.rows.get('user_abc')!;
   assertEquals(row.last_name, 'King');
   assertEquals(row.phone_number, '+15555550100');
@@ -286,7 +289,7 @@ Deno.test('user.updated never overwrites player-owned columns', async () => {
   const res = await handler(signedRequest(event('user.updated', clerkUser({ first_name: 'Augusta' }))));
 
   assertEquals(res.status, 200);
-  assertEquals(Object.keys(users.syncs[0].row).sort(), CLERK_OWNED_COLUMNS);
+  assertEquals(Object.keys(users.syncs[0]).sort(), CLERK_OWNED_COLUMNS);
   const row = users.rows.get('user_abc')!;
   assertEquals(row.first_name, 'Augusta');
   for (const [column, value] of Object.entries(playerOwned)) {
@@ -294,16 +297,38 @@ Deno.test('user.updated never overwrites player-owned columns', async () => {
   }
 });
 
-Deno.test('user.updated for an unknown user inserts nothing and is acknowledged', async () => {
+Deno.test('user.updated before user.created inserts, and the older user.created is then stale', async () => {
   const { users, handler } = setup();
 
-  const { result: res, logs } = await captureLogs(() =>
-    handler(signedRequest(event('user.updated', clerkUser({ id: 'user_unknown' }))))
+  const updated = await handler(
+    signedRequest(event('user.updated', clerkUser({ first_name: 'Augusta', updated_at: T2 }))),
+  );
+  const { result: created, logs } = await captureLogs(() =>
+    handler(signedRequest(event('user.created', clerkUser({ updated_at: T1 }))))
   );
 
-  assertEquals(res.status, 200);
-  assertEquals(users.rows.size, 0);
-  assertEquals(logs.map((l) => l.event), ['clerk_webhook_update_no_row']);
+  assertEquals(updated.status, 200);
+  assertEquals(created.status, 200);
+  const row = users.rows.get('user_abc')!;
+  assertEquals(row.first_name, 'Augusta');
+  assertEquals(row.clerk_updated_at, iso(T2));
+  assertEquals(logs.length, 1);
+  assertEquals(logs[0].event, 'clerk_webhook_stale_event');
+  assertEquals(logs[0].type, 'user.created');
+  assertEquals(logs[0].changed, { first_name: { stored: 'Augusta', incoming: 'Ada' } });
+});
+
+Deno.test('an event with a missing or invalid updated_at is logged and answers 400', async () => {
+  const { users, handler } = setup();
+
+  for (const updated_at of [undefined, null, 'yesterday', Number.NaN]) {
+    const { result: res, logs } = await captureLogs(() =>
+      handler(signedRequest(event('user.updated', clerkUser({ updated_at }))))
+    );
+    assertEquals(res.status, 400, `updated_at=${updated_at}`);
+    assertEquals(logs.map((l) => l.event), ['clerk_webhook_sync_failed']);
+  }
+  assertEquals(users.writeCount(), 0);
 });
 
 // --- stale / out-of-order deliveries -----------------------------------------
@@ -405,7 +430,7 @@ Deno.test('a failed row delete answers 500 and skips R2, so Svix retries both', 
     signingSecret: SECRET,
     users: {
       sync: () => Promise.resolve({ error: null, result: { outcome: 'updated' } }),
-      deleteByClerkId: () => Promise.resolve({ error: { message: 'boom' } }),
+      deleteUser: () => Promise.resolve({ error: { message: 'boom' } }),
     },
     avatars: avatars.store,
   });
@@ -416,19 +441,22 @@ Deno.test('a failed row delete answers 500 and skips R2, so Svix retries both', 
   assertEquals(avatars.calls.length, 0);
 });
 
-Deno.test('user.updated after user.deleted does not resurrect the row', async () => {
-  const { users, handler } = setup();
-  await handler(signedRequest(event('user.created', clerkUser())));
-  await handler(signedRequest(deletedEvent()));
+for (const type of ['user.created', 'user.updated']) {
+  Deno.test(`${type} after user.deleted does not recreate the row`, async () => {
+    const { users, handler } = setup();
+    await handler(signedRequest(event('user.created', clerkUser())));
+    await handler(signedRequest(deletedEvent()));
 
-  // A Svix retry or late delivery of an update made before the delete.
-  const { result: res } = await captureLogs(() =>
-    handler(signedRequest(event('user.updated', clerkUser({ updated_at: T2 }))))
-  );
+    // A Svix retry or late delivery of an event from before the delete.
+    const { result: res, logs } = await captureLogs(() =>
+      handler(signedRequest(event(type, clerkUser({ updated_at: T2 }))))
+    );
 
-  assertEquals(res.status, 200);
-  assertEquals(users.rows.size, 0);
-});
+    assertEquals(res.status, 200);
+    assertEquals(users.rows.size, 0);
+    assertEquals(logs, [{ event: 'clerk_webhook_event_after_delete', type, clerk_user_id: 'user_abc' }]);
+  });
+}
 
 Deno.test('user.deleted without an id deletes nothing and is acknowledged', async () => {
   const { users, avatars, handler } = setup([{ clerk_user_id: 'user_abc' }]);
@@ -450,7 +478,7 @@ Deno.test('a failed sync answers 500 so Svix retries', async () => {
     signingSecret: SECRET,
     users: {
       sync: () => Promise.resolve({ error: { message: 'boom' }, result: null }),
-      deleteByClerkId: () => Promise.resolve({ error: null }),
+      deleteUser: () => Promise.resolve({ error: null }),
     },
     avatars: fakeAvatars().store,
   });
@@ -469,4 +497,30 @@ Deno.test('other event types are acknowledged and ignored', async () => {
   assertEquals(res.status, 200);
   assertEquals(users.writeCount(), 0);
   assertEquals(avatars.calls.length, 0);
+});
+
+Deno.test('missing R2 env: the delete still succeeds, cleanup failure is logged, 200', async () => {
+  // What index.ts wires up, with the R2 secrets absent: getR2() throws.
+  const { getR2, deleteAvatars } = await import('../_shared/r2.ts');
+  const saved = ['R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_ENDPOINT', 'R2_BUCKET_NAME'].map((k) => {
+    const v = Deno.env.get(k);
+    Deno.env.delete(k);
+    return [k, v] as const;
+  });
+  try {
+    const users = fakeUsers([{ clerk_user_id: 'user_abc' }]);
+    const handler = createHandler({
+      signingSecret: SECRET,
+      users: users.table,
+      avatars: { deleteAll: (id) => deleteAvatars(getR2(), id) },
+    });
+
+    const { result: res, logs } = await captureLogs(() => handler(signedRequest(deletedEvent())));
+
+    assertEquals(res.status, 200);
+    assert(!users.rows.has('user_abc'));
+    assertEquals(logs.map((l) => l.event), ['clerk_webhook_avatar_cleanup_failed']);
+  } finally {
+    for (const [k, v] of saved) if (v !== undefined) Deno.env.set(k, v);
+  }
 });
