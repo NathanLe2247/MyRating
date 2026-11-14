@@ -419,3 +419,9 @@ enabled = true
 [functions.player-profile]
 enabled = true
 verify_jwt = false
+
+# Clerk can't send a Supabase JWT; the function verifies the Svix signature
+# with CLERK_WEBHOOK_SECRET instead.
+[functions.clerk-webhook]
+enabled = true
+verify_jwt = false
