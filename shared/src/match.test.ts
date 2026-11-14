@@ -8,14 +8,17 @@ import {
   MatchGameRowSchema,
   MatchGameSchema,
   MatchResultSubmissionSchema,
+  MATCH_STATUSES,
   MatchSchema,
   POINTS_TO_WIN,
+  QUEUE_ENTRY_STATUSES,
   QueueEntrySchema,
   RatingChangeSchema,
   RatingHistoryRowSchema,
   matchWinner,
   WIN_BY,
 } from './index.ts';
+import { readEnumFromMigrations } from './test-helpers.ts';
 
 const PLAYER_A = '6f1c2b8e-3d4a-4c5b-9e7f-0a1b2c3d4e5f';
 const PLAYER_B = '7a2d3c9f-4e5b-4d6c-8f80-1b2c3d4e5f60';
@@ -35,6 +38,16 @@ describe('rule constants', () => {
     assert.equal(WIN_BY, 2);
     assert.equal(MAX_GAMES, 3);
     assert.equal(GAMES_TO_WIN_MATCH, 2);
+  });
+});
+
+describe('match enums match the migrations', () => {
+  it('QUEUE_ENTRY_STATUSES mirrors public.queue_entry_status', () => {
+    assert.deepEqual([...QUEUE_ENTRY_STATUSES], readEnumFromMigrations('queue_entry_status'));
+  });
+
+  it('MATCH_STATUSES mirrors public.match_status', () => {
+    assert.deepEqual([...MATCH_STATUSES], readEnumFromMigrations('match_status'));
   });
 });
 

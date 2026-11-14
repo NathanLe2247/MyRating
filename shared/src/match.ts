@@ -2,9 +2,9 @@ import { z } from 'zod';
 
 import { GeoJsonPointSchema, TimestampSchema, UuidSchema } from './common.ts';
 
-// Shapes for the queue → match → result → rating-change flow. The tables
-// behind them don't exist yet; the backend migration that adds them must use
-// these names, enums, and nullability. Player ids are `public.users.id`
+// Shapes for the queue → match → result → rating-change flow. The queue and
+// match tables are in backend/supabase/migrations/20261114130000_queue_and_matches.sql
+// and must keep these names, enums, and nullability. Player ids are `public.users.id`
 // (uuid), never `clerk_user_id`.
 
 // ---------------------------------------------------------------------------
@@ -27,6 +27,7 @@ export const GAMES_TO_WIN_MATCH = Math.floor(MAX_GAMES / 2) + 1;
 /** Largest search radius, in metres. Same limit as `public.nearby_courts`. */
 export const MAX_QUEUE_RADIUS_M = 100_000;
 
+/** Mirrors public.queue_entry_status (same values, same order). */
 export const QUEUE_ENTRY_STATUSES = ['waiting', 'matched', 'left'] as const;
 export const QueueEntryStatusSchema = z.enum(QUEUE_ENTRY_STATUSES);
 export type QueueEntryStatus = z.infer<typeof QueueEntryStatusSchema>;
@@ -66,6 +67,7 @@ export type QueueEntry = z.infer<typeof QueueEntrySchema>;
  * - `awaiting_confirmation` → `confirmed` (ratings update) or `disputed`.
  * `declined`, `cancelled`, `confirmed`, and `disputed` are terminal here.
  */
+/** Mirrors public.match_status (same values, same order). */
 export const MATCH_STATUSES = [
   'proposed',
   'accepted',
