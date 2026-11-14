@@ -60,7 +60,7 @@ npm init -y >/dev/null && npm i -s playwright@1 && npx playwright install chromi
 The script imports `playwright`, so run a copy from the driver directory:
 
 ```bash
-cp /Users/quan/myRating/.claude/skills/mobile-auth-smoke/auth-smoke.mjs $DRIVER/
+cp /Users/quan/myRating/.claude/skills/mobile-auth-smoke/{auth-smoke,phone-taken}.mjs $DRIVER/
 mkdir -p $DRIVER/shots && cd $DRIVER && node auth-smoke.mjs $DRIVER/shots
 ```
 
