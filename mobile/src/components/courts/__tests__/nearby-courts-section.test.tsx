@@ -11,8 +11,14 @@ const court: CourtCardData = { id: 'c1', name: 'Test Courts', distanceMiles: '1.
 
 describe('NearbyCourtsSection', () => {
   it('shows progress while asking for location and while loading', () => {
-    const { rerender } = render(<NearbyCourtsSection state={{ status: 'asking' }} />);
+    const showDefaultArea = jest.fn();
+    const { rerender } = render(
+      <NearbyCourtsSection state={{ status: 'asking', showDefaultArea }} />,
+    );
     expect(screen.getByText(copy.asking)).toBeOnTheScreen();
+    // The prompt may never be answered, so the default area is offered meanwhile.
+    fireEvent.press(screen.getByRole('link', { name: copy.denied.showDefaultArea }));
+    expect(showDefaultArea).toHaveBeenCalledTimes(1);
 
     rerender(<NearbyCourtsSection state={{ status: 'loading' }} />);
     expect(screen.getByText(copy.loading)).toBeOnTheScreen();
@@ -48,6 +54,15 @@ describe('NearbyCourtsSection', () => {
     expect(screen.getByText(copy.loadError)).toBeOnTheScreen();
     fireEvent.press(screen.getByRole('button', { name: en.home.retry }));
     expect(retry).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('link', { name: copy.denied.showDefaultArea })).toBeNull();
+  });
+
+  it('offers the default area next to retry when the position failed', () => {
+    const showDefaultArea = jest.fn();
+    render(<NearbyCourtsSection state={{ status: 'error', retry: jest.fn(), showDefaultArea }} />);
+
+    fireEvent.press(screen.getByRole('link', { name: copy.denied.showDefaultArea }));
+    expect(showDefaultArea).toHaveBeenCalledTimes(1);
   });
 
   it('shows the empty state when no courts are within the radius', () => {
@@ -80,7 +95,7 @@ describe('NearbyCourtsSection', () => {
 
     expect(screen.getByText(copy.defaultArea.title)).toBeOnTheScreen();
     expect(screen.queryByText(copy.title)).toBeNull();
-    fireEvent.press(screen.getByRole('link', { name: copy.denied.allow }));
+    fireEvent.press(screen.getByRole('link', { name: copy.defaultArea.useMyLocation }));
     expect(requestPermission).toHaveBeenCalledTimes(1);
   });
 });

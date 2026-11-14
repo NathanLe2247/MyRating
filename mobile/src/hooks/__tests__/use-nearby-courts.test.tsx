@@ -34,12 +34,12 @@ const mockDemoLocation = demoLocation as jest.Mock;
 const requestPermission = jest.fn();
 const rpc = jest.fn();
 
-const here = { lat: 30.25, lng: -97.75 };
+const here = { lat: 40.01, lng: -75.01 };
 
 const row = (id: string, name: string, distance_m: number) => ({
   id,
   name,
-  location: { type: 'Point', coordinates: [-97.75, 30.25] },
+  location: { type: 'Point', coordinates: [-75, 40] },
   is_active: true,
   created_at: '2026-11-13T12:00:00Z',
   distance_m,
@@ -146,6 +146,60 @@ describe('useNearbyCourts', () => {
 
     expect(result.current.status).toBe('error');
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('offers the default area after a position error, and can go back to GPS', async () => {
+    setPermission('granted');
+    mockGetPosition.mockRejectedValue(new Error('location unavailable'));
+    const { result } = render();
+    await settle(result);
+
+    const state = result.current;
+    if (state.status !== 'error' || !state.showDefaultArea) throw new Error('no default area offered');
+    act(() => state.showDefaultArea!());
+    await waitFor(() => expect(result.current.status).toBe('loaded'));
+
+    expect(rpc).toHaveBeenCalledWith(
+      'nearby_courts',
+      expect.objectContaining({ lat: DefaultCourtsArea.lat, lng: DefaultCourtsArea.lng }),
+    );
+    expect(result.current).toMatchObject({ status: 'loaded', defaultArea: { canAskAgain: true } });
+
+    // "Use my location" reads the position again instead of prompting.
+    mockGetPosition.mockResolvedValue({ coords: { latitude: here.lat, longitude: here.lng } });
+    await act(async () => {
+      if (result.current.status === 'loaded') result.current.defaultArea?.requestPermission();
+    });
+    await waitFor(() =>
+      expect(rpc).toHaveBeenCalledWith(
+        'nearby_courts',
+        expect.objectContaining({ lat: here.lat, lng: here.lng }),
+      ),
+    );
+    await waitFor(() =>
+      expect(result.current).toMatchObject({ status: 'loaded', defaultArea: undefined }),
+    );
+    expect(requestPermission).not.toHaveBeenCalled();
+  });
+
+  it('offers the default area while the permission stays unanswered', async () => {
+    // An OS that won't show the dialog (or a dismissed web prompt) leaves it
+    // undetermined for good.
+    setPermission('undetermined', false);
+    const { result } = render();
+
+    expect(result.current.status).toBe('asking');
+    expect(requestPermission).not.toHaveBeenCalled();
+    act(() => {
+      if (result.current.status === 'asking') result.current.showDefaultArea();
+    });
+    await settle(result);
+
+    expect(rpc).toHaveBeenCalledWith(
+      'nearby_courts',
+      expect.objectContaining({ lat: DefaultCourtsArea.lat, lng: DefaultCourtsArea.lng }),
+    );
+    expect(result.current).toMatchObject({ status: 'loaded', defaultArea: { canAskAgain: false } });
   });
 
   it('explains a denial without fetching, then lists the default area on request', async () => {

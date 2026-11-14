@@ -415,6 +415,7 @@ export const en = {
     },
     defaultArea: {
       title: 'Courts in Burtonsville, MD',
+      useMyLocation: 'Use my location',
       body: 'Turn on location to see courts near you.',
     },
     signedOut: {

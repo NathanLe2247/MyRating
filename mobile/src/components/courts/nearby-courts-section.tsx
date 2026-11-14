@@ -41,20 +41,28 @@ export function NearbyCourtsSection({ state }: NearbyCourtsSectionProps) {
 function NearbyCourtsBody({ state }: NearbyCourtsSectionProps) {
   switch (state.status) {
     case 'asking':
-      return <Pending label={copy.asking} />;
+      return (
+        <View style={styles.list}>
+          <Pending label={copy.asking} />
+          <DefaultAreaLink onPress={state.showDefaultArea} />
+        </View>
+      );
     case 'loading':
       return <Pending label={copy.loading} />;
     case 'error':
-      return <LoadError message={copy.loadError} onRetry={state.retry} />;
+      return (
+        <View style={styles.list}>
+          <LoadError message={copy.loadError} onRetry={state.retry} />
+          {state.showDefaultArea ? <DefaultAreaLink onPress={state.showDefaultArea} /> : null}
+        </View>
+      );
     case 'denied':
       return (
         <LocationPrompt
           canAskAgain={state.canAskAgain}
           onPress={state.requestPermission}
           copy={copy.denied}>
-          <View style={styles.centered}>
-            <AuthLink variant="cta" label={copy.denied.showDefaultArea} onPress={state.showDefaultArea} />
-          </View>
+          <DefaultAreaLink onPress={state.showDefaultArea} />
         </LocationPrompt>
       );
     case 'loaded':
@@ -64,7 +72,11 @@ function NearbyCourtsBody({ state }: NearbyCourtsSectionProps) {
             <View style={styles.areaNote}>
               <Text style={styles.areaNoteText}>{copy.defaultArea.body}</Text>
               <AuthLink
-                label={state.defaultArea.canAskAgain ? copy.denied.allow : copy.denied.openSettings}
+                label={
+                  state.defaultArea.canAskAgain
+                    ? copy.defaultArea.useMyLocation
+                    : copy.denied.openSettings
+                }
                 onPress={state.defaultArea.requestPermission}
               />
             </View>
@@ -82,6 +94,15 @@ function NearbyCourtsBody({ state }: NearbyCourtsSectionProps) {
         </View>
       );
   }
+}
+
+// Lists the default area instead of the user's own (asking, denied, or no GPS fix).
+function DefaultAreaLink({ onPress }: { onPress: () => void }) {
+  return (
+    <View style={styles.centered}>
+      <AuthLink variant="cta" label={copy.denied.showDefaultArea} onPress={onPress} />
+    </View>
+  );
 }
 
 function Pending({ label }: { label: string }) {

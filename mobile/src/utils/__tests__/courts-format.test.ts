@@ -4,8 +4,8 @@ import { formatMiles, toCourtCardData } from '@/utils/courts-format';
 
 const court: NearbyCourt = {
   id: '6f1c2a1e-1d2b-4c3d-8e4f-5a6b7c8d9e0f',
-  name: 'Zilker Park Courts',
-  location: { type: 'Point', coordinates: [-97.7725, 30.2669] },
+  name: 'Test Park Courts',
+  location: { type: 'Point', coordinates: [-75, 40] },
   is_active: true,
   created_at: '2026-11-13T12:00:00Z',
   distance_m: 1931,
@@ -23,7 +23,7 @@ describe('toCourtCardData', () => {
   it('maps a nearby court to a card with its distance, inventing nothing', () => {
     expect(toCourtCardData(court)).toEqual({
       id: court.id,
-      name: 'Zilker Park Courts',
+      name: 'Test Park Courts',
       distanceMiles: '1.2',
       tags: [],
     });

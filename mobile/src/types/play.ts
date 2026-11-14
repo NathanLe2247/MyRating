@@ -55,11 +55,16 @@ export type TournamentCardData = {
 /** What the courts list shows; see `useNearbyCourts`. */
 export type NearbyCourtsState =
   /** Location permission not answered yet (the OS dialog may be up). */
-  | { status: 'asking' }
+  | { status: 'asking'; showDefaultArea: () => void }
   /** Location denied and the user hasn't chosen the default area. */
   | ({ status: 'denied'; showDefaultArea: () => void } & LocationAccess)
   | { status: 'loading' }
-  | { status: 'error'; retry: () => void }
+  | {
+      status: 'error';
+      retry: () => void;
+      /** Set when the device position failed: list the default area instead. */
+      showDefaultArea?: () => void;
+    }
   | {
       status: 'loaded';
       /** Empty when no active court is within the radius. */

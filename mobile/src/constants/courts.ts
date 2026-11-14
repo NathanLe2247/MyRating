@@ -7,6 +7,9 @@ export const NearbyCourtsMaxResults = 50;
 
 export const MetersPerMile = 1609.344;
 
+/** How long a device position is reused before asking the OS again. */
+export const PositionStaleMs = 5 * 60 * 1000;
+
 /** A point to search from: `lat` ±90, `lng` ±180. */
 export type GeoPoint = { lat: number; lng: number };
 

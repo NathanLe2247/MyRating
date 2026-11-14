@@ -11,13 +11,11 @@ import {
   type GeoPoint,
   NearbyCourtsMaxResults,
   NearbyCourtsRadiusMeters,
+  PositionStaleMs,
 } from '@/constants/courts';
 import { useLocationPermission } from '@/hooks/use-location-permission';
 import type { CourtCardData, NearbyCourtsState } from '@/types/play';
 import { toCourtCardData } from '@/utils/courts-format';
-
-/** How long a device position is reused before asking the OS again. */
-const PositionStaleMs = 5 * 60 * 1000;
 
 /**
  * Active courts near `origin`, nearest first, as card display models. Calls
@@ -40,9 +38,10 @@ export async function fetchNearbyCourts(
 
 /**
  * Courts near the device, for the public courts screen and the Play tab.
- * Asks for foreground location the first time. If location is denied, the
- * user can list courts around `DefaultCourtsArea` instead (and still turn
- * location on from there).
+ * Asks for foreground location the first time. While it waits for an answer,
+ * after a denial, or when the device position can't be read, the user can
+ * list courts around `DefaultCourtsArea` instead (and still switch back to
+ * their own location from there).
  *
  * With a demo location configured (`EXPO_PUBLIC_DEMO_LAT` / `_LNG`, see
  * src/config/demo-location.ts), that point stands in for the device: no
@@ -51,7 +50,7 @@ export async function fetchNearbyCourts(
 export function useNearbyCourts(): NearbyCourtsState {
   const supabase = useSupabaseClient();
   const demo = demoLocation();
-  const location = useLocationPermission({ autoRequest: !demo });
+  const location = useLocationPermission();
   const [defaultAreaChosen, setDefaultAreaChosen] = useState(false);
 
   const positionQuery = useQuery({
@@ -64,13 +63,15 @@ export function useNearbyCourts(): NearbyCourtsState {
     },
   });
 
-  const useDefaultArea = !demo && !location.granted && location.denied && defaultAreaChosen;
+  // Location granted but the device couldn't report a position.
+  const positionFailed = location.granted && positionQuery.isError && !positionQuery.data;
+  const useDefaultArea = !demo && defaultAreaChosen && (!location.granted || positionFailed);
   const origin = demo
     ? demo
-    : location.granted
-      ? positionQuery.data
-      : useDefaultArea
-        ? DefaultCourtsArea
+    : useDefaultArea
+      ? DefaultCourtsArea
+      : location.granted
+        ? positionQuery.data
         : undefined;
 
   const courtsQuery = useQuery({
@@ -79,22 +80,30 @@ export function useNearbyCourts(): NearbyCourtsState {
     queryFn: () => fetchNearbyCourts(supabase, origin!),
   });
 
-  const access = {
-    canAskAgain: location.canAskAgain,
-    requestPermission: () => {
-      void location.request();
-    },
+  const showDefaultArea = () => setDefaultAreaChosen(true);
+  const retryPosition = () => {
+    setDefaultAreaChosen(false);
+    void positionQuery.refetch();
   };
+  // How to get back from the default area to the user's own location.
+  const access = positionFailed
+    ? { canAskAgain: true, requestPermission: retryPosition }
+    : {
+        canAskAgain: location.canAskAgain,
+        requestPermission: () => {
+          void location.request();
+        },
+      };
 
   // A demo location skips the permission and GPS states entirely.
-  if (!demo && !location.granted) {
-    if (!location.denied) return { status: 'asking' };
-    if (!defaultAreaChosen) {
-      return { status: 'denied', ...access, showDefaultArea: () => setDefaultAreaChosen(true) };
+  if (!demo && !useDefaultArea) {
+    if (!location.granted) {
+      // Undetermined can last forever (a dismissed web prompt, or an OS that
+      // won't ask), so the default area is offered while waiting too.
+      if (!location.denied) return { status: 'asking', showDefaultArea };
+      return { status: 'denied', ...access, showDefaultArea };
     }
-  }
-  if (!demo && location.granted && positionQuery.isError && !positionQuery.data) {
-    return { status: 'error', retry: () => void positionQuery.refetch() };
+    if (positionFailed) return { status: 'error', retry: retryPosition, showDefaultArea };
   }
 
   // A failed refetch keeps the last list on screen.

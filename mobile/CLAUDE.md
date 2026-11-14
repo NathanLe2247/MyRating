@@ -54,8 +54,10 @@ screens are gone; `app/(home)/` holds the tab screens.
 - A new public screen goes in `(public)/` and must only read data the anon
   key can see. Anything else goes behind the signed-in gate.
 - Demo location: set `EXPO_PUBLIC_DEMO_LAT` / `EXPO_PUBLIC_DEMO_LNG` (see
-  `.env.example`, `src/config/demo-location.ts`) and `useNearbyCourts` uses
-  that point as the user's location, with no permission prompt or GPS.
+  `.env.example`, `src/config/demo-location.ts`; real values go in
+  `.env.local` only) and `useNearbyCourts` uses that point as the user's
+  location. `useLocationPermission` then never prompts or reports a denial,
+  so no screen (Home included) asks for location or reads GPS.
 
 ## Testing
 
