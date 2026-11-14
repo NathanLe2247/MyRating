@@ -1,15 +1,17 @@
 // Request handling for the clerk-webhook function, kept free of env and
-// network setup (that's in index.ts) so it can be tested with a fake table.
+// network setup (that's in index.ts) so it can be tested with fakes.
 import type { UserJSON } from 'npm:@clerk/backend@3';
 import { verifyWebhook } from 'npm:@clerk/backend@3/webhooks';
 
 import { type LoginMethod, loginMethodFor } from '../_shared/login-method.ts';
 
 /**
- * The only public.users columns this function writes. Everything else
- * (username, date_of_birth, dominant_hand, avatar_key, profile_completed_at,
- * rating_source, onboarding_completed_at, games_played) is owned by
- * `player-profile` or `ratings` and must never appear here.
+ * The Clerk-owned public.users columns this function writes, plus
+ * `clerk_updated_at` (Clerk's updated_at for the event, used to skip stale
+ * deliveries). Everything else (username, date_of_birth, dominant_hand,
+ * avatar_key, profile_completed_at, rating_source, onboarding_completed_at,
+ * games_played) is owned by `player-profile` or `ratings` and must never
+ * appear here. `updated_at` is set to now() by the database.
  */
 export type ClerkUserRow = {
   clerk_user_id: string;
@@ -18,18 +20,32 @@ export type ClerkUserRow = {
   email: string | null;
   phone_number: string | null;
   login_method: LoginMethod;
-  updated_at: string;
+  clerk_updated_at: string;
 };
 
-type WriteResult = { error: { message: string } | null };
+type ClerkFields = Omit<ClerkUserRow, 'clerk_user_id'>;
+
+/** What public.clerk_sync_user returns (see its migration). */
+export type SyncResult =
+  | { outcome: 'inserted' | 'updated' | 'missing' }
+  | { outcome: 'stale'; stored: Omit<ClerkFields, 'clerk_updated_at'> & { clerk_updated_at: string | null } };
+
+type DbError = { message: string } | null;
 
 /** The writes the handler needs; index.ts backs them with supabase-js. */
 export type UsersTable = {
-  /** Insert, or on clerk_user_id conflict update only the given columns. */
-  upsertByClerkId(row: ClerkUserRow): PromiseLike<WriteResult>;
-  /** Update only the given columns of an existing row; never inserts. */
-  updateByClerkId(row: ClerkUserRow): PromiseLike<WriteResult & { matched: number }>;
-  deleteByClerkId(clerkUserId: string): PromiseLike<WriteResult>;
+  /**
+   * Writes the row only if the stored clerk_updated_at is null or older than
+   * the row's. `allowInsert` lets user.created insert a missing row; without
+   * it a missing row is left missing.
+   */
+  sync(row: ClerkUserRow, opts: { allowInsert: boolean }): PromiseLike<{ error: DbError; result: SyncResult | null }>;
+  deleteByClerkId(clerkUserId: string): PromiseLike<{ error: DbError }>;
+};
+
+/** Removes a deleted user's files; index.ts backs it with R2. Throws on failure. */
+export type AvatarStore = {
+  deleteAll(clerkUserId: string): Promise<number>;
 };
 
 export function toUserRow(user: UserJSON): ClerkUserRow {
@@ -43,15 +59,29 @@ export function toUserRow(user: UserJSON): ClerkUserRow {
     email,
     phone_number: phoneNumber,
     login_method: loginMethodFor(email, phoneNumber),
-    // Server time, like player-profile writes, so the column never moves
-    // backwards when an older Clerk event is delivered late.
-    updated_at: new Date().toISOString(),
+    clerk_updated_at: new Date(user.updated_at).toISOString(),
   };
+}
+
+// Values safe to log; email and phone are PII, so only "changed" is logged.
+const LOGGED_VALUE_FIELDS = ['first_name', 'last_name', 'login_method'] as const;
+const PII_FIELDS = ['email', 'phone_number'] as const;
+
+/** What a skipped stale event would have changed, without PII values. */
+export function staleDiff(incoming: ClerkUserRow, stored: Extract<SyncResult, { outcome: 'stale' }>['stored']) {
+  const changed: Record<string, { stored: unknown; incoming: unknown } | { changed: true }> = {};
+  for (const field of LOGGED_VALUE_FIELDS) {
+    if (incoming[field] !== stored[field]) changed[field] = { stored: stored[field], incoming: incoming[field] };
+  }
+  for (const field of PII_FIELDS) {
+    if (incoming[field] !== stored[field]) changed[field] = { changed: true };
+  }
+  return changed;
 }
 
 const log = (fields: Record<string, unknown>) => console.error(JSON.stringify(fields));
 
-export function createHandler(deps: { signingSecret: string | undefined; users: UsersTable }) {
+export function createHandler(deps: { signingSecret: string | undefined; users: UsersTable; avatars: AvatarStore }) {
   return async (req: Request): Promise<Response> => {
     if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
@@ -72,40 +102,59 @@ export function createHandler(deps: { signingSecret: string | undefined; users: 
 
     // Non-2xx responses make Svix retry, so only real failures return 5xx.
 
-    // user.created is the only insert path. Upserting on the Clerk id makes
-    // Svix retries idempotent.
-    if (evt.type === 'user.created') {
-      const { error } = await deps.users.upsertByClerkId(toUserRow(evt.data));
-      if (error) {
-        log({ event: 'clerk_webhook_sync_failed', type: evt.type, clerk_user_id: evt.data.id, err: error.message });
+    // user.created is the only event that may insert. user.updated never does:
+    // a late or retried update arriving after user.deleted must not bring the
+    // deleted user's row (and their email / phone) back. Both only apply when
+    // newer than what's stored, so Svix retries (equal timestamp) and
+    // out-of-order deliveries (older timestamp) are no-ops.
+    if (evt.type === 'user.created' || evt.type === 'user.updated') {
+      const row = toUserRow(evt.data);
+      const { error, result } = await deps.users.sync(row, { allowInsert: evt.type === 'user.created' });
+      if (error || !result) {
+        log({ event: 'clerk_webhook_sync_failed', type: evt.type, clerk_user_id: row.clerk_user_id, err: error?.message ?? 'no result' });
         return new Response('Sync failed', { status: 500 });
       }
-    }
-
-    // user.updated never inserts: a late or retried update arriving after
-    // user.deleted must not bring the deleted user's row (and their email /
-    // phone) back. No matching row is acknowledged, not retried.
-    if (evt.type === 'user.updated') {
-      const { error, matched } = await deps.users.updateByClerkId(toUserRow(evt.data));
-      if (error) {
-        log({ event: 'clerk_webhook_sync_failed', type: evt.type, clerk_user_id: evt.data.id, err: error.message });
-        return new Response('Sync failed', { status: 500 });
+      if (result.outcome === 'missing') {
+        log({ event: 'clerk_webhook_update_no_row', type: evt.type, clerk_user_id: row.clerk_user_id });
       }
-      if (matched === 0) log({ event: 'clerk_webhook_update_no_row', clerk_user_id: evt.data.id });
+      if (result.outcome === 'stale') {
+        log({
+          event: 'clerk_webhook_stale_event',
+          type: evt.type,
+          clerk_user_id: row.clerk_user_id,
+          incoming_clerk_updated_at: row.clerk_updated_at,
+          stored_clerk_updated_at: result.stored.clerk_updated_at,
+          changed: staleDiff(row, result.stored),
+        });
+      }
     }
 
     if (evt.type === 'user.deleted') {
-      if (!evt.data.id) {
+      const clerkUserId = evt.data.id;
+      if (!clerkUserId) {
         log({ event: 'clerk_webhook_delete_missing_id' });
         return new Response('OK', { status: 200 });
       }
-      // Removes the public.users row; player_ratings goes with it (ON DELETE
-      // CASCADE). Nothing else references users.id yet, and the player's R2
-      // avatar objects (avatars/<clerk_user_id>/) are not removed.
-      const { error } = await deps.users.deleteByClerkId(evt.data.id);
+
+      // Deletion policy is a hard delete: the public.users row goes, and
+      // player_ratings with it (ON DELETE CASCADE). Every table that
+      // references users.id must use ON DELETE CASCADE too (backend/CLAUDE.md).
+      const { error } = await deps.users.deleteByClerkId(clerkUserId);
       if (error) {
-        log({ event: 'clerk_webhook_delete_failed', clerk_user_id: evt.data.id, err: error.message });
+        log({ event: 'clerk_webhook_delete_failed', clerk_user_id: clerkUserId, err: error.message });
         return new Response('Delete failed', { status: 500 });
+      }
+
+      // Then the player's R2 avatars (avatars/<clerk_user_id>/). A failure is
+      // logged, not retried: the row is already gone, and answering 5xx for
+      // every delete while R2 is down or misconfigured could get the whole
+      // endpoint disabled by Svix, which would stop user sync too. The log
+      // line is the cue to clean the prefix up by hand.
+      try {
+        const deleted = await deps.avatars.deleteAll(clerkUserId);
+        if (deleted > 0) log({ event: 'clerk_webhook_avatars_deleted', clerk_user_id: clerkUserId, count: deleted });
+      } catch (err) {
+        log({ event: 'clerk_webhook_avatar_cleanup_failed', clerk_user_id: clerkUserId, err: String(err) });
       }
     }
 

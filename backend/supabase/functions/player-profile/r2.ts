@@ -1,16 +1,10 @@
-import { AwsClient } from 'npm:aws4fetch@1';
+import { avatarPrefix, getR2 } from '../_shared/r2.ts';
 
-const r2 = new AwsClient({
-  accessKeyId: Deno.env.get('R2_ACCESS_KEY_ID')!,
-  secretAccessKey: Deno.env.get('R2_SECRET_ACCESS_KEY')!,
-  service: 's3',
-  region: 'auto',
-});
+export { avatarPrefix };
 
-// Origin only: some setups put the bucket in R2_ENDPOINT's path, which would
-// double it up below.
-const endpoint = new URL(Deno.env.get('R2_ENDPOINT')!).origin;
-const bucket = Deno.env.get('R2_BUCKET_NAME')!;
+// Built at module load, as before the client moved to _shared, so a missing
+// R2 secret still fails this function at boot.
+const { client: r2, endpoint, bucket } = getR2();
 const publicBaseUrl = Deno.env.get('R2_PUBLIC_URL')!;
 
 const UPLOAD_URL_TTL_SECONDS = 600;
@@ -20,9 +14,6 @@ export const AVATAR_CONTENT_TYPES: Record<string, string> = {
   'image/png': 'png',
   'image/webp': 'webp',
 };
-
-/** Every avatar a user uploads lives under this prefix, so a saved key can be checked for ownership. */
-export const avatarPrefix = (clerkUserId: string) => `avatars/${clerkUserId}/`;
 
 /** Own-property check, so inherited names like `constructor` aren't accepted as a type. */
 export const isAvatarContentType = (value: unknown): value is string =>
