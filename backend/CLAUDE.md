@@ -56,6 +56,22 @@ from a feature branch — that's how the hosted project drifted from `main`
 before. To redeploy without a code change, run the workflow manually
 (Actions → Deploy Supabase → Run workflow).
 
+Where each secret lives (all three were wrong or missing until 2026-11-14,
+so the workflow never succeeded before then):
+
+- GitHub Actions secrets: `SUPABASE_ACCESS_TOKEN` (a personal access token,
+  account-wide, so never in a repo `.env`) and `SUPABASE_DB_PASSWORD`.
+  `gh secret set` run through Claude Code's `!` can't prompt and saves an
+  empty value; set these in the GitHub UI or a normal terminal.
+- Supabase Edge Function secrets: `CLERK_WEBHOOK_SECRET` must equal the
+  signing secret of the Clerk dashboard webhook endpoint, which must point at
+  `https://<project-ref>.supabase.co/functions/v1/clerk-webhook` (not a Svix
+  Play inbox) with `user.created`, `user.updated`, `user.deleted`.
+
+To check the webhook end to end, create and then delete a throwaway user in
+the Clerk dev instance and look it up by `public.users.clerk_user_id` (not
+`id`, which is our own uuid), then in `public.deleted_clerk_users`.
+
 ## Conventions
 
 - **User deletion is a hard delete.** When Clerk deletes a user,
