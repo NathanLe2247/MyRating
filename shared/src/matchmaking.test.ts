@@ -82,7 +82,7 @@ describe('MatchmakingStateSchema', () => {
         created_at: TS,
         updated_at: TS,
       },
-      opponent: { id: DEMO_TESTER_USER_ID, username: 'demo_tester', first_name: 'Demo', rating: 1500 },
+      opponent: { id: DEMO_TESTER_USER_ID, username: null, first_name: 'Demo', rating: 1500, is_bot: true },
       court: null,
     };
     assert.deepEqual(MatchmakingStateSchema.parse(state), state);

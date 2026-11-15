@@ -153,23 +153,39 @@ alter publication supabase_realtime add table public.matches;
 -- A fixed, non-Clerk user the matchmaking function pairs with a player who
 -- has waited ~5 s, when the DEMO_BOT_ENABLED function secret is 'true'. The
 -- id is v4-shaped so z.uuid() accepts it; it mirrors DEMO_TESTER_USER_ID in
--- shared/src/matchmaking.ts. `clerk_user_id` is a placeholder (the column is
--- not null unique); Clerk ids start with `user_`, so it never collides and
--- clerk-webhook never touches it. Inserted here (not seed.sql) so the hosted
+-- shared/src/matchmaking.ts. Inserted here (not seed.sql) so the hosted
 -- project has it.
+--
+-- * `clerk_user_id` is a placeholder (the column is not null unique). Clerk
+--   ids always start with `user_`, so it can't collide with a real user and
+--   clerk-webhook never touches it.
+-- * `username` is null. Any name that passes users_username_format also
+--   passes onboarding (both use the same pattern), so a real player could
+--   already hold any handle we picked and the insert would abort on the
+--   unique index. The app shows the bot by first_name/last_name.
+-- * `is_bot`: leaderboards and any other player lists must filter it out,
+--   and the bot's rating never changes (the `ratings` function must skip
+--   is_bot players).
+
+alter table public.users
+  add column is_bot boolean not null default false;
+
+comment on column public.users.is_bot is
+  'True only for the Demo Tester. Leaderboards must exclude is_bot users; their rating never changes.';
 
 insert into public.users (
-  id, clerk_user_id, username, first_name, last_name, login_method,
+  id, clerk_user_id, username, first_name, last_name, login_method, is_bot,
   profile_completed_at, onboarding_completed_at
 )
 values (
-  '00000000-0000-4000-8000-0000000000d1', 'demo_tester', 'demo_tester', 'Demo', 'Tester', 'email',
+  '00000000-0000-4000-8000-0000000000d1', 'demo_tester', null, 'Demo', 'Tester', 'email', true,
   now(), now()
 )
 on conflict (id) do nothing;
 
 -- Near the median visible rating at migration time (1500, the default, if
 -- nobody is rated yet). A settled deviation so the bot isn't provisional.
+-- This is the one player_ratings write outside the `ratings` edge function.
 insert into public.player_ratings (user_id, rating, mmr, rating_deviation)
 select
   '00000000-0000-4000-8000-0000000000d1',
@@ -237,12 +253,19 @@ begin
 
   perform pg_advisory_xact_lock(hashtext('public.matchmaking'));
 
-  -- Answer (or leave) the pending proposal first.
+  -- One open match per player: answer (or leave) a proposal first, and
+  -- finish (or leave) an accepted match before queueing again.
   if exists (
     select 1 from public.matches m
     where m.status = 'proposed' and p_player_id in (m.player_a_id, m.player_b_id)
   ) then
     raise exception 'match_pending' using errcode = 'P0001';
+  end if;
+  if exists (
+    select 1 from public.matches m
+    where m.status in ('accepted', 'awaiting_confirmation') and p_player_id in (m.player_a_id, m.player_b_id)
+  ) then
+    raise exception 'match_open' using errcode = 'P0001';
   end if;
 
   point := extensions.st_setsrid(extensions.st_makepoint(p_lng, p_lat), 4326)::extensions.geography;
@@ -257,8 +280,10 @@ begin
 end;
 $$;
 
--- Leaves the queue and cancels the player's unanswered proposals (the other
--- player has to rejoin). Accepted matches are untouched.
+-- Leaves the queue and backs out of the player's match before any result:
+-- a `proposed` match, or an `accepted` one nobody has reported yet, becomes
+-- `cancelled` (the other player has to rejoin). Matches with a reported
+-- result are untouched.
 create function public.matchmaking_leave(p_player_id uuid)
 returns void
 language plpgsql
@@ -274,7 +299,8 @@ begin
 
   update public.matches
      set status = 'cancelled', updated_at = now()
-   where status = 'proposed' and p_player_id in (player_a_id, player_b_id);
+   where (status = 'proposed' or (status = 'accepted' and reported_by is null))
+     and p_player_id in (player_a_id, player_b_id);
 end;
 $$;
 
@@ -445,7 +471,8 @@ as $$
         'id', u.id,
         'username', u.username,
         'first_name', u.first_name,
-        'rating', r.rating
+        'rating', r.rating,
+        'is_bot', u.is_bot
       )
       from open_match om
       join public.users u

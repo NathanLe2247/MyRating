@@ -4,7 +4,7 @@
 // POST /matchmaking with a MatchmakingRequest body (shared/src/matchmaking.ts):
 //   { action: 'join', lat, lng, radius_m }   start/update waiting, try to pair
 //   { action: 'poll' }                       try to pair (and the bot), get state
-//   { action: 'leave' }                      stop waiting, cancel a proposal
+//   { action: 'leave' }                      stop waiting, cancel an unreported match
 //   { action: 'accept' | 'decline', match_id }
 // Every 200 is a MatchmakingState. Errors are { error: <MatchmakingError> }.
 import { type MatchmakingError, MatchmakingRequestSchema, MatchmakingStateSchema } from '@myrating/shared';
@@ -14,7 +14,9 @@ export const DEMO_BOT_WAIT_MS = 5_000;
 
 /** A refusal from the matchmaking_* SQL functions (their exception message). */
 export class MatchmakingRefusal extends Error {
-  constructor(readonly code: 'match_pending' | 'match_not_found' | 'match_not_proposed' | 'invalid_request') {
+  constructor(
+    readonly code: 'match_pending' | 'match_open' | 'match_not_found' | 'match_not_proposed' | 'invalid_request',
+  ) {
     super(code);
   }
 }
@@ -66,6 +68,7 @@ const REFUSAL_STATUS: Record<MatchmakingRefusal['code'], number> = {
   invalid_request: 400,
   match_not_found: 404,
   match_pending: 409,
+  match_open: 409,
   match_not_proposed: 409,
 };
 

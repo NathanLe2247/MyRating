@@ -54,6 +54,7 @@ function fakeStore() {
     join(playerId, lat, lng, radius_m) {
       calls.push('join');
       if (open(playerId).some((m) => m.status === 'proposed')) throw new MatchmakingRefusal('match_pending');
+      if (open(playerId).length > 0) throw new MatchmakingRefusal('match_open');
       const existing = waiting(playerId);
       if (existing) Object.assign(existing, { lat, lng, radius_m });
       else entries.push({ id: crypto.randomUUID(), player_id: playerId, lat, lng, radius_m, status: 'waiting', created_at: now });
@@ -63,7 +64,8 @@ function fakeStore() {
       calls.push('leave');
       const e = waiting(playerId);
       if (e) e.status = 'left';
-      for (const m of open(playerId)) if (m.status === 'proposed') m.status = 'cancelled';
+      // accepted matches here never have a reported result yet
+      for (const m of open(playerId)) m.status = 'cancelled';
       return Promise.resolve();
     },
     pair(playerId) {
@@ -135,7 +137,13 @@ function fakeStore() {
           : null,
         match: m ? { ...m, court_id: null, reported_by: null, created_at: iso(now), updated_at: iso(now) } : null,
         opponent: opponentId
-          ? { id: opponentId, username: opponentId === DEMO_TESTER_USER_ID ? 'demo_tester' : null, first_name: null, rating: 1500 }
+          ? {
+            id: opponentId,
+            username: null,
+            first_name: opponentId === DEMO_TESTER_USER_ID ? 'Demo' : null,
+            rating: 1500,
+            is_bot: opponentId === DEMO_TESTER_USER_ID,
+          }
           : null,
         court: null,
       });
@@ -228,6 +236,22 @@ Deno.test('accept by both players makes the match accepted', async () => {
     status: 409,
     body: { error: 'match_not_proposed' },
   });
+
+  // One open match per player: no queueing while this one is on.
+  assertEquals(await call('user_a', join()), { status: 409, body: { error: 'match_open' } });
+});
+
+Deno.test('leave backs out of an accepted match before any result', async () => {
+  const { call } = setup();
+  await call('user_a', join());
+  const matchId = ((await call('user_b', join())).body as MatchmakingState).match!.id;
+  await call('user_a', { action: 'accept', match_id: matchId });
+  await call('user_b', { action: 'accept', match_id: matchId });
+
+  const left = (await call('user_a', { action: 'leave' })).body as MatchmakingState;
+  assertEquals(left.match, null);
+  assertEquals(((await call('user_b', { action: 'poll' })).body as MatchmakingState).match, null);
+  assertEquals((await call('user_a', join())).status, 200);
 });
 
 Deno.test('decline ends the match and lets the player rejoin', async () => {
@@ -270,6 +294,7 @@ Deno.test('bot on: pairs after the wait and has already accepted', async () => {
   const paired = (await call('user_a', { action: 'poll' })).body as MatchmakingState;
   assertEquals(paired.match?.player_b_id, DEMO_TESTER_USER_ID);
   assertEquals(paired.opponent?.id, DEMO_TESTER_USER_ID);
+  assertEquals(paired.opponent?.is_bot, true);
   assert(paired.match?.player_b_accepted_at, 'the bot auto-accepts');
   assertEquals(paired.match?.status, 'proposed');
   assert(logs.some((l) => l.event === 'matchmaking_paired' && l.demo_bot === true));

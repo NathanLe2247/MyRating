@@ -10,7 +10,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(69);
+select plan(74);
 
 -- Players, inserted as the migration owner (bypasses RLS).
 insert into public.users (id, clerk_user_id, username, login_method)
@@ -50,10 +50,16 @@ select ok(
 );
 
 select results_eq(
-  $$select clerk_user_id, username, first_name, last_name from public.users
+  $$select clerk_user_id, username, first_name, last_name, is_bot from public.users
      where id = '00000000-0000-4000-8000-0000000000d1'$$,
-  $$values ('demo_tester'::text, 'demo_tester'::text, 'Demo'::text, 'Tester'::text)$$,
-  'the Demo Tester user exists with its fixed id'
+  $$values ('demo_tester'::text, null::text, 'Demo'::text, 'Tester'::text, true)$$,
+  'the Demo Tester exists with its fixed id, no username, is_bot'
+);
+
+select is(
+  (select count(*)::int from public.users where is_bot),
+  1,
+  'only the Demo Tester is a bot (is_bot defaults to false)'
 );
 
 select ok(
@@ -280,6 +286,10 @@ select is(
   'accepted',
   'state still shows the accepted match'
 );
+select throws_ok(
+  $$select public.matchmaking_join('e0000000-0000-4000-8000-0000000000b2', 39.1022, -76.9441, 1000)$$,
+  'P0001', 'match_open', 'joining with an accepted match is refused'
+);
 
 -- Radius: C (5 km radius) and D (1 km radius) ~2 km apart don't pair.
 select public.matchmaking_join('e0000000-0000-4000-8000-0000000000c3', 39.1022, -76.9441, 5000);
@@ -346,8 +356,29 @@ select is(
 select public.matchmaking_leave('e0000000-0000-4000-8000-0000000000a1');
 select is(
   (select status::text from public.matches where id = (select id from ab)),
-  'accepted',
-  'leaving does not cancel an accepted match'
+  'cancelled',
+  'leaving cancels an accepted match nobody has reported'
+);
+select lives_ok(
+  $$select public.matchmaking_join('e0000000-0000-4000-8000-0000000000b2', 39.1022, -76.9441, 1000)$$,
+  'after the cancel the other player can rejoin'
+);
+select public.matchmaking_leave('e0000000-0000-4000-8000-0000000000b2');
+
+-- A reported match is past backing out; leave leaves it alone, and join is refused.
+insert into public.matches (id, player_a_id, player_b_id, status, player_a_accepted_at, player_b_accepted_at, reported_by)
+values ('a0000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-0000000000c3',
+        'e0000000-0000-4000-8000-0000000000f6', 'awaiting_confirmation', now(), now(),
+        'e0000000-0000-4000-8000-0000000000c3');
+select public.matchmaking_leave('e0000000-0000-4000-8000-0000000000c3');
+select is(
+  (select status::text from public.matches where id = 'a0000000-0000-4000-8000-000000000002'),
+  'awaiting_confirmation',
+  'leaving does not cancel a match with a reported result'
+);
+select throws_ok(
+  $$select public.matchmaking_join('e0000000-0000-4000-8000-0000000000c3', 39.1022, -76.9441, 1000)$$,
+  'P0001', 'match_open', 'joining while awaiting confirmation is refused'
 );
 
 -- Bad input
@@ -390,10 +421,11 @@ select is(
   null,
   'the bot does not pair the same player twice'
 );
-select is(
-  public.matchmaking_state('e0000000-0000-4000-8000-0000000000d4') -> 'opponent' ->> 'first_name',
-  'Demo',
-  'state names the Demo Tester as the opponent'
+select results_eq(
+  $$select s ->> 'first_name', (s ->> 'is_bot')::boolean
+      from (select public.matchmaking_state('e0000000-0000-4000-8000-0000000000d4') -> 'opponent' as s) x$$,
+  $$values ('Demo'::text, true)$$,
+  'state names the Demo Tester as the opponent and flags it as a bot'
 );
 select public.matchmaking_respond('e0000000-0000-4000-8000-0000000000d4', (select id from bot), true);
 select is(
@@ -407,7 +439,7 @@ reset role;
 -- ---------------------------------------------------------------------------
 -- RLS
 -- ---------------------------------------------------------------------------
--- State now: A and B share accepted match ab; nobody else is in it. G (no
+-- State now: A and B share match ab (cancelled); nobody else is in it. G (no
 -- matches) gets a waiting entry here.
 insert into public.queue_entries (player_id, location, radius_m)
 values ('e0000000-0000-4000-8000-000000000007', 'SRID=4326;POINT(-76.9441 39.1022)', 1000);

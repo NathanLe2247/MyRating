@@ -13,7 +13,8 @@ import { MatchSchema, QueueEntrySchema } from './match.ts';
  * `public.users.id` of the Demo Tester bot, inserted by
  * 20261114130000_queue_and_matches.sql. When the backend has the demo bot on,
  * a player who waits ~5 s unpaired is matched with this user, who accepts
- * immediately. Compare `opponent.id` with it to label the bot in the UI.
+ * immediately. Its `users.is_bot` is true (`opponent.is_bot` in the state):
+ * leaderboards must filter `is_bot` out, and its rating never changes.
  */
 export const DEMO_TESTER_USER_ID = '00000000-0000-4000-8000-0000000000d1';
 
@@ -23,9 +24,11 @@ export type MatchmakingAction = (typeof MATCHMAKING_ACTIONS)[number];
 /**
  * - `join`: start waiting at (`lat`, `lng`) for a player within `radius_m`
  *   metres (or update the area while already waiting). Tries to pair at once.
+ *   Refused while the player has an open match (`OPEN_MATCH_STATUSES`).
  * - `poll`: re-check for an opponent (and the Demo Tester, when enabled) and
  *   return the current state. Call it every few seconds while waiting.
- * - `leave`: stop waiting; also cancels an unanswered proposal.
+ * - `leave`: stop waiting; also cancels the player's `proposed` match, or
+ *   their `accepted` match if nobody has reported a result yet.
  * - `accept` / `decline`: answer a `proposed` match.
  */
 export const MatchmakingRequestSchema = z.discriminatedUnion('action', [
@@ -49,6 +52,8 @@ export const MatchOpponentSchema = z.object({
   first_name: z.string().nullable(),
   /** Visible rating (`player_ratings.rating`); null while unrated. */
   rating: z.number().nullable(),
+  /** `users.is_bot`: true for the Demo Tester. */
+  is_bot: z.boolean(),
 });
 export type MatchOpponent = z.infer<typeof MatchOpponentSchema>;
 
@@ -76,7 +81,8 @@ export const MATCHMAKING_ERRORS = [
   'unauthorized', // 401: missing/invalid Clerk session token
   'profile_required', // 403: no public.users row yet (finish onboarding)
   'invalid_request', // 400
-  'match_pending', // 409: join while a proposal is unanswered
+  'match_pending', // 409: join while a proposal is unanswered (answer or leave)
+  'match_open', // 409: join while an accepted / awaiting_confirmation match is open
   'match_not_found', // 404: unknown match, or not one of its players
   'match_not_proposed', // 409: accept/decline after it was settled
   'internal', // 500

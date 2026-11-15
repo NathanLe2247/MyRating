@@ -56,18 +56,23 @@ export type QueueEntry = z.infer<typeof QueueEntrySchema>;
 // ---------------------------------------------------------------------------
 
 /**
+ * Mirrors public.match_status (same values, same order).
+ *
  * Lifecycle:
  * - `proposed` → `accepted` once both players accepted (both
  *   `player_*_accepted_at` set), → `declined` if either turns it down, or →
  *   `cancelled` if it expires or a player leaves.
  * - `accepted` is also the "report the result" state: the match is on and
- *   nobody has reported a score yet.
+ *   nobody has reported a score yet. A player who leaves the queue before
+ *   anyone reports moves it to `cancelled`.
  * - `accepted` → `awaiting_confirmation` when one player reports
  *   (`reported_by` set); the other player must confirm.
  * - `awaiting_confirmation` → `confirmed` (ratings update) or `disputed`.
  * `declined`, `cancelled`, `confirmed`, and `disputed` are terminal here.
+ *
+ * A player has at most one open match (`OPEN_MATCH_STATUSES`) at a time:
+ * the matchmaking function refuses to queue them while one exists.
  */
-/** Mirrors public.match_status (same values, same order). */
 export const MATCH_STATUSES = [
   'proposed',
   'accepted',
@@ -79,6 +84,9 @@ export const MATCH_STATUSES = [
 ] as const;
 export const MatchStatusSchema = z.enum(MATCH_STATUSES);
 export type MatchStatus = z.infer<typeof MatchStatusSchema>;
+
+/** Statuses of a match that is still in progress (not terminal). */
+export const OPEN_MATCH_STATUSES = ['proposed', 'accepted', 'awaiting_confirmation'] as const satisfies readonly MatchStatus[];
 
 /**
  * A singles match between `player_a_id` and `player_b_id` (always two

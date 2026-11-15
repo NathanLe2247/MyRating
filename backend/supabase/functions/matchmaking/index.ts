@@ -30,14 +30,14 @@ async function authenticate(req: Request): Promise<string | null> {
   }
 }
 
-const REFUSALS = new Set(['match_pending', 'match_not_found', 'match_not_proposed']);
+const REFUSALS = new Set(['match_pending', 'match_open', 'match_not_found', 'match_not_proposed']);
 const BAD_INPUT = new Set(['invalid_location', 'invalid_radius']);
 
 /** Turns the SQL functions' refusals into MatchmakingRefusal; rethrows anything else. */
 function check(error: PostgrestError | null) {
   if (!error) return;
   if (error.code === 'P0001' && REFUSALS.has(error.message)) {
-    throw new MatchmakingRefusal(error.message as 'match_pending' | 'match_not_found' | 'match_not_proposed');
+    throw new MatchmakingRefusal(error.message as Exclude<MatchmakingRefusal['code'], 'invalid_request'>);
   }
   if (error.code === '22023' && BAD_INPUT.has(error.message)) throw new MatchmakingRefusal('invalid_request');
   throw new Error(`${error.code}: ${error.message}`);
