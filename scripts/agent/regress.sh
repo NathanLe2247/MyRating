@@ -151,9 +151,20 @@ if [ $FULL = 1 ] || touched 'frontend/|shared/'; then check_node_app frontend; f
 # migration change re-runs them too.
 if [ $FULL = 1 ] || touched 'shared/|backend/supabase/migrations/'; then check_node_app shared; fi
 
-if touched 'backend/supabase/functions/'; then
+# Edge functions import shared/ as @myrating/shared (backend/CLAUDE.md), so a
+# shared/ change re-checks every file of those functions too.
+deno_check_files() {
+  echo "$CHANGED" | grep -E '^backend/supabase/functions/.*\.ts$'
+  if touched 'shared/'; then
+    for cfg in $(grep -l '@myrating/shared' backend/supabase/functions/*/deno.json 2>/dev/null); do
+      find "$(dirname "$cfg")" -name '*.ts'
+    done
+  fi
+}
+
+if touched 'backend/supabase/functions/|shared/'; then
   if command -v deno >/dev/null; then
-    for f in $(echo "$CHANGED" | grep -E '^backend/supabase/functions/.*\.ts$'); do
+    for f in $(deno_check_files | sort -u); do
       [ -f "$f" ] || continue
       # A function with its own deno.json (e.g. the import map for shared/,
       # see backend/CLAUDE.md) is checked with it, as deploy and serve do;
