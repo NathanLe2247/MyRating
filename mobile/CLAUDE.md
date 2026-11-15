@@ -72,8 +72,11 @@ screens are gone; `app/(home)/` holds the tab screens.
   with `useMatchmaking()` (`src/hooks/use-matchmaking.ts`). It's one React
   Query entry (`['matchmaking', userId]`) that polls every
   `MatchmakingPollMs` while `searching`, `proposed` or
-  `waiting_for_opponent` and is idle otherwise; it only runs once the player
-  is signed in and onboarded. Actions (`join`, `leave`, `accept`, `decline`
+  `waiting_for_opponent`, every `MatchmakingOpenMatchPollMs` (slower) while
+  the match is `accepted` or `awaiting_confirmation` (so the opponent's
+  cancel or score report shows up), and is idle otherwise
+  (`pollIntervalMs` in `src/utils/matchmaking-state.ts`); it only runs once
+  the player is signed in and onboarded. Actions (`join`, `leave`, `accept`, `decline`
   — which requeues) write their returned state into that entry.
   `match_open` / `match_pending` aren't errors: the state is re-read and the
   open match is shown. Phases and the Match Found view model are pure
@@ -89,9 +92,11 @@ screens are gone; `app/(home)/` holds the tab screens.
   Leave) → the pairing, and opens `/match/found` once per new proposal.
   `app/match/found.tsx` (`useMatchFoundScreen`) shows the live match:
   Accept / Decline / Leave while proposed, then the "match on" panel
-  (`MatchOnPanel`, `phase: 'on'` for `accepted` and
-  `awaiting_confirmation`). The score report goes in that panel via
-  `MatchFoundView`'s `matchOnContent`.
+  (`MatchOnPanel`): view phase `'on'` for `accepted`, with Cancel match, and
+  `'reported'` for `awaiting_confirmation`, with no Cancel —
+  `matchmaking_leave` only cancels `proposed` or unreported `accepted`
+  matches, so offering it after a report would leave the match open. The
+  score report goes in that panel via `MatchFoundView`'s `matchOnContent`.
 - Test builders for function states live in `src/test-utils/matchmaking.ts`
   (outside `__tests__/` so Jest doesn't run them as tests).
 
