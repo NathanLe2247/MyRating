@@ -138,13 +138,14 @@ keeps working as real screens replace the placeholders. Screenshots:
 `NN-tab-community.png`, numbered like that step; builds before the tabs
 existed note "pre-#13 build" instead); the Home queue card against the
 hosted `matchmaking` function ("queue: Find a match reaches matchmaking",
-`NN-queue.png`): test accounts have no `public.users` row (see Gotchas), so
-the function answers `profile_required` and the step passes on the card's
-"Finish setting up your profile" copy, which still proves the Clerk token
-reached the function. With a users row the step continues searching →
-Match Found against the Demo Tester (`DEMO_BOT_ENABLED`) → Accept → "You're
-on!" → Cancel match; reaching Match Found in the smoke needs onboarding step
-1 to really run (player-profile), which it doesn't today; `/sso-callback` with an unfinished
+`NN-queue.png`, `NN-match-found.png`, `NN-match-on.png`): Find a match →
+searching → Match Found against the Demo Tester (`DEMO_BOT_ENABLED` on
+hosted, ~5 s) → Accept → "You're on!" → Cancel match, back to an idle card.
+The account's `public.users` row comes from the clerk-webhook, so the
+function accepts it even though onboarding was only marked done; where
+there's no row, the function answers `profile_required` and the step
+passes on the card's "Finish setting up your profile" copy (the note says
+so); `/sso-callback` with an unfinished
 account (onboarding metadata cleared first) going to onboarding; phone sign-up
 with no password (same onboarding handling); phone sign-in with a wrong then
 correct code; forgot-password reset and sign-in with the new password.

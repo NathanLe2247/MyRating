@@ -443,13 +443,13 @@ await step(
   { needsAccount: true }
 );
 
-// Home's queue card against the hosted `matchmaking` function (#79). Test
-// accounts are marked onboarded through Clerk without a public.users row, so
-// the function answers profile_required and the card shows that copy (from
-// en.matchmaking.errors); the step passes on it, since it proves the Clerk
-// token reached the function and its error is handled. With a users row, it
-// goes on: searching → Match Found against the Demo Tester (DEMO_BOT_ENABLED)
-// → Accept → "You're on!", then cancels the match so the account is idle.
+// Home's queue card against the hosted `matchmaking` function (#79):
+// searching → Match Found against the Demo Tester (DEMO_BOT_ENABLED) →
+// Accept → "You're on!", then Cancel match so the account is idle again.
+// The account's public.users row comes from the clerk-webhook; without one
+// the function answers profile_required, and the step passes on that copy
+// (from en.matchmaking.errors), since it still proves the Clerk token reached
+// the function and the error is handled.
 const QUEUE = {
   findMatch: /^find a match$/i,
   profileRequired: /finish setting up your profile to queue/i,
@@ -476,7 +476,7 @@ await step(
       text(QUEUE.matchFound).waitFor({ timeout: T }).then(() => 'found'),
     ]).catch(orFail('Find a match showed no searching state, match or profile_required copy'));
     await shot('queue');
-    if (outcome === 'profile') return 'profile_required copy shown (test account has no public.users row)';
+    if (outcome === 'profile') return 'profile_required copy shown (no public.users row for the test account)';
     await text(QUEUE.matchFound).waitFor({ timeout: BOT_WAIT_MS }).catch(orFail('no Match Found (Demo Tester off?)'));
     await shot('match-found');
     await btn(QUEUE.accept).click();
