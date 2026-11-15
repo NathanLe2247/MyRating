@@ -136,7 +136,15 @@ URL and for the page to settle and checks nothing on the screen itself, so it
 keeps working as real screens replace the placeholders. Screenshots:
 (`NN-home.png`, `NN-tab-play.png`, `NN-tab-health.png`,
 `NN-tab-community.png`, numbered like that step; builds before the tabs
-existed note "pre-#13 build" instead); `/sso-callback` with an unfinished
+existed note "pre-#13 build" instead); the Home queue card against the
+hosted `matchmaking` function ("queue: Find a match reaches matchmaking",
+`NN-queue.png`): test accounts have no `public.users` row (see Gotchas), so
+the function answers `profile_required` and the step passes on the card's
+"Finish setting up your profile" copy, which still proves the Clerk token
+reached the function. With a users row the step continues searching →
+Match Found against the Demo Tester (`DEMO_BOT_ENABLED`) → Accept → "You're
+on!" → Cancel match; reaching Match Found in the smoke needs onboarding step
+1 to really run (player-profile), which it doesn't today; `/sso-callback` with an unfinished
 account (onboarding metadata cleared first) going to onboarding; phone sign-up
 with no password (same onboarding handling); phone sign-in with a wrong then
 correct code; forgot-password reset and sign-in with the new password.

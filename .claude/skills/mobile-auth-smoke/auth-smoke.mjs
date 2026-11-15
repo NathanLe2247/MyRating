@@ -443,6 +443,52 @@ await step(
   { needsAccount: true }
 );
 
+// Home's queue card against the hosted `matchmaking` function (#79). Test
+// accounts are marked onboarded through Clerk without a public.users row, so
+// the function answers profile_required and the card shows that copy (from
+// en.matchmaking.errors); the step passes on it, since it proves the Clerk
+// token reached the function and its error is handled. With a users row, it
+// goes on: searching → Match Found against the Demo Tester (DEMO_BOT_ENABLED)
+// → Accept → "You're on!", then cancels the match so the account is idle.
+const QUEUE = {
+  findMatch: /^find a match$/i,
+  profileRequired: /finish setting up your profile to queue/i,
+  searching: /^searching…$/i,
+  matchFound: /^match found!$/i,
+  accept: /^accept match$/i,
+  on: /^you.re on!$/i,
+  cancel: /^cancel match$/i,
+};
+const BOT_WAIT_MS = 20000;
+
+await step(
+  'queue: Find a match reaches matchmaking',
+  async () => {
+    await ph('identifier').fill(email);
+    await ph('password').fill(password);
+    await btn(/^log in/i).click();
+    await afterAuth('after password sign-in');
+    await btn(QUEUE.findMatch).waitFor({ timeout: T }).catch(orFail('no "Find a match" on home'));
+    await btn(QUEUE.findMatch).click();
+    const outcome = await Promise.any([
+      text(QUEUE.profileRequired).waitFor({ timeout: T }).then(() => 'profile'),
+      text(QUEUE.searching).waitFor({ timeout: T }).then(() => 'searching'),
+      text(QUEUE.matchFound).waitFor({ timeout: T }).then(() => 'found'),
+    ]).catch(orFail('Find a match showed no searching state, match or profile_required copy'));
+    await shot('queue');
+    if (outcome === 'profile') return 'profile_required copy shown (test account has no public.users row)';
+    await text(QUEUE.matchFound).waitFor({ timeout: BOT_WAIT_MS }).catch(orFail('no Match Found (Demo Tester off?)'));
+    await shot('match-found');
+    await btn(QUEUE.accept).click();
+    await text(QUEUE.on).waitFor({ timeout: T }).catch(orFail('accept did not reach "You\'re on!"'));
+    await shot('match-on');
+    await btn(QUEUE.cancel).click();
+    await btn(QUEUE.findMatch).waitFor({ timeout: T }).catch(orFail('cancel did not return to an idle queue card'));
+    return 'searching → Match Found → accepted → cancelled';
+  },
+  { needsAccount: true }
+);
+
 await step(
   'google return: /sso-callback sends unfinished account to onboarding',
   async () => {
