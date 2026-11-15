@@ -27,7 +27,8 @@ Types, Zod schemas, and constants used by `frontend/`, `mobile/`, and
   match → report score → confirm → rating update. `queue_entries` and
   `matches` (with the `queue_entry_status` / `match_status` enums) are in
   `20261114130000_queue_and_matches.sql` and must keep these names, enums,
-  and nullability; the games and rating-history tables don't exist yet.
+  and nullability. `match_games` (`MatchGameRow`) and `rating_history`
+  (`RatingHistoryRow`) are in `20261114140000_match_results_ratings.sql`.
   Player ids are always `public.users.id` (uuid), never `clerk_user_id`.
   Clients read queue entries through `public.queue_entries_geojson`.
   - `QueueEntry` (`id` — its own key, separate from `player_id`;
@@ -71,7 +72,8 @@ Types, Zod schemas, and constants used by `frontend/`, `mobile/`, and
     display, and `RatingHistoryRow` (the same plus `created_at`) for the
     stored row. `delta` must be within `RATING_DELTA_TOLERANCE` (0.005) of
     `after − before`; values are `numeric(7,2)`, so compute `delta` from
-    the rounded values. Only the `ratings` edge function computes these
+    the rounded values (the table's `delta` is generated as `after - before`).
+    Only the backend `ratings` code computes these
     (`agent/skills/ratings-engine`).
 - Matchmaking API (`src/matchmaking.ts`) — the `matchmaking` edge function's
   request and response. `MatchmakingRequestSchema` (POST body,
@@ -84,3 +86,13 @@ Types, Zod schemas, and constants used by `frontend/`, `mobile/`, and
   which is true only for the Demo Tester: leaderboards must filter `is_bot`
   users out, and the bot's rating never changes. Edge functions import these as
   `@myrating/shared` (see `backend/CLAUDE.md`).
+- Match results API (`src/match-results.ts`) — the `match-results` edge
+  function's request and response. `MatchResultsRequestSchema` (POST body,
+  discriminated on `action`: `submit` is `MatchResultSubmissionSchema`
+  plus the action, via `safeExtend` so its scoring rules still apply;
+  `confirm`, `dispute`, `state` take `match_id`), `MatchResultsStateSchema`
+  (every 200: `match`, `games` as `MatchGameRow[]`, `opponent` as
+  `MatchOpponent`, `rating_change` — the caller's `RatingChange`, null until
+  confirmed and after a dispute), `MATCH_RESULTS_ERRORS`, and
+  `DEMO_BOT_CONFIRM_DELAY_MS` (3 s: the Demo Tester confirms a score
+  reported against it on the first call after this, so poll `state`).

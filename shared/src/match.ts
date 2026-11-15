@@ -267,8 +267,9 @@ function checkDelta(c: { before: number; after: number; delta: number }, ctx: z.
 /**
  * How a confirmed match moved one player's visible rating
  * (`player_ratings.rating`), for the result screen. Computed only by the
- * `ratings` edge function (agent/skills/ratings-engine); clients just display
- * it. `match_id` is the confirmed match that caused it; `delta` is
+ * backend `ratings` code, run by the `match-results` edge function
+ * (agent/skills/ratings-engine); clients just display it (`rating_change` in
+ * `MatchResultsState`). `match_id` is the confirmed match that caused it; `delta` is
  * `after - before`.
  */
 export const RatingChangeSchema = z.object(ratingChangeShape).superRefine(checkDelta);
