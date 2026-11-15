@@ -50,14 +50,35 @@ jobs:
       - name: Apply migrations
         run: supabase db push
 
+      # Functions import shared/ through this symlink (see backend/CLAUDE.md):
+      # `deploy --use-api` uploads files under their path relative to
+      # backend/ and refuses `..`, so ../shared can't be uploaded directly.
+      - name: Check the shared/ symlink
+        run: |
+          link=supabase/functions/_shared/myrating-shared
+          if [ ! -L "$link" ] || [ "$(cd "$link" && pwd -P)" != "$(cd ../shared/src && pwd -P)" ]; then
+            echo "::error::$link must be a symlink to shared/src"
+            exit 1
+          fi
+
+      # One bad function must not block the others: deploy them all, then
+      # fail the job listing every function that didn't deploy.
       - name: Deploy edge functions
         run: |
+          failed=""
           for dir in supabase/functions/*/; do
             name=$(basename "$dir")
             if [ -f "$dir/index.ts" ]; then
               echo "Deploying $name"
-              supabase functions deploy "$name" --project-ref "$SUPABASE_PROJECT_REF" --use-api
+              if ! supabase functions deploy "$name" --project-ref "$SUPABASE_PROJECT_REF" --use-api; then
+                echo "::error::Deploying $name failed"
+                failed="$failed $name"
+              fi
             else
               echo "Skipping $name (no index.ts)"
             fi
           done
+          if [ -n "$failed" ]; then
+            echo "::error::Functions that failed to deploy:$failed"
+            exit 1
+          fi

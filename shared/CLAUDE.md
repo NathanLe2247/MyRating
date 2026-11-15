@@ -24,10 +24,12 @@ Types, Zod schemas, and constants used by `frontend/`, `mobile/`, and
   Only active courts are visible to clients. The shape is deliberately
   minimal until the catalog is designed — see `agent/skills/courts-catalog`.
 - Queue, match, and result shapes (`src/match.ts`) — the demo flow queue →
-  match → report score → confirm → rating update. The tables don't exist
-  yet: the backend migration that adds them must match these names, enums,
-  and nullability. Player ids are always `public.users.id` (uuid), never
-  `clerk_user_id`.
+  match → report score → confirm → rating update. `queue_entries` and
+  `matches` (with the `queue_entry_status` / `match_status` enums) are in
+  `20261114130000_queue_and_matches.sql` and must keep these names, enums,
+  and nullability; the games and rating-history tables don't exist yet.
+  Player ids are always `public.users.id` (uuid), never `clerk_user_id`.
+  Clients read queue entries through `public.queue_entries_geojson`.
   - `QueueEntry` (`id` — its own key, separate from `player_id`;
     `player_id`, `location` GeoJSON point, `radius_m` integer 1–
     `MAX_QUEUE_RADIUS_M` (100000, same as `nearby_courts`), `status`:
@@ -44,6 +46,12 @@ Types, Zod schemas, and constants used by `frontend/`, `mobile/`, and
       awaiting-result status.
     - `accepted` → `awaiting_confirmation` (one player reported;
       `reported_by` set) → `confirmed` (ratings update) | `disputed`.
+    - `accepted` → `cancelled` when a player leaves the queue before anyone
+      reported a result. Once a result is reported, leaving doesn't touch it.
+    - One open match per player: `OPEN_MATCH_STATUSES` = `proposed |
+      accepted | awaiting_confirmation`. The matchmaking function refuses to
+      queue a player who has one (`match_pending` for a proposal,
+      `match_open` otherwise).
   - `MatchGame` (`player_a_points`, `player_b_points`, in the match's a/b
     order) and `MatchResultSubmission` (`match_id`, `games`: 1–`MAX_GAMES`).
     The scoring rules live in these schemas, so every app validates the same
@@ -65,3 +73,14 @@ Types, Zod schemas, and constants used by `frontend/`, `mobile/`, and
     `after − before`; values are `numeric(7,2)`, so compute `delta` from
     the rounded values. Only the `ratings` edge function computes these
     (`agent/skills/ratings-engine`).
+- Matchmaking API (`src/matchmaking.ts`) — the `matchmaking` edge function's
+  request and response. `MatchmakingRequestSchema` (POST body,
+  discriminated on `action`: `join` with `lat`/`lng`/`radius_m`, `poll`,
+  `leave`, `accept`/`decline` with `match_id`), `MatchmakingStateSchema`
+  (every 200: `queue_entry`, `match`, `opponent`, `court`, each nullable),
+  `MATCHMAKING_ERRORS` (the `{ error }` codes), and `DEMO_TESTER_USER_ID`
+  (the Demo Tester bot's `users.id`, inserted by the same migration; a
+  test checks it's there). `MatchOpponent.is_bot` mirrors `users.is_bot`,
+  which is true only for the Demo Tester: leaderboards must filter `is_bot`
+  users out, and the bot's rating never changes. Edge functions import these as
+  `@myrating/shared` (see `backend/CLAUDE.md`).

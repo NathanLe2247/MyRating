@@ -151,10 +151,33 @@ if [ $FULL = 1 ] || touched 'frontend/|shared/'; then check_node_app frontend; f
 # migration change re-runs them too.
 if [ $FULL = 1 ] || touched 'shared/|backend/supabase/migrations/'; then check_node_app shared; fi
 
-if touched 'backend/supabase/functions/'; then
+# Edge functions import shared/ as @myrating/shared (backend/CLAUDE.md), so a
+# shared/ change re-checks every file of those functions too.
+deno_check_files() {
+  echo "$CHANGED" | grep -E '^backend/supabase/functions/.*\.ts$'
+  if touched 'shared/'; then
+    for cfg in $(grep -l '@myrating/shared' backend/supabase/functions/*/deno.json 2>/dev/null); do
+      find "$(dirname "$cfg")" -name '*.ts'
+    done
+  fi
+}
+
+if touched 'backend/supabase/functions/|shared/'; then
   if command -v deno >/dev/null; then
-    for f in $(echo "$CHANGED" | grep -E '^backend/supabase/functions/.*\.ts$'); do
-      [ -f "$f" ] && run "deno check $f" . deno check "$f"
+    for f in $(deno_check_files | sort -u); do
+      [ -f "$f" ] || continue
+      # A function with its own deno.json (e.g. the import map for shared/,
+      # see backend/CLAUDE.md) is checked with it, as deploy and serve do;
+      # Deno only discovers config from the cwd, which is the repo root here.
+      cfg_dir=$(dirname "$f")
+      while [ ! -f "$cfg_dir/deno.json" ] && [ "$cfg_dir" != backend/supabase/functions ] && [ "$cfg_dir" != . ]; do
+        cfg_dir=$(dirname "$cfg_dir")
+      done
+      if [ -f "$cfg_dir/deno.json" ]; then
+        run "deno check $f" . deno check --config "$cfg_dir/deno.json" "$f"
+      else
+        run "deno check $f" . deno check "$f"
+      fi
     done
   else
     result SKIP "edge functions: deno not installed"

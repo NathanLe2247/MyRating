@@ -2,9 +2,9 @@ import { z } from 'zod';
 
 import { GeoJsonPointSchema, TimestampSchema, UuidSchema } from './common.ts';
 
-// Shapes for the queue → match → result → rating-change flow. The tables
-// behind them don't exist yet; the backend migration that adds them must use
-// these names, enums, and nullability. Player ids are `public.users.id`
+// Shapes for the queue → match → result → rating-change flow. The queue and
+// match tables are in backend/supabase/migrations/20261114130000_queue_and_matches.sql
+// and must keep these names, enums, and nullability. Player ids are `public.users.id`
 // (uuid), never `clerk_user_id`.
 
 // ---------------------------------------------------------------------------
@@ -27,6 +27,7 @@ export const GAMES_TO_WIN_MATCH = Math.floor(MAX_GAMES / 2) + 1;
 /** Largest search radius, in metres. Same limit as `public.nearby_courts`. */
 export const MAX_QUEUE_RADIUS_M = 100_000;
 
+/** Mirrors public.queue_entry_status (same values, same order). */
 export const QUEUE_ENTRY_STATUSES = ['waiting', 'matched', 'left'] as const;
 export const QueueEntryStatusSchema = z.enum(QUEUE_ENTRY_STATUSES);
 export type QueueEntryStatus = z.infer<typeof QueueEntryStatusSchema>;
@@ -55,16 +56,22 @@ export type QueueEntry = z.infer<typeof QueueEntrySchema>;
 // ---------------------------------------------------------------------------
 
 /**
+ * Mirrors public.match_status (same values, same order).
+ *
  * Lifecycle:
  * - `proposed` → `accepted` once both players accepted (both
  *   `player_*_accepted_at` set), → `declined` if either turns it down, or →
  *   `cancelled` if it expires or a player leaves.
  * - `accepted` is also the "report the result" state: the match is on and
- *   nobody has reported a score yet.
+ *   nobody has reported a score yet. A player who leaves the queue before
+ *   anyone reports moves it to `cancelled`.
  * - `accepted` → `awaiting_confirmation` when one player reports
  *   (`reported_by` set); the other player must confirm.
  * - `awaiting_confirmation` → `confirmed` (ratings update) or `disputed`.
  * `declined`, `cancelled`, `confirmed`, and `disputed` are terminal here.
+ *
+ * A player has at most one open match (`OPEN_MATCH_STATUSES`) at a time:
+ * the matchmaking function refuses to queue them while one exists.
  */
 export const MATCH_STATUSES = [
   'proposed',
@@ -77,6 +84,9 @@ export const MATCH_STATUSES = [
 ] as const;
 export const MatchStatusSchema = z.enum(MATCH_STATUSES);
 export type MatchStatus = z.infer<typeof MatchStatusSchema>;
+
+/** Statuses of a match that is still in progress (not terminal). */
+export const OPEN_MATCH_STATUSES = ['proposed', 'accepted', 'awaiting_confirmation'] as const satisfies readonly MatchStatus[];
 
 /**
  * A singles match between `player_a_id` and `player_b_id` (always two
