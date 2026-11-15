@@ -3,9 +3,11 @@
 #
 #   scripts/agent/regress.sh          checks for the areas changed vs. origin/main
 #   scripts/agent/regress.sh --full   every check, plus a local `supabase db reset`
-#                                     when migrations changed (manager only — the
-#                                     local Supabase stack is shared, don't run
-#                                     this from parallel workers)
+#                                     and the pgTAP suite (`supabase test db`) when
+#                                     backend/supabase/{migrations,seed.sql,tests}
+#                                     changed (manager only — the local Supabase
+#                                     stack is shared, don't run this from
+#                                     parallel workers)
 #
 # Prints one PASS / FAIL / SKIP line per check and exits 1 on any FAIL.
 # Never touches the linked (production) Supabase project.
@@ -171,18 +173,39 @@ if touched 'backend/supabase/functions/'; then
   fi
 fi
 
-if touched 'backend/supabase/migrations/'; then
+# pgtap <name>: runs the pgTAP suite against the local stack and puts
+# pg_prove's totals ("Files=2, Tests=14") on the PASS/FAIL line
+pgtap() {
+  local name=$1 log="$LOG_DIR/pgtap.log" rc summary
+  (cd "$ROOT/backend" && supabase test db --local) >"$log" 2>&1
+  rc=$?
+  summary=$(grep -oE 'Files=[0-9]+, Tests=[0-9]+' "$log" | tail -1)
+  # also refuse a run that never reached pg_prove's verdict (no test files,
+  # connection error, ...) even if the CLI exited 0
+  if [ $rc = 0 ] && [ -n "$summary" ] && grep -q '^Result: PASS' "$log"; then
+    result PASS "$name ($summary)"
+  else
+    result FAIL "$name${summary:+ ($summary)}"
+    sed 's/^/      /' "$log" | tail -40
+    FAILED=1
+  fi
+}
+
+# The db reset replays migrations and loads seed.sql, and the pgTAP files in
+# tests/ run against that state, so a change to any of the three re-runs both.
+if touched 'backend/supabase/(migrations/|seed\.sql|tests/)'; then
   if [ $FULL = 1 ]; then
     if docker info >/dev/null 2>&1; then
       # local stack only: no --linked, no db push
       run "supabase: start local stack" backend supabase start
-      run "supabase: db reset (replays all migrations)" backend supabase db reset --local
+      run "supabase: db reset (replays migrations, loads seed)" backend supabase db reset --local
+      pgtap "supabase: pgTAP"
     else
-      result FAIL "supabase: migrations changed but Docker is not running"
+      result FAIL "supabase: database changed but Docker is not running"
       FAILED=1
     fi
   else
-    result SKIP "supabase migrations: replayed by the manager's --full run"
+    result SKIP "supabase db reset + pgTAP: run by the manager's --full run"
   fi
 fi
 
