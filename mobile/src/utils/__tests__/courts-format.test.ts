@@ -25,6 +25,7 @@ describe('toCourtCardData', () => {
       id: court.id,
       name: 'Test Park Courts',
       distanceMiles: '1.2',
+      location: { lat: 40, lng: -75 },
       tags: [],
     });
   });

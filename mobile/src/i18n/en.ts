@@ -384,6 +384,8 @@ export const en = {
         checkIn: (court: string) => `Check in at ${court}`,
         bookCourt: (court: string) => `Book a court at ${court}`,
         comingSoon: 'Coming soon',
+        /** Directions hint when a court has no coordinates. */
+        noLocation: 'Location unavailable',
       },
       emptyTag: 'Radar',
       emptyTitle: 'No courts nearby',

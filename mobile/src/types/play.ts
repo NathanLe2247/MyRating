@@ -1,4 +1,5 @@
 import type { BrandIconName } from '@/components/brand-icon';
+import type { GeoPoint } from '@/constants/courts';
 
 // Display models for the Play tab's cards. These are what the cards render,
 // not the domain shapes: a hook maps shared records into these (formatting
@@ -19,6 +20,8 @@ export type CourtCardData = {
   name: string;
   /** Already rounded for display, e.g. "1.2". */
   distanceMiles: string;
+  /** Where the court is; Directions is disabled without it. */
+  location?: GeoPoint;
   /** Omitted while the shared `Court` shape has no address data. */
   neighborhood?: string;
   /** Omitted when unknown; the count badge is left out. */
