@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 
 import { demoLocation } from '@/config/demo-location';
 import type { GeoPoint } from '@/constants/courts';
-import { MatchmakingPollMs, MatchmakingQueryKey, QueueRadiusMeters } from '@/constants/matchmaking';
+import { MatchmakingQueryKey, QueueRadiusMeters } from '@/constants/matchmaking';
 import {
   MatchmakingApiError,
   matchmakingErrorCode,
@@ -14,7 +14,7 @@ import {
 import { useOnboarding } from '@/hooks/use-onboarding';
 import type { MatchmakingErrorCode, MatchmakingPhase, MatchmakingSnapshot } from '@/types/matchmaking';
 import { currentPositionQuery } from '@/utils/current-position';
-import { matchmakingPhase, mergeSnapshot, shouldPoll } from '@/utils/matchmaking-state';
+import { matchmakingPhase, mergeSnapshot, pollIntervalMs } from '@/utils/matchmaking-state';
 
 export type Matchmaking = {
   /** Latest state, or undefined before the first one arrives. */
@@ -54,8 +54,9 @@ export const MatchmakingContext = createContext<Matchmaking | null>(null);
  * The player's queue / match state from the `matchmaking` function, shared by
  * every screen through `MatchmakingProvider`. Polls every `MatchmakingPollMs`
  * while searching or while a proposal is unanswered (pairing and the Demo
- * Tester only happen on a call), and stops when there's nothing to wait for
- * or the provider unmounts.
+ * Tester only happen on a call), every `MatchmakingOpenMatchPollMs` while a
+ * match is open (so the opponent's cancel or report shows up), and stops when
+ * there's nothing to wait for or the provider unmounts.
  *
  * Realtime can be layered on later: subscribe to `public.matches` (see
  * agent/skills/geospatial-matching) and call `refresh()` on each event; the
@@ -77,7 +78,7 @@ export function useMatchmakingController(): Matchmaking {
     enabled: !!isSignedIn && !!userId && onboardingCompleted,
     queryFn: async () =>
       mergeSnapshot(await api.poll(), queryClient.getQueryData<MatchmakingSnapshot>(queryKey)),
-    refetchInterval: (q) => (shouldPoll(q.state.data) ? MatchmakingPollMs : false),
+    refetchInterval: (q) => pollIntervalMs(q.state.data),
     staleTime: 0,
     // The poll interval is the retry while waiting; otherwise the screen
     // offers one.

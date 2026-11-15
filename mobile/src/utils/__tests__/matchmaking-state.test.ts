@@ -1,5 +1,6 @@
 import { MATCHMAKING_ERRORS, MAX_GAMES, POINTS_TO_WIN, WIN_BY } from '@myrating/shared';
 
+import { MatchmakingOpenMatchPollMs, MatchmakingPollMs } from '@/constants/matchmaking';
 import { en } from '@/i18n/en';
 import {
   AnchorPoint,
@@ -15,25 +16,29 @@ import {
   matchmakingPhase,
   mergeSnapshot,
   opponentName,
+  pollIntervalMs,
   QueueRadiusMiles,
-  shouldPoll,
   toMatchFound,
 } from '@/utils/matchmaking-state';
 
 const player = { name: 'Sam', rating: null };
 
-describe('matchmakingPhase / shouldPoll', () => {
+describe('matchmakingPhase / pollIntervalMs', () => {
   it.each([
     [undefined, 'loading', false],
     [idleState, 'idle', false],
-    [searchingState, 'searching', true],
-    [matchState('proposed'), 'proposed', true],
-    [matchState('proposed', { playerAccepted: true }), 'waiting_for_opponent', true],
-    [matchState('accepted'), 'accepted', false],
-    [matchState('awaiting_confirmation'), 'awaiting_confirmation', false],
-  ] as const)('%#: %s', (state, phase, polls) => {
+    [searchingState, 'searching', MatchmakingPollMs],
+    [matchState('proposed'), 'proposed', MatchmakingPollMs],
+    [matchState('proposed', { playerAccepted: true }), 'waiting_for_opponent', MatchmakingPollMs],
+    [matchState('accepted'), 'accepted', MatchmakingOpenMatchPollMs],
+    [matchState('awaiting_confirmation'), 'awaiting_confirmation', MatchmakingOpenMatchPollMs],
+  ] as const)('%#: %s', (state, phase, interval) => {
     expect(matchmakingPhase(state)).toBe(phase);
-    expect(shouldPoll(state)).toBe(polls);
+    expect(pollIntervalMs(state)).toBe(interval);
+  });
+
+  it('polls an open match more slowly than the queue', () => {
+    expect(MatchmakingOpenMatchPollMs).toBeGreaterThan(MatchmakingPollMs);
   });
 
   it('reads the player’s acceptance from their own side when they are player_b', () => {

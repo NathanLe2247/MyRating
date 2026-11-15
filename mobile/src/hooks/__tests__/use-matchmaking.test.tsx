@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 
 import { demoLocation } from '@/config/demo-location';
 import { useSupabaseClient } from '@/config/supabase';
-import { MatchmakingPollMs, QueueRadiusMeters } from '@/constants/matchmaking';
+import { MatchmakingOpenMatchPollMs, MatchmakingPollMs, QueueRadiusMeters } from '@/constants/matchmaking';
 import { OnboardingCompletedKey, ProfileCompletedKey } from '@/constants/profile';
 import { useMatchmaking } from '@/hooks/use-matchmaking';
 import { MatchmakingProvider } from '@/providers/matchmaking-provider';
@@ -157,10 +157,30 @@ describe('useMatchmaking', () => {
     expect(bodies('accept')).toEqual([{ action: 'accept', match_id: MatchId }]);
     expect(result.current.phase).toBe('accepted');
 
-    // Nothing left to wait for: polling stops.
+    // The match is on: the fast poll stops (the slow open-match poll is
+    // covered below).
     const calls = invoke.mock.calls.length;
     await tick(MatchmakingPollMs * 3);
     expect(invoke.mock.calls.length).toBe(calls);
+  });
+
+  it.each([
+    ['cancels', matchState('accepted'), idleState, 'idle'],
+    ['reports the score', matchState('accepted'), matchState('awaiting_confirmation'), 'awaiting_confirmation'],
+    ['confirms the score', matchState('awaiting_confirmation'), idleState, 'idle'],
+  ] as const)('slowly re-reads an open match, so the opponent %s shows up', async (_, open, next, phase) => {
+    serve({ poll: [open, next] });
+    const { result } = render();
+    await settled(result);
+    expect(result.current.phase).toBe(open.match.status);
+
+    // No fast poll while the match is open…
+    await tick(MatchmakingOpenMatchPollMs - 1_000);
+    expect(actions()).toEqual(['poll']);
+    // …but the slow one picks up the opponent's change.
+    await tick(1_000);
+    await waitFor(() => expect(result.current.phase).toBe(phase));
+    expect(actions()).toEqual(['poll', 'poll']);
   });
 
   it('keeps polling after accepting until the opponent answers', async () => {

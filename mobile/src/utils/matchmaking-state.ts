@@ -7,7 +7,7 @@ import {
 } from '@myrating/shared';
 
 import { type GeoPoint, MetersPerMile } from '@/constants/courts';
-import { QueueRadiusMeters } from '@/constants/matchmaking';
+import { MatchmakingOpenMatchPollMs, MatchmakingPollMs, QueueRadiusMeters } from '@/constants/matchmaking';
 import { en } from '@/i18n/en';
 import type { MatchFound, MatchFoundPlayer } from '@/types/match-found';
 import type { MatchmakingPhase, MatchmakingSnapshot } from '@/types/matchmaking';
@@ -46,11 +46,22 @@ export function matchmakingPhase(state: MatchmakingState | undefined): Matchmaki
   return state.queue_entry ? 'searching' : 'idle';
 }
 
-/** Phases that only change on a `poll` (pairing, or the opponent answering). */
-const POLLING_PHASES: readonly MatchmakingPhase[] = ['searching', 'proposed', 'waiting_for_opponent'];
+/**
+ * How often to re-read the state in each phase, or false to stay idle.
+ * Pairing and the opponent's answer only happen on a `poll`, so those phases
+ * poll fast; an open match polls slowly so the opponent's cancel or report
+ * still shows up without Realtime.
+ */
+const POLL_MS: Partial<Record<MatchmakingPhase, number>> = {
+  searching: MatchmakingPollMs,
+  proposed: MatchmakingPollMs,
+  waiting_for_opponent: MatchmakingPollMs,
+  accepted: MatchmakingOpenMatchPollMs,
+  awaiting_confirmation: MatchmakingOpenMatchPollMs,
+};
 
-export function shouldPoll(state: MatchmakingState | undefined): boolean {
-  return POLLING_PHASES.includes(matchmakingPhase(state));
+export function pollIntervalMs(state: MatchmakingState | undefined): number | false {
+  return POLL_MS[matchmakingPhase(state)] ?? false;
 }
 
 /**

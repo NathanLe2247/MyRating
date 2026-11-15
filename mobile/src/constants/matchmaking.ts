@@ -15,5 +15,13 @@ export const QueueRadiusMeters = 25_000;
  */
 export const MatchmakingPollMs = 2_500;
 
+/**
+ * How often an open match (`accepted` or `awaiting_confirmation`) is
+ * re-checked, so the opponent cancelling or reporting the score shows up.
+ * Slower than `MatchmakingPollMs`: nothing here is time-critical. It's the
+ * fallback until matches arrive over Realtime.
+ */
+export const MatchmakingOpenMatchPollMs = 12_000;
+
 /** React Query key prefix of the player's matchmaking state (plus the Clerk user id). */
 export const MatchmakingQueryKey = 'matchmaking';
