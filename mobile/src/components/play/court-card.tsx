@@ -59,22 +59,26 @@ export function CourtCard({ court, onPress, onDirections, onPrimaryAction }: Cou
             </View>
             <MetaLine
               icon="location"
-              parts={[copy.distance(court.distanceMiles), court.neighborhood]}
+              parts={[copy.distance(court.distanceMiles), court.neighborhood ?? '']}
             />
           </View>
-          <View style={styles.countBlock}>
-            <Chip
-              compact
-              label={
-                indoor ? copy.indoorCount(court.courtCount) : copy.courtCount(court.courtCount)
-              }
-              color={badge.fg}
-              background={badge.bg}
-            />
-            {court.note ? (
-              <Text style={[styles.note, { color: noteColor }]}>{court.note}</Text>
-            ) : null}
-          </View>
+          {court.courtCount !== undefined || court.note ? (
+            <View style={styles.countBlock}>
+              {court.courtCount !== undefined ? (
+                <Chip
+                  compact
+                  label={
+                    indoor ? copy.indoorCount(court.courtCount) : copy.courtCount(court.courtCount)
+                  }
+                  color={badge.fg}
+                  background={badge.bg}
+                />
+              ) : null}
+              {court.note ? (
+                <Text style={[styles.note, { color: noteColor }]}>{court.note}</Text>
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         {court.photoUrl ? (

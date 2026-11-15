@@ -61,7 +61,14 @@ async function mintTestingToken() {
 
 const testingToken = await mintTestingToken();
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 420, height: 900 } });
+// A fixed location (Columbia Local Park, Burtonsville, MD, a public anchor)
+// so the signed-out courts screen loads its nearby list instead of waiting
+// on a permission prompt.
+const ctx = await browser.newContext({
+  viewport: { width: 420, height: 900 },
+  geolocation: { latitude: 39.1022, longitude: -76.9441 },
+  permissions: ['geolocation'],
+});
 const page = await ctx.newPage();
 
 // Same mechanism as @clerk/testing: tag every Frontend API call with the
@@ -99,9 +106,11 @@ const orFail = (what) => async () => {
   throw new Error(`${what}; on-screen error: ${await alertText()}`);
 };
 
-// Which screen `/` lands on. Signed out, the app starts on sign-up (older
-// builds started on sign-in); signed in, it's home or onboarding step 1.
+// Which screen `/` lands on. Signed out, the app starts on the public
+// "Courts near you" screen (#70; older builds started on sign-up, and before
+// that sign-in); signed in, it's home or onboarding step 1.
 const SCREENS = {
+  courts: () => text(/find a court\. get rated\./i),
   signIn: () => text(/welcome back/i),
   signUp: () => text(/join myrating/i),
   // Dashboard home, by its header's "Account options" button: it renders
@@ -126,7 +135,12 @@ async function toSignIn() {
   let screen = await landing(120000);
   if (screen === 'onboarding') screen = await markOnboarded();
   if (screen === 'home') screen = await signOut();
-  if (screen === 'signUp') await link(/^log in/i).click();
+  await toSignInFrom(screen);
+}
+// From a signed-out landing screen to sign-in: the courts screen's "Log in"
+// link, or sign-up's.
+async function toSignInFrom(screen) {
+  if (screen === 'courts' || screen === 'signUp') await link(/^log in/i).click();
   await SCREENS.signIn().waitFor({ timeout: T });
 }
 // Signs out through clerk-js (exposed as window.Clerk on web). The dashboard
@@ -263,9 +277,32 @@ await step('start: signed-out landing screen', async () => {
   // a fresh signed-out visit lands.
   await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 120000 });
   const screen = await landing(120000);
-  if (screen !== 'signUp' && screen !== 'signIn') throw new Error(`landed on ${screen}`);
-  return `lands on ${screen === 'signUp' ? 'sign-up' : 'sign-in'}`;
+  if (screen === 'signUp' || screen === 'signIn') {
+    return `lands on ${screen === 'signUp' ? 'sign-up' : 'sign-in'} (pre-#70 build)`;
+  }
+  if (screen !== 'courts') throw new Error(`landed on ${screen}`);
+  // The nearby list (or its empty state) loads at the mocked location.
+  const list = await text(/\d+ near you|no courts nearby/i)
+    .waitFor({ timeout: T })
+    .then(async () => ((await text(/\d+ near you/i).count()) ? await text(/\d+ near you/i).innerText() : 'no courts nearby'))
+    .catch(orFail('courts list did not load at the mocked location'));
+  await btn(/^sign up$/i).click();
+  await SCREENS.signUp().waitFor({ timeout: T }).catch(orFail('"Sign up" did not open sign-up'));
+  await link(/browse courts near you/i).click();
+  await SCREENS.courts().waitFor({ timeout: T }).catch(orFail('"Browse courts near you" did not return'));
+  await link(/^log in/i).click();
+  await SCREENS.signIn().waitFor({ timeout: T }).catch(orFail('"Log in" did not open sign-in'));
+  return `lands on courts (${list.toLowerCase()}); sign up / log in reachable`;
 });
+
+// Every route but the courts screen and (auth) needs an account (#70).
+for (const path of ['/play', '/match/found']) {
+  await step(`gate: signed-out ${path} redirects to sign-up`, async () => {
+    await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await SCREENS.signUp().waitFor({ timeout: T }).catch(orFail(`${path} did not redirect to sign-up`));
+    await page.waitForURL((u) => u.pathname === '/sign-up', { timeout: T });
+  });
+}
 
 await step('nav: sign-in <-> sign-up', async () => {
   await link(/sign up/i).click();
@@ -476,7 +513,7 @@ await step(
     await ph('password').fill(newPassword);
     await btn(/reset password/i).click();
     await afterAuth('after reset');
-    if ((await signOut()) === 'signUp') await link(/^log in/i).click();
+    await toSignInFrom(await signOut());
     await ph('identifier').fill(email);
     await ph('password').fill(newPassword);
     await btn(/^log in/i).click();

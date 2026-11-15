@@ -18,6 +18,7 @@ import { toUsE164 } from '@/constants/phone';
 import { Brand, BrandFonts } from '@/constants/theme';
 import { useAuthNavigate } from '@/hooks/use-auth-navigate';
 import { useGoogleSignIn } from '@/hooks/use-google-sign-in';
+import { PublicCourtsHref } from '@/constants/routes';
 import { en } from '@/i18n/en';
 
 type Step = 'form' | 'verify-phone';
@@ -139,6 +140,12 @@ export default function SignInScreen() {
             prompt={en.auth.signIn.noAccount}
             label={en.auth.signIn.signUp}
             onPress={() => router.dismissTo('/sign-up')}
+          />
+          <AuthLink
+            variant="muted"
+            icon="location"
+            label={en.auth.browseCourts}
+            onPress={() => router.replace(PublicCourtsHref)}
           />
         </>
       }>

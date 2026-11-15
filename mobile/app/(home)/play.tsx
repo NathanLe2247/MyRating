@@ -5,9 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PlayHeader } from '@/components/play/play-header';
 import { PlayListings } from '@/components/play/play-listings';
 import { BottomTabInset, Brand, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useNearbyCourts } from '@/hooks/use-nearby-courts';
 import { usePlayListings } from '@/hooks/use-play-listings';
 
 export default function PlayScreen() {
+  const courts = useNearbyCourts();
   const listings = usePlayListings();
 
   return (
@@ -15,7 +17,7 @@ export default function PlayScreen() {
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <PlayHeader />
-        <PlayListings courts={listings.courts} tournaments={listings.tournaments} />
+        <PlayListings courts={courts} tournaments={listings.tournaments} />
       </ScrollView>
     </SafeAreaView>
   );

@@ -28,9 +28,9 @@ LogBox.ignoreLogs(['Clerk: Clerk has been loaded with development keys']);
 
 SplashScreen.preventAutoHideAsync();
 
-// Routing (sign-in vs. tabs) is decided by the (auth) and (home) group
-// layouts below, based on Clerk auth state — see app/(auth)/_layout.tsx and
-// app/(home)/_layout.tsx.
+// Routing is decided by the group layouts below, based on Clerk auth state:
+// signed out, `/` lands on the public courts screen (app/(public)/) and every
+// other route except (auth) redirects to sign-up; see src/hooks/use-route-gate.ts.
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   // Keys must match `BrandFonts` in src/constants/theme.ts.

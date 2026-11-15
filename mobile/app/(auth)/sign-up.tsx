@@ -17,6 +17,7 @@ import { DialCode, formatNationalNumber, isValidUsNumber, NationalNumberLength }
 import { Brand } from '@/constants/theme';
 import { useAuthNavigate } from '@/hooks/use-auth-navigate';
 import { useGoogleSignIn } from '@/hooks/use-google-sign-in';
+import { PublicCourtsHref } from '@/constants/routes';
 import { en } from '@/i18n/en';
 
 // Phone sign-up is SMS-code only (no password); email sign-up uses a password
@@ -157,6 +158,12 @@ export default function SignUpScreen() {
             prompt={en.auth.signUp.haveAccount}
             label={en.auth.signUp.logIn}
             onPress={() => router.dismissTo('/sign-in')}
+          />
+          <AuthLink
+            variant="muted"
+            icon="location"
+            label={en.auth.browseCourts}
+            onPress={() => router.replace(PublicCourtsHref)}
           />
         </>
       }>

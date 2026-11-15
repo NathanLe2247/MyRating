@@ -1,8 +1,10 @@
 import type { BrandIconName } from '@/components/brand-icon';
 
 // Display models for the Play tab's cards. These are what the cards render,
-// not the domain shapes: once `Court` and `Tournament` land in `shared/`, a
-// hook maps those records into these (formatting distance, picking tags).
+// not the domain shapes: a hook maps shared records into these (formatting
+// distance, picking tags). Courts: `useNearbyCourts` via
+// `toCourtCardData` (src/utils/courts-format.ts). Tournaments: once
+// `Tournament` lands in `shared/`.
 
 export type VenueTagTone = 'default' | 'strong' | 'lime' | 'indoor';
 
@@ -17,9 +19,12 @@ export type CourtCardData = {
   name: string;
   /** Already rounded for display, e.g. "1.2". */
   distanceMiles: string;
-  neighborhood: string;
-  courtCount: number;
-  setting: 'outdoor' | 'indoor';
+  /** Omitted while the shared `Court` shape has no address data. */
+  neighborhood?: string;
+  /** Omitted when unknown; the count badge is left out. */
+  courtCount?: number;
+  /** Omitted when unknown; renders in the default (outdoor) style. */
+  setting?: 'outdoor' | 'indoor';
   /** Highlighted venue: lime count badge and accent bar. */
   featured?: boolean;
   verified?: boolean;
@@ -47,7 +52,36 @@ export type TournamentCardData = {
   spotsLeft?: number;
 };
 
+/** What the courts list shows; see `useNearbyCourts`. */
+export type NearbyCourtsState =
+  /** Location permission not answered yet (the OS dialog may be up). */
+  | { status: 'asking'; showDefaultArea: () => void }
+  /** Location denied and the user hasn't chosen the default area. */
+  | ({ status: 'denied'; showDefaultArea: () => void } & LocationAccess)
+  | { status: 'loading' }
+  | {
+      status: 'error';
+      retry: () => void;
+      /** Set when the device position failed: list the default area instead. */
+      showDefaultArea?: () => void;
+    }
+  | {
+      status: 'loaded';
+      /** Empty when no active court is within the radius. */
+      courts: CourtCardData[];
+      /**
+       * Set when listing the default area because location was denied, so
+       * the screen can name the area and offer to turn location on.
+       */
+      defaultArea?: LocationAccess;
+    };
+
+export type LocationAccess = {
+  /** False once the OS won't show the dialog again; `requestPermission` opens Settings. */
+  canAskAgain: boolean;
+  requestPermission: () => void;
+};
+
 export type PlayListings = {
-  courts: CourtCardData[];
   tournaments: TournamentCardData[];
 };
