@@ -10,36 +10,44 @@ type MatchOnPanelProps = {
   /** Suggested court, when matchmaking found one. */
   courtName?: string;
   busy?: boolean;
-  onCancel: () => void;
+  /**
+   * A score is in and awaits confirmation: the title and caption say so, and
+   * there's no Cancel (the backend can't cancel a reported match).
+   */
+  reported?: boolean;
+  /** Calls the match off; omitted (no button) once it can't be cancelled. */
+  onCancel?: () => void;
   /** Extra content for the match that's on, e.g. the score report. */
   children?: ReactNode;
 };
 
 // Shown in place of the queue strip once both players accepted: where to go,
 // and a way to call the match off before anyone reports a result.
-export function MatchOnPanel({ courtName, busy, onCancel, children }: MatchOnPanelProps) {
+export function MatchOnPanel({ courtName, busy, reported, onCancel, children }: MatchOnPanelProps) {
   const t = en.matchFound.on;
   return (
     <View style={styles.panel}>
       <View style={styles.header}>
         <BrandIcon name="paddle" color={Brand.lime} size={18} />
         <Text style={styles.title} accessibilityRole="header">
-          {t.title}
+          {reported ? t.reported.title : t.title}
         </Text>
       </View>
       <Text style={styles.body}>{courtName ? t.court(courtName) : t.noCourt}</Text>
-      <Text style={matchText.caption}>{t.report}</Text>
+      <Text style={matchText.caption}>{reported ? t.reported.body : t.report}</Text>
       {children}
-      <Pressable
-        onPress={onCancel}
-        disabled={busy}
-        accessibilityRole="button"
-        accessibilityLabel={t.cancel}
-        accessibilityState={{ disabled: !!busy }}
-        style={({ pressed }) => [styles.cancel, pressed && styles.pressed]}>
-        <BrandIcon name="close" color={Brand.loss} size={10} />
-        <Text style={[matchText.label, styles.cancelLabel]}>{t.cancel}</Text>
-      </Pressable>
+      {onCancel && (
+        <Pressable
+          onPress={onCancel}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel={t.cancel}
+          accessibilityState={{ disabled: !!busy }}
+          style={({ pressed }) => [styles.cancel, pressed && styles.pressed]}>
+          <BrandIcon name="close" color={Brand.loss} size={10} />
+          <Text style={[matchText.label, styles.cancelLabel]}>{t.cancel}</Text>
+        </Pressable>
+      )}
     </View>
   );
 }

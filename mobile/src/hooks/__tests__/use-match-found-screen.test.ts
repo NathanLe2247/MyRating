@@ -92,7 +92,7 @@ describe('useMatchFoundScreen', () => {
   it.each([
     [matchState('proposed', { playerAccepted: true }), 'waiting_for_opponent'],
     [matchState('accepted'), 'on'],
-    [matchState('awaiting_confirmation'), 'on'],
+    [matchState('awaiting_confirmation'), 'reported'],
   ] as const)('maps %#: to the %s view', (state, phase) => {
     mockUseMatchmaking.mockReturnValue(matchmaking(state));
     const { result } = renderHook(() => useMatchFoundScreen());

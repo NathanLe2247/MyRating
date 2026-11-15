@@ -381,6 +381,10 @@ export const en = {
       report: 'Report the score here when you’re done.',
       cancel: 'Cancel match',
       home: 'Back to home',
+      reported: {
+        title: 'Score reported',
+        body: 'Waiting for the score to be confirmed. A reported match can’t be cancelled.',
+      },
     },
     empty: {
       title: 'No match yet',

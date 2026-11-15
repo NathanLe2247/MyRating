@@ -18,7 +18,8 @@ const VIEW_PHASE: Partial<Record<MatchmakingPhase, MatchFoundPhase>> = {
   proposed: 'proposed',
   waiting_for_opponent: 'waiting_for_opponent',
   accepted: 'on',
-  awaiting_confirmation: 'on',
+  // matchmaking_leave can't cancel a reported match, so no Cancel here.
+  awaiting_confirmation: 'reported',
 };
 
 /**
@@ -31,8 +32,8 @@ export function useMatchFoundScreen() {
   const { user } = useUser();
   const rating = useDashboard('singles').data?.rating;
 
-  // The provider only polls while something is pending; re-read on open so
-  // a match settled elsewhere isn't shown stale.
+  // An open match is only polled slowly; re-read on open so a match settled
+  // elsewhere isn't shown stale.
   useEffect(() => {
     refresh();
   }, [refresh]);

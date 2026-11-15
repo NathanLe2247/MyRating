@@ -21,8 +21,13 @@ import { formatRatingGap } from '@/utils/match-found-format';
  * - `proposed`: waiting for the player's answer (Accept / Decline).
  * - `waiting_for_opponent`: the player accepted; the opponent hasn't yet.
  * - `on`: both accepted; where to play, and the result is reported from here.
+ *   The match can still be cancelled.
+ * - `reported`: a score is in and awaits confirmation; it can't be cancelled.
  */
-export type MatchFoundPhase = 'proposed' | 'waiting_for_opponent' | 'on';
+export type MatchFoundPhase = 'proposed' | 'waiting_for_opponent' | 'on' | 'reported';
+
+/** Phases where the match is on (both accepted). */
+const MatchOnPhases: readonly MatchFoundPhase[] = ['on', 'reported'];
 
 type MatchFoundViewProps = {
   /** Null when there's no pairing to show (empty state). */
@@ -59,6 +64,7 @@ export function MatchFoundView({
   onOpenMap,
 }: MatchFoundViewProps) {
   const t = en.matchFound;
+  const matchOn = MatchOnPhases.includes(phase);
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar style="light" />
@@ -66,8 +72,12 @@ export function MatchFoundView({
       {match ? (
         <>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-            {phase === 'on' ? (
-              <MatchOnPanel courtName={match.venue?.name} busy={busy} onCancel={onLeave}>
+            {matchOn ? (
+              <MatchOnPanel
+                courtName={match.venue?.name}
+                busy={busy}
+                reported={phase === 'reported'}
+                onCancel={phase === 'on' ? onLeave : undefined}>
                 {matchOnContent}
               </MatchOnPanel>
             ) : (
@@ -103,7 +113,7 @@ export function MatchFoundView({
             </Text>
           )}
           <View style={styles.footer}>
-            {phase === 'on' ? (
+            {matchOn ? (
               <View style={styles.footerButton}>
                 <AuthButton label={t.on.home} variant="secondary" onPress={onBack} />
               </View>

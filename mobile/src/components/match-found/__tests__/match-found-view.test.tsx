@@ -153,6 +153,21 @@ describe('MatchFoundView', () => {
       expect(handlers.onBack).toHaveBeenCalledTimes(1);
     });
 
+    it('shows a reported match without cancel, since it can no longer be called off', () => {
+      const handlers = renderView(SampleMatchFound, { phase: 'reported' });
+
+      expect(screen.getByText(t.on.reported.title)).toBeOnTheScreen();
+      expect(screen.getByText(t.on.reported.body)).toBeOnTheScreen();
+      expect(screen.getByText(t.on.court('Zilker Park Courts'))).toBeOnTheScreen();
+      expect(screen.queryByRole('button', { name: t.on.cancel })).toBeNull();
+      expect(screen.queryByRole('button', { name: t.accept })).toBeNull();
+      expect(screen.queryByRole('button', { name: t.decline })).toBeNull();
+
+      fireEvent.press(screen.getByRole('button', { name: t.on.home }));
+      expect(handlers.onBack).toHaveBeenCalledTimes(1);
+      expect(handlers.onLeave).not.toHaveBeenCalled();
+    });
+
     it('asks the player to pick a court when matchmaking found none', () => {
       renderView(minimalMatch, { phase: 'on' });
 
