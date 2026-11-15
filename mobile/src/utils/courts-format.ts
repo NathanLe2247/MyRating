@@ -15,10 +15,13 @@ export function formatMiles(meters: number): string {
  * leaves them out rather than guessing.
  */
 export function toCourtCardData(court: NearbyCourt): CourtCardData {
+  // GeoJSON orders coordinates [lng, lat].
+  const [lng, lat] = court.location.coordinates;
   return {
     id: court.id,
     name: court.name,
     distanceMiles: formatMiles(court.distance_m),
+    location: { lat, lng },
     tags: [],
   };
 }

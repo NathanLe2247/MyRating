@@ -35,6 +35,8 @@ const requestPermission = jest.fn();
 const rpc = jest.fn();
 
 const here = { lat: 40.01, lng: -75.01 };
+/** Where the fixture courts sit (`location` below, as [lng, lat]). */
+const courtPoint = { lat: 40, lng: -75 };
 
 const row = (id: string, name: string, distance_m: number) => ({
   id,
@@ -99,8 +101,8 @@ describe('useNearbyCourts', () => {
     expect(result.current).toEqual({
       status: 'loaded',
       courts: [
-        { id: near.id, name: 'Near Courts', distanceMiles: '0.5', tags: [] },
-        { id: far.id, name: 'Far Courts', distanceMiles: '7.5', tags: [] },
+        { id: near.id, name: 'Near Courts', distanceMiles: '0.5', location: courtPoint, tags: [] },
+        { id: far.id, name: 'Far Courts', distanceMiles: '7.5', location: courtPoint, tags: [] },
       ],
       defaultArea: undefined,
     });
