@@ -28,10 +28,20 @@ issuing its own sessions.
   `handler.test.ts` with a fake store); `index.ts` wires Clerk and the
   `public.matchmaking_*` SQL functions, which hold the pairing rules
   (tested by `tests/matchmaking.test.sql`). Never log coordinates.
+  - **One open match per player**: `join` is refused with `match_pending`
+    while a proposal is unanswered and `match_open` while an `accepted` /
+    `awaiting_confirmation` match exists. `leave` cancels the player's
+    `proposed` match, or their `accepted` one if nobody has reported a
+    result, so a player can always back out before a result.
   - **Demo Tester bot**: a `public.users` row (fixed id
     `00000000-0000-4000-8000-0000000000d1`, `clerk_user_id = 'demo_tester'`,
+    `username` null so it can't clash with a real handle, `is_bot = true`,
     a rating near the median) inserted by the queue migration, so it exists
-    on the hosted project. With the function secret `DEMO_BOT_ENABLED=true`,
+    on the hosted project. **Leaderboards (and any other player list) must
+    filter out `users.is_bot`, and the bot's rating never changes**: the
+    `ratings` function must skip `is_bot` players. The bot's seed
+    `player_ratings` row in that migration is the one ratings write outside
+    the `ratings` function. With the function secret `DEMO_BOT_ENABLED=true`,
     a player still unpaired 5 s after joining is paired with it on their next
     `join`/`poll`, and it has already accepted. Any other value (or unset)
     and it never pairs. There is no timer: pairing runs on each call, and
@@ -81,7 +91,9 @@ issuing its own sessions.
   from the function's folder (or with `--config <its deno.json>`) so the
   import map applies: `cd supabase/functions/matchmaking && deno test`.
   Older functions (`login-method.ts`) still copy shared rules by hand;
-  move them to this pattern when touched.
+  move them to this pattern when touched. The deploy workflow checks the
+  symlink before deploying, and `regress.sh` re-type-checks every function
+  whose `deno.json` maps `@myrating/shared` when `shared/` changes.
 - `supabase/tests/` — pgTAP tests, run against the local stack with
   `supabase test db --local`.
 - Courts data is split in two. Real catalog courts (8 Montgomery County, MD

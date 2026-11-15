@@ -29,6 +29,11 @@ Shapes: `QueueEntry` / `Match` in `shared/src/match.ts`, the function's API in
   as history.
 - `created_at` is when the player started waiting (the bot timer);
   rejoining while waiting moves the entry but keeps `created_at`.
+- One open match per player: `matchmaking_join` refuses while the player
+  has a `proposed` (`match_pending`) or `accepted` / `awaiting_confirmation`
+  (`match_open`) match, so a waiting player never has one and pairing
+  needn't check. `matchmaking_leave` cancels a `proposed` match or an
+  `accepted` one with no reported result.
 
 Clients read their own entry through `public.queue_entries_geojson`
 (security invoker, GeoJSON `location`); never `anon`. Writes go only
@@ -78,7 +83,9 @@ real opponent pairs the player with the Demo Tester
 at least 5 s old (`DEMO_BOT_WAIT_MS` in the function). The bot is
 `player_b` and has already accepted (`player_b_accepted_at` set), so the
 match turns `accepted` as soon as the player accepts. A real nearby player
-always wins over the bot. Flag off: the bot is never considered.
+always wins over the bot. Flag off: the bot is never considered. The bot
+has `users.is_bot = true`: keep it off leaderboards, and never change its
+rating.
 
 ## Realtime
 
