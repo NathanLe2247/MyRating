@@ -1,9 +1,9 @@
 import type { RatingSource } from '@myrating/shared';
-import { FunctionsHttpError } from '@supabase/supabase-js';
 import { useMemo } from 'react';
 
 import { useSupabaseClient } from '@/config/supabase';
 import type { PickedAvatar, PlayerProfileInput } from '@/types/profile';
+import { edgeFunctionErrorCode } from '@/utils/edge-function-error';
 
 const FUNCTION_NAME = 'player-profile';
 
@@ -23,13 +23,7 @@ export function usePlayerProfileApi() {
   return useMemo(() => {
     const call = async <T>(route: string, body: object): Promise<T> => {
       const { data, error } = await supabase.functions.invoke<T>(`${FUNCTION_NAME}${route}`, { body });
-      if (error) {
-        const code =
-          error instanceof FunctionsHttpError
-            ? ((await error.context.json().catch(() => null)) as { error?: string } | null)?.error
-            : undefined;
-        throw new PlayerProfileApiError(code ?? 'network');
-      }
+      if (error) throw new PlayerProfileApiError((await edgeFunctionErrorCode(error)) ?? 'network');
       return data as T;
     };
 

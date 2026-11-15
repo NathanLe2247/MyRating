@@ -1,7 +1,6 @@
 import { NearbyCourtSchema } from '@myrating/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { useQuery } from '@tanstack/react-query';
-import { Accuracy, getCurrentPositionAsync } from 'expo-location';
 import { useState } from 'react';
 
 import { demoLocation } from '@/config/demo-location';
@@ -11,11 +10,11 @@ import {
   type GeoPoint,
   NearbyCourtsMaxResults,
   NearbyCourtsRadiusMeters,
-  PositionStaleMs,
 } from '@/constants/courts';
 import { useLocationPermission } from '@/hooks/use-location-permission';
 import type { CourtCardData, NearbyCourtsState } from '@/types/play';
 import { toCourtCardData } from '@/utils/courts-format';
+import { currentPositionQuery } from '@/utils/current-position';
 
 /**
  * Active courts near `origin`, nearest first, as card display models. Calls
@@ -54,13 +53,8 @@ export function useNearbyCourts(): NearbyCourtsState {
   const [defaultAreaChosen, setDefaultAreaChosen] = useState(false);
 
   const positionQuery = useQuery({
-    queryKey: ['current-position'],
+    ...currentPositionQuery,
     enabled: !demo && location.granted,
-    staleTime: PositionStaleMs,
-    queryFn: async (): Promise<GeoPoint> => {
-      const { coords } = await getCurrentPositionAsync({ accuracy: Accuracy.Balanced });
-      return { lat: coords.latitude, lng: coords.longitude };
-    },
   });
 
   // Location granted but the device couldn't report a position.
