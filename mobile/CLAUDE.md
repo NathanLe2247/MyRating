@@ -59,6 +59,17 @@ screens are gone; `app/(home)/` holds the tab screens.
   location. `useLocationPermission` then never prompts or reports a denial,
   so no screen (Home included) asks for location or reads GPS.
 
+### Opening other apps
+
+- Links out to another app (maps, for now) are built in `src/utils/`
+  (`courtDirectionsUrl` in `src/utils/maps.ts`) with base URLs in
+  `src/constants/`, and opened with `Linking.openURL`. Prefer https
+  universal links (`maps.apple.com`, Google Maps URLs) over custom schemes
+  (`maps://`, `geo:`): they work on iOS, Android and web without a
+  `canOpenURL` allow-list in `app.json`.
+- A court card's Directions button opens maps from `CourtCardData.location`
+  itself; it's disabled only when a court has no coordinates.
+
 ## Testing
 
 Jest via `jest-expo` with React Native Testing Library. `npm test` runs it;

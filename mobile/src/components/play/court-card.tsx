@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BrandIcon, type BrandIconName } from '@/components/brand-icon';
 import { Chip } from '@/components/play/chip';
@@ -7,14 +7,13 @@ import { MetaLine } from '@/components/play/meta-line';
 import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 import { en } from '@/i18n/en';
 import type { CourtCardData, VenueTagTone } from '@/types/play';
+import { courtDirectionsUrl } from '@/utils/maps';
 
 const copy = en.play.courts;
 
 type CourtCardProps = {
   court: CourtCardData;
   onPress?: () => void;
-  /** Omit to show the action disabled (no destination yet). */
-  onDirections?: () => void;
   onPrimaryAction?: () => void;
 };
 
@@ -25,7 +24,13 @@ const TAG_COLORS: Record<VenueTagTone, string> = {
   indoor: Brand.indoor,
 };
 
-export function CourtCard({ court, onPress, onDirections, onPrimaryAction }: CourtCardProps) {
+export function CourtCard({ court, onPress, onPrimaryAction }: CourtCardProps) {
+  const { location } = court;
+  // A failed open (no browser or maps app) leaves the user on the card;
+  // there is nothing more useful to show, so the rejection is dropped.
+  const openDirections = location
+    ? () => Linking.openURL(courtDirectionsUrl(location, court.name)).catch(() => undefined)
+    : undefined;
   const indoor = court.setting === 'indoor';
   const accent = indoor ? Brand.indoor : Brand.lime;
   const badge = indoor
@@ -123,7 +128,8 @@ export function CourtCard({ court, onPress, onDirections, onPrimaryAction }: Cou
           a11yLabel={copy.a11y.directions(court.name)}
           background={Brand.chip}
           color={Brand.text}
-          onPress={onDirections}
+          onPress={openDirections}
+          disabledHint={copy.a11y.noLocation}
         />
         {court.primaryAction ? (
           <ActionButton
@@ -148,9 +154,19 @@ type ActionButtonProps = {
   background: string;
   color: string;
   onPress?: () => void;
+  /** Read out when `onPress` is omitted and the button is disabled. */
+  disabledHint?: string;
 };
 
-function ActionButton({ icon, label, a11yLabel, background, color, onPress }: ActionButtonProps) {
+function ActionButton({
+  icon,
+  label,
+  a11yLabel,
+  background,
+  color,
+  onPress,
+  disabledHint = copy.a11y.comingSoon,
+}: ActionButtonProps) {
   const disabled = !onPress;
   return (
     <Pressable
@@ -158,7 +174,7 @@ function ActionButton({ icon, label, a11yLabel, background, color, onPress }: Ac
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={a11yLabel}
-      accessibilityHint={disabled ? copy.a11y.comingSoon : undefined}
+      accessibilityHint={disabled ? disabledHint : undefined}
       accessibilityState={{ disabled }}
       style={({ pressed }) => [
         styles.action,
