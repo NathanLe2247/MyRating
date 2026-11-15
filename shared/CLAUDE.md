@@ -93,6 +93,9 @@ Types, Zod schemas, and constants used by `frontend/`, `mobile/`, and
   `confirm`, `dispute`, `state` take `match_id`), `MatchResultsStateSchema`
   (every 200: `match`, `games` as `MatchGameRow[]`, `opponent` as
   `MatchOpponent`, `rating_change` — the caller's `RatingChange`, null until
-  confirmed and after a dispute), `MATCH_RESULTS_ERRORS`, and
+  confirmed and after a dispute), `MATCH_RESULTS_ERRORS` (every code the
+  function returns, including 405 `method_not_allowed`, 409 `match_changed`
+  — re-read `state`, the opponent reported meanwhile — and 409
+  `rating_stale` — try again), and
   `DEMO_BOT_CONFIRM_DELAY_MS` (3 s: the Demo Tester confirms a score
   reported against it on the first call after this, so poll `state`).

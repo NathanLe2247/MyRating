@@ -27,10 +27,18 @@ issuing its own sessions.
   `submit` (`match_id`, `games` — validated with `MatchResultSubmissionSchema`),
   `confirm`, `dispute`, `state` (each `match_id`). The state is the match
   (any status), its games, the opponent, and the caller's `rating_change`
-  once confirmed. Errors are `{ error }` with `MATCH_RESULTS_ERRORS`.
+  once confirmed. Errors are `{ error }` with `MATCH_RESULTS_ERRORS`; the
+  SQL refusals are mapped onto those codes by `dbErrorToThrowable` in
+  `handler.ts` (`invalid_result` → 400 `invalid_request`; `match_changed`,
+  a confirm that raced the opponent's report, → 409; `rating_stale` after
+  `confirmMatch`'s retries → 409; `invalid_update` and `bot_rating_frozen`
+  are backend bugs → 500 `internal`).
   Logic in `handler.ts` (tested by `handler.test.ts`), wiring in `index.ts`,
   rules in the `public.match_results_*` / `public.ratings_*` SQL functions
-  (tested by `tests/match_results.test.sql`).
+  (tested by `tests/match_results.test.sql`, plus
+  `tests/ratings_hardening.test.sql` for `20261115120000_ratings_hardening.sql`:
+  `match_games` primary key `(match_id, game_number)`, `ratings_apply`'s
+  server-side `before`, its `player_id` lock order, and `match_changed`).
   - A separate function from `matchmaking` because it's a different screen
     and lifecycle (it addresses one match by id, including finished ones,
     while matchmaking is "my current queue/match") and it holds the only
