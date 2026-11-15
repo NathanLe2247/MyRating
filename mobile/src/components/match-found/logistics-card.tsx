@@ -80,10 +80,12 @@ export function LogisticsCard({
               )
             }>
             <View style={styles.inline}>
-              <Text style={matchText.caption}>{t.distance(formatMiles(venue.distanceMiles))}</Text>
+              {venue.distanceMiles !== undefined && (
+                <Text style={matchText.caption}>{t.distance(formatMiles(venue.distanceMiles))}</Text>
+              )}
               {venue.driveMinutes !== undefined && (
                 <>
-                  <Text style={matchText.caption}>{t.dot}</Text>
+                  {venue.distanceMiles !== undefined && <Text style={matchText.caption}>{t.dot}</Text>}
                   <Text style={[matchText.caption, styles.lime]}>{t.drive(venue.driveMinutes)}</Text>
                 </>
               )}
