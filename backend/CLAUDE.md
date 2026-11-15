@@ -15,7 +15,38 @@ issuing its own sessions.
   matching migration here, reviewed by the `schema-guardian` subagent.
 - `supabase/functions/ratings/` — Glicko-2 rating updates. Follows
   `agent/skills/ratings-engine` conventions; this is the only place ratings
-  get written.
+  get written. A module folder, not a deployed function (no `index.ts`):
+  `glicko2.ts` (the math), `update.ts` (match → updates), `confirm.ts`
+  (`confirmMatch`, which calls `public.ratings_match_inputs` and
+  `public.ratings_apply`). Imported by `match-results`. Tests:
+  `cd supabase/functions/ratings && deno test`.
+- `supabase/functions/match-results/` — reporting, confirming and disputing
+  a match score. One endpoint, `POST /match-results`, Clerk-verified like
+  matchmaking (`verify_jwt = false`). The body is a `MatchResultsRequest`
+  and every 200 is a `MatchResultsState` (`shared/src/match-results.ts`):
+  `submit` (`match_id`, `games` — validated with `MatchResultSubmissionSchema`),
+  `confirm`, `dispute`, `state` (each `match_id`). The state is the match
+  (any status), its games, the opponent, and the caller's `rating_change`
+  once confirmed. Errors are `{ error }` with `MATCH_RESULTS_ERRORS`.
+  Logic in `handler.ts` (tested by `handler.test.ts`), wiring in `index.ts`,
+  rules in the `public.match_results_*` / `public.ratings_*` SQL functions
+  (tested by `tests/match_results.test.sql`).
+  - A separate function from `matchmaking` because it's a different screen
+    and lifecycle (it addresses one match by id, including finished ones,
+    while matchmaking is "my current queue/match") and it holds the only
+    ratings write path, which shouldn't share a deploy with the queue.
+  - Flow: `accepted` → `submit` by either player → `awaiting_confirmation`
+    (`reported_by` set, `match_games` rows) → the other player `confirm`s
+    (→ `confirmed`, ratings and `rating_history` written in one
+    transaction, idempotent) or `dispute`s (→ `disputed`, no rating change).
+    The reporter can't answer their own score (`own_report`).
+  - **Demo Tester auto-confirm**: with `DEMO_BOT_ENABLED=true`, a score
+    reported against the bot is confirmed by it on the first
+    `match-results` call for that match at least
+    `DEMO_BOT_CONFIRM_DELAY_MS` (3 s) after the report. No timer (hosted
+    edge functions can't run one): mobile polls `state` every ~2 s while
+    the match is `awaiting_confirmation`. Off, the bot never confirms and
+    the match stays awaiting confirmation.
 - `supabase/functions/matchmaking/` — the mobile match queue. Follows
   `agent/skills/geospatial-matching` (queue shape, radius query, courts,
   timing, Realtime). One endpoint, `POST /matchmaking`, Clerk token
@@ -39,7 +70,9 @@ issuing its own sessions.
     a rating near the median) inserted by the queue migration, so it exists
     on the hosted project. **Leaderboards (and any other player list) must
     filter out `users.is_bot`, and the bot's rating never changes**: the
-    `ratings` function must skip `is_bot` players. The bot's seed
+    `ratings` code skips `is_bot` players, and the
+    `refuse_bot_rating_change` triggers (20261114140000) block any write to
+    a bot's `player_ratings` row or `rating_history`. The bot's seed
     `player_ratings` row in that migration is the one ratings write outside
     the `ratings` function. With the function secret `DEMO_BOT_ENABLED=true`,
     a player still unpaired 5 s after joining is paired with it on their next
@@ -90,6 +123,10 @@ issuing its own sessions.
   written by a newer local Deno breaks the edge runtime's boot. Run Deno
   from the function's folder (or with `--config <its deno.json>`) so the
   import map applies: `cd supabase/functions/matchmaking && deno test`.
+  A function may also import a sibling module folder (`match-results`
+  imports `../ratings/`); the importing function's import map applies to
+  the whole graph, and the module folder keeps its own identical
+  `deno.json` so `regress.sh` can type-check its files on their own.
   Older functions (`login-method.ts`) still copy shared rules by hand;
   move them to this pattern when touched. The deploy workflow checks the
   symlink before deploying, and `regress.sh` re-type-checks every function
