@@ -16,9 +16,9 @@ import {
   MatchResultsStateSchema,
 } from '@myrating/shared';
 
-import { confirmMatch, type RatingsStore } from '../ratings/confirm.ts';
+import { confirmMatch, RatingStale, type RatingsStore } from '../ratings/confirm.ts';
 
-/** A refusal from the match_results_* / ratings_* SQL functions (their exception message). */
+/** A refusal from the match_results_* / ratings_* SQL functions, as the code the client gets. */
 export class MatchResultsRefusal extends Error {
   constructor(
     readonly code:
@@ -26,10 +26,41 @@ export class MatchResultsRefusal extends Error {
       | 'match_not_accepted'
       | 'match_not_awaiting_confirmation'
       | 'own_report'
+      | 'match_changed'
       | 'invalid_request',
   ) {
     super(code);
   }
+}
+
+/** SQL refusals (SQLSTATE P0001, message = code) passed to the client as they are. */
+const PASSED_THROUGH = new Set<string>([
+  'match_not_found',
+  'match_not_accepted',
+  'match_not_awaiting_confirmation',
+  'own_report',
+  'match_changed',
+]);
+
+/**
+ * Maps an error from the match_results_* / ratings_* SQL functions (its
+ * SQLSTATE and message) to what the handler throws:
+ * - the refusals in PASSED_THROUGH → MatchResultsRefusal with that code;
+ * - `rating_stale` → RatingStale (confirmMatch retries it; once retries run
+ *   out the client gets 409 `rating_stale`);
+ * - `invalid_result` (22023) → `invalid_request`: the request schema already
+ *   rejects such games, so this is only a backstop;
+ * - anything else → null, an internal error (500). That deliberately covers
+ *   `invalid_update` (the ratings code sent the wrong players or `before`)
+ *   and `bot_rating_frozen` (it tried to rate the bot): both are backend bugs.
+ */
+export function dbErrorToThrowable(code: string, message: string): MatchResultsRefusal | RatingStale | null {
+  if (code === 'P0001' && PASSED_THROUGH.has(message)) {
+    return new MatchResultsRefusal(message as MatchResultsRefusal['code']);
+  }
+  if (code === 'P0001' && message === 'rating_stale') return new RatingStale();
+  if (code === '22023' && message === 'invalid_result') return new MatchResultsRefusal('invalid_request');
+  return null;
 }
 
 /**
@@ -81,12 +112,13 @@ const REFUSAL_STATUS: Record<MatchResultsRefusal['code'], number> = {
   match_not_accepted: 409,
   match_not_awaiting_confirmation: 409,
   own_report: 409,
+  match_changed: 409,
 };
 
 export function createHandler({ authenticate, store, demoBotEnabled, log = console.log }: HandlerDeps) {
   return async (req: Request): Promise<Response> => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-    if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
+    if (req.method !== 'POST') return error(405, 'method_not_allowed');
 
     const clerkUserId = await authenticate(req);
     if (!clerkUserId) return error(401, 'unauthorized');
@@ -135,6 +167,8 @@ export function createHandler({ authenticate, store, demoBotEnabled, log = conso
       return json(200, MatchResultsStateSchema.parse(state));
     } catch (err) {
       if (err instanceof MatchResultsRefusal) return error(REFUSAL_STATUS[err.code], err.code);
+      // confirmMatch already retried; the client can try again.
+      if (err instanceof RatingStale) return error(409, 'rating_stale');
       console.error(
         JSON.stringify({ event: 'match_results_error', action: request.action, match_id: matchId, err: String(err) }),
       );
