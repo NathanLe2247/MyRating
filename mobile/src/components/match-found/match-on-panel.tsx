@@ -34,6 +34,7 @@ export function MatchOnPanel({ courtName, busy, onCancel, children }: MatchOnPan
         onPress={onCancel}
         disabled={busy}
         accessibilityRole="button"
+        accessibilityLabel={t.cancel}
         accessibilityState={{ disabled: !!busy }}
         style={({ pressed }) => [styles.cancel, pressed && styles.pressed]}>
         <BrandIcon name="close" color={Brand.loss} size={10} />
