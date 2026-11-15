@@ -172,7 +172,7 @@ describe('useMatchmaking', () => {
     serve({ poll: [open, next] });
     const { result } = render();
     await settled(result);
-    expect(result.current.phase).toBe(open.match.status);
+    expect(result.current.phase).toBe(open.match?.status);
 
     // No fast poll while the match is open…
     await tick(MatchmakingOpenMatchPollMs - 1_000);
