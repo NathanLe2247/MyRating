@@ -431,3 +431,10 @@ verify_jwt = false
 [functions.matchmaking]
 enabled = true
 verify_jwt = false
+
+# Verifies Clerk session tokens itself with CLERK_SECRET_KEY, like
+# matchmaking. Imports shared/ through functions/match-results/deno.json and
+# the Glicko-2 code from functions/ratings/ (a module folder, not deployed).
+[functions.match-results]
+enabled = true
+verify_jwt = false

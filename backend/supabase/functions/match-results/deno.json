@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@myrating/shared": "../_shared/myrating-shared/index.ts",
+    "zod": "npm:zod@^4.1.0"
+  },
+  "lock": false
+}
