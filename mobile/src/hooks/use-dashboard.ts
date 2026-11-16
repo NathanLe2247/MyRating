@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 
 import { useSupabaseClient } from '@/config/supabase';
-import type { MatchFormat } from '@/constants/match';
+import { type MatchFormat, PlayerRatingQueryKey } from '@/constants/match';
 import type { Dashboard } from '@/types/dashboard';
 
 // `users` → `player_ratings(rating)`: the row is null when the user has no
@@ -27,7 +27,7 @@ export function useDashboard(_format: MatchFormat) {
   const { userId } = useAuth();
 
   const ratingQuery = useQuery({
-    queryKey: ['player-rating', userId],
+    queryKey: [PlayerRatingQueryKey, userId],
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase

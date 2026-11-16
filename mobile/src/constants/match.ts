@@ -14,3 +14,6 @@ export const EvenMatchupMargin = 0.05;
 
 /** Route of the Match Found screen; the match is passed as JSON in the `match` param. */
 export const MatchFoundRoute = '/match/found';
+
+/** React Query key prefix of the player's own rating (plus the Clerk user id). */
+export const PlayerRatingQueryKey = 'player-rating';
