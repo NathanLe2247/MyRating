@@ -64,16 +64,22 @@ export type MatchResultsState = z.infer<typeof MatchResultsStateSchema>;
 
 /**
  * Error codes in a non-200 `{ error }` body. `invalid_request` (400) carries
- * the Zod `issues` too, whose messages can be shown verbatim.
+ * the Zod `issues` too, whose messages can be shown verbatim. These are the
+ * only codes the function returns: database-side codes are mapped onto them
+ * (`invalid_result` → `invalid_request`; `invalid_update` and
+ * `bot_rating_frozen` mean a backend bug → `internal`).
  */
 export const MATCH_RESULTS_ERRORS = [
   'unauthorized', // 401: missing/invalid Clerk session token
   'profile_required', // 403: no public.users row yet (finish onboarding)
   'invalid_request', // 400
   'match_not_found', // 404: unknown match, or not one of its players
+  'method_not_allowed', // 405: anything but POST (and the OPTIONS preflight)
   'match_not_accepted', // 409: submit when the match isn't `accepted` (not on yet, or already reported)
   'match_not_awaiting_confirmation', // 409: confirm/dispute when there is no reported score to answer
   'own_report', // 409: the reporter can't confirm or dispute their own score
+  'match_changed', // 409: confirm raced the opponent's report; re-read `state` and answer the score shown
+  'rating_stale', // 409: a player's rating kept changing while confirming (retried); try again
   'internal', // 500
 ] as const;
 export type MatchResultsError = (typeof MATCH_RESULTS_ERRORS)[number];

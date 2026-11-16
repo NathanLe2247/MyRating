@@ -45,7 +45,9 @@ export type RatingMatchInputs = z.infer<typeof RatingMatchInputsSchema>;
  * One row for public.ratings_apply. `expected_*` is the state the update was
  * computed from (all null when the player had no row); the SQL refuses with
  * `rating_stale` if the row changed since. `before` is the visible rating
- * shown as "before" (DEFAULT_RATING for a first match). The new values are
+ * shown as "before" (DEFAULT_RATING for a first match); the SQL refuses with
+ * `invalid_update` unless it equals the stored rating (or 1500 with no row)
+ * and records its own value, not this one. The new values are
  * already rounded to the column scales, so `after - before` is the stored delta.
  */
 export type RatingUpdate = {
