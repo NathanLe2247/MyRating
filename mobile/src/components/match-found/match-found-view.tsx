@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import type { ReactNode } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthButton } from '@/components/auth/auth-button';
@@ -7,6 +8,7 @@ import { BrandIcon } from '@/components/brand-icon';
 import { HeadToHead } from '@/components/match-found/head-to-head';
 import { LogisticsCard } from '@/components/match-found/logistics-card';
 import { MatchFoundBanner } from '@/components/match-found/match-found-banner';
+import { MatchOnPanel } from '@/components/match-found/match-on-panel';
 import { QueueStatus } from '@/components/match-found/queue-status';
 import { SessionHeader } from '@/components/match-found/session-header';
 import { matchText } from '@/components/match-found/text-styles';
@@ -15,9 +17,30 @@ import { en } from '@/i18n/en';
 import type { MatchFound } from '@/types/match-found';
 import { formatRatingGap } from '@/utils/match-found-format';
 
+/**
+ * - `proposed`: waiting for the player's answer (Accept / Decline).
+ * - `waiting_for_opponent`: the player accepted; the opponent hasn't yet.
+ * - `on`: both accepted; where to play, and the result is reported from here.
+ *   The match can still be cancelled.
+ * - `reported`: a score is in and awaits confirmation; it can't be cancelled.
+ */
+export type MatchFoundPhase = 'proposed' | 'waiting_for_opponent' | 'on' | 'reported';
+
+/** Phases where the match is on (both accepted). */
+const MatchOnPhases: readonly MatchFoundPhase[] = ['on', 'reported'];
+
 type MatchFoundViewProps = {
   /** Null when there's no pairing to show (empty state). */
   match: MatchFound | null;
+  phase?: MatchFoundPhase;
+  /** The match hasn't loaded yet: a spinner instead of the empty state. */
+  loading?: boolean;
+  /** An answer is in flight: the actions are disabled. */
+  busy?: boolean;
+  /** Copy for the last failed matchmaking call. */
+  error?: string;
+  /** Extra content while the match is on (the score report goes here). */
+  matchOnContent?: ReactNode;
   onBack: () => void;
   onLeave: () => void;
   onAccept: () => void;
@@ -26,9 +49,14 @@ type MatchFoundViewProps = {
 };
 
 // Match Found — instant pairing (Figma 1:7334). Pure view: the route owns
-// navigation and the (not yet built) matchmaking calls.
+// navigation and the matchmaking calls.
 export function MatchFoundView({
   match,
+  phase = 'proposed',
+  loading,
+  busy,
+  error,
+  matchOnContent,
   onBack,
   onLeave,
   onAccept,
@@ -36,6 +64,7 @@ export function MatchFoundView({
   onOpenMap,
 }: MatchFoundViewProps) {
   const t = en.matchFound;
+  const matchOn = MatchOnPhases.includes(phase);
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar style="light" />
@@ -43,11 +72,21 @@ export function MatchFoundView({
       {match ? (
         <>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-            <QueueStatus
-              radiusMiles={match.searchRadiusMiles}
-              elapsedSeconds={match.elapsedSeconds}
-              onLeave={onLeave}
-            />
+            {matchOn ? (
+              <MatchOnPanel
+                courtName={match.venue?.name}
+                busy={busy}
+                reported={phase === 'reported'}
+                onCancel={phase === 'on' ? onLeave : undefined}>
+                {matchOnContent}
+              </MatchOnPanel>
+            ) : (
+              <QueueStatus
+                radiusMiles={match.searchRadiusMiles}
+                elapsedSeconds={match.elapsedSeconds}
+                onLeave={onLeave}
+              />
+            )}
             <MatchFoundBanner
               ratingGap={formatRatingGap(match.player.rating, match.opponent.rating)}
               verified={match.ratingsVerified}
@@ -68,15 +107,36 @@ export function MatchFoundView({
               onOpenMap={onOpenMap}
             />
           </ScrollView>
+          {error && (
+            <Text style={styles.error} accessibilityRole="alert">
+              {error}
+            </Text>
+          )}
           <View style={styles.footer}>
-            <View style={styles.footerButton}>
-              <AuthButton label={t.decline} variant="secondary" onPress={onDecline} />
-            </View>
-            <View style={styles.footerButton}>
-              <AuthButton label={t.accept} onPress={onAccept} />
-            </View>
+            {matchOn ? (
+              <View style={styles.footerButton}>
+                <AuthButton label={t.on.home} variant="secondary" onPress={onBack} />
+              </View>
+            ) : (
+              <>
+                <View style={styles.footerButton}>
+                  <AuthButton label={t.decline} variant="secondary" onPress={onDecline} disabled={busy} />
+                </View>
+                <View style={styles.footerButton}>
+                  {phase === 'waiting_for_opponent' ? (
+                    <AuthButton label={t.waitingForOpponent(match.opponent.name)} onPress={onAccept} disabled />
+                  ) : (
+                    <AuthButton label={t.accept} onPress={onAccept} disabled={busy} />
+                  )}
+                </View>
+              </>
+            )}
           </View>
         </>
+      ) : loading ? (
+        <View style={styles.empty}>
+          <ActivityIndicator color={Brand.lime} accessibilityLabel={t.loading} />
+        </View>
       ) : (
         <View style={styles.empty}>
           <View style={styles.emptyIcon}>
@@ -85,7 +145,7 @@ export function MatchFoundView({
           <Text style={styles.emptyTitle} accessibilityRole="header">
             {t.empty.title}
           </Text>
-          <Text style={[matchText.caption, styles.emptyBody]}>{t.empty.body}</Text>
+          <Text style={[matchText.caption, styles.emptyBody]}>{error ?? t.empty.body}</Text>
           <View style={styles.emptyButton}>
             <AuthButton label={t.empty.back} variant="secondary" onPress={onBack} />
           </View>
@@ -120,6 +180,16 @@ const styles = StyleSheet.create({
   },
   footerButton: {
     flex: 1,
+  },
+  error: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+    fontFamily: BrandFonts.bodyMedium,
+    fontSize: 13,
+    color: Brand.error,
   },
   empty: {
     flex: 1,

@@ -1,7 +1,7 @@
 import type { MatchFormat } from '@/constants/match';
 
-// View-model for the Match Found screen. Screen-local until matchmaking has a
-// cross-app shape in `shared/`; build this from that once it exists. Optional
+// View-model for the Match Found screen, built from the shared
+// `MatchmakingState` by `toMatchFound` (src/utils/matchmaking-state.ts). Optional
 // fields are ones matchmaking may not provide — the screen hides them or shows
 // an empty state rather than inventing a value.
 
@@ -18,7 +18,8 @@ export type MatchFoundPlayer = {
 
 export type MatchFoundVenue = {
   name: string;
-  distanceMiles: number;
+  /** Unknown when the device doesn't know where the player queued from. */
+  distanceMiles?: number;
   driveMinutes?: number;
 };
 

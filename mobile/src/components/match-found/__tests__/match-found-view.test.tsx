@@ -1,23 +1,40 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import type { ComponentProps } from 'react';
 
 import { MatchFoundView } from '@/components/match-found/match-found-view';
-import { SampleMatchFound } from '@/constants/dev-previews';
 import { en } from '@/i18n/en';
 import type { MatchFound } from '@/types/match-found';
-import { parseMatchFound } from '@/utils/match-found-param';
 
 const t = en.matchFound;
 
-function renderView(match: MatchFound | null) {
+function renderView(match: MatchFound | null, props: Partial<ComponentProps<typeof MatchFoundView>> = {}) {
   const handlers = {
     onBack: jest.fn(),
     onLeave: jest.fn(),
     onAccept: jest.fn(),
     onDecline: jest.fn(),
   };
-  render(<MatchFoundView match={match} {...handlers} />);
+  render(<MatchFoundView match={match} {...handlers} {...props} />);
   return handlers;
 }
+
+// Every optional field filled in.
+const SampleMatchFound: MatchFound = {
+  id: 'sample',
+  format: 'singles',
+  official: true,
+  player: { name: 'Alex Vance', rating: 4.18, location: 'Austin, TX' },
+  opponent: { name: 'J. Alvarez', rating: 4.2, location: 'Austin, TX', winStreak: 7 },
+  searchRadiusMiles: 5,
+  elapsedSeconds: 42,
+  ratingsVerified: true,
+  courtReady: true,
+  autoCheckIn: true,
+  winProbability: 0.51,
+  ratingImpact: 0.038,
+  venue: { name: 'Zilker Park Courts', distanceMiles: 1.4, driveMinutes: 5 },
+  rules: { games: 3, pointsTo: 11, winBy: 2 },
+};
 
 // Only what matchmaking always provides — every optional field left out.
 const minimalMatch: MatchFound = {
@@ -111,37 +128,77 @@ describe('MatchFoundView', () => {
     });
   });
 
-  describe('from a malformed route param', () => {
-    it('renders the valid parts and empty states for the bad optional fields', () => {
-      const param = JSON.stringify({
-        ...SampleMatchFound,
-        player: { ...SampleMatchFound.player, location: {}, avatarUrl: 'https://evil.example.com/x.png' },
-        opponent: { ...SampleMatchFound.opponent, winStreak: 'seven' },
-        venue: { name: 'Zilker Park Courts' },
-        rules: {},
-        winProbability: '0.51',
-        ratingImpact: 'huge',
-        autoCheckIn: 'yes',
-      });
+  describe('phases', () => {
+    it('disables accept while the opponent still has to answer, keeping decline', () => {
+      const { onDecline } = renderView(minimalMatch, { phase: 'waiting_for_opponent' });
 
-      renderView(parseMatchFound(param));
-
-      expect(screen.getByText(t.title)).toBeOnTheScreen();
-      expect(screen.getByText('Alex Vance')).toBeOnTheScreen();
-      expect(screen.getByText('J. Alvarez')).toBeOnTheScreen();
-      expect(screen.getByText(t.venueEmpty)).toBeOnTheScreen();
-      expect(screen.getByText(t.rulesEmpty)).toBeOnTheScreen();
-      expect(screen.queryByText(t.winProbability)).toBeNull();
-      expect(screen.queryByText(/NaN|undefined|\[object/)).toBeNull();
-      expect(screen.queryByText(t.autoCheckIn)).toBeNull();
-      expect(screen.queryByText(t.streak(7))).toBeNull();
-      expect(screen.getAllByText('AV').length).toBeGreaterThan(0);
+      expect(screen.queryByRole('button', { name: t.accept })).toBeNull();
+      expect(screen.getByRole('button', { name: t.waitingForOpponent('Rita Cho') })).toBeDisabled();
+      fireEvent.press(screen.getByRole('button', { name: t.decline }));
+      expect(onDecline).toHaveBeenCalled();
     });
 
-    it('shows the empty state when a required field is bad', () => {
-      renderView(parseMatchFound(JSON.stringify({ ...SampleMatchFound, player: { name: 'X' } })));
+    it('shows the match that is on: where to go, cancel, and no accept/decline', () => {
+      const handlers = renderView(SampleMatchFound, { phase: 'on' });
 
-      expect(screen.getByText(t.empty.title)).toBeOnTheScreen();
+      expect(screen.getByText(t.on.title)).toBeOnTheScreen();
+      expect(screen.getByText(t.on.court('Zilker Park Courts'))).toBeOnTheScreen();
+      expect(screen.queryByRole('button', { name: t.accept })).toBeNull();
+      expect(screen.queryByRole('button', { name: t.decline })).toBeNull();
+      expect(screen.queryByText(t.searching(5))).toBeNull();
+
+      fireEvent.press(screen.getByRole('button', { name: t.on.cancel }));
+      fireEvent.press(screen.getByRole('button', { name: t.on.home }));
+      expect(handlers.onLeave).toHaveBeenCalledTimes(1);
+      expect(handlers.onBack).toHaveBeenCalledTimes(1);
     });
+
+    it('shows a reported match without cancel, since it can no longer be called off', () => {
+      const handlers = renderView(SampleMatchFound, { phase: 'reported' });
+
+      expect(screen.getByText(t.on.reported.title)).toBeOnTheScreen();
+      expect(screen.getByText(t.on.reported.body)).toBeOnTheScreen();
+      expect(screen.getByText(t.on.court('Zilker Park Courts'))).toBeOnTheScreen();
+      expect(screen.queryByRole('button', { name: t.on.cancel })).toBeNull();
+      expect(screen.queryByRole('button', { name: t.accept })).toBeNull();
+      expect(screen.queryByRole('button', { name: t.decline })).toBeNull();
+
+      fireEvent.press(screen.getByRole('button', { name: t.on.home }));
+      expect(handlers.onBack).toHaveBeenCalledTimes(1);
+      expect(handlers.onLeave).not.toHaveBeenCalled();
+    });
+
+    it('asks the player to pick a court when matchmaking found none', () => {
+      renderView(minimalMatch, { phase: 'on' });
+
+      expect(screen.getByText(t.on.noCourt)).toBeOnTheScreen();
+    });
+
+    it('disables the answers while one is in flight', () => {
+      renderView(minimalMatch, { busy: true });
+
+      expect(screen.getByRole('button', { name: t.accept })).toBeDisabled();
+      expect(screen.getByRole('button', { name: t.decline })).toBeDisabled();
+    });
+
+    it('shows an error from matchmaking', () => {
+      renderView(minimalMatch, { error: 'Something broke.' });
+
+      expect(screen.getByRole('alert')).toHaveTextContent('Something broke.');
+    });
+
+    it('shows a spinner, not the empty state, while loading', () => {
+      renderView(null, { loading: true });
+
+      expect(screen.getByLabelText(t.loading)).toBeOnTheScreen();
+      expect(screen.queryByText(t.empty.title)).toBeNull();
+    });
+  });
+
+  it('shows the distance only when it is known', () => {
+    renderView({ ...minimalMatch, venue: { name: 'Hill Courts' } });
+
+    expect(screen.getByText('Hill Courts')).toBeOnTheScreen();
+    expect(screen.queryByText(/mi away/)).toBeNull();
   });
 });

@@ -136,7 +136,16 @@ URL and for the page to settle and checks nothing on the screen itself, so it
 keeps working as real screens replace the placeholders. Screenshots:
 (`NN-home.png`, `NN-tab-play.png`, `NN-tab-health.png`,
 `NN-tab-community.png`, numbered like that step; builds before the tabs
-existed note "pre-#13 build" instead); `/sso-callback` with an unfinished
+existed note "pre-#13 build" instead); the Home queue card against the
+hosted `matchmaking` function ("queue: Find a match reaches matchmaking",
+`NN-queue.png`, `NN-match-found.png`, `NN-match-on.png`): Find a match →
+searching → Match Found against the Demo Tester (`DEMO_BOT_ENABLED` on
+hosted, ~5 s) → Accept → "You're on!" → Cancel match, back to an idle card.
+The account's `public.users` row comes from the clerk-webhook, so the
+function accepts it even though onboarding was only marked done; where
+there's no row, the function answers `profile_required` and the step
+passes on the card's "Finish setting up your profile" copy (the note says
+so); `/sso-callback` with an unfinished
 account (onboarding metadata cleared first) going to onboarding; phone sign-up
 with no password (same onboarding handling); phone sign-in with a wrong then
 correct code; forgot-password reset and sign-in with the new password.

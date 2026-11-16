@@ -59,6 +59,47 @@ screens are gone; `app/(home)/` holds the tab screens.
   location. `useLocationPermission` then never prompts or reports a denial,
   so no screen (Home included) asks for location or reads GPS.
 
+### Match queue (matchmaking)
+
+- The queue → Match Found flow calls the `matchmaking` edge function (contract
+  in `shared/src/matchmaking.ts`, conventions in
+  `agent/skills/geospatial-matching`) through `useMatchmakingApi`
+  (`src/hooks/use-matchmaking-api.ts`): `supabase.functions.invoke` with the
+  Clerk token, every 200 parsed with `MatchmakingStateSchema`, failures
+  thrown as `MatchmakingApiError` with the function's code, `network`, or
+  `location_unavailable`. Copy for every code is `en.matchmaking.errors`.
+- State is shared app-wide by `MatchmakingProvider` (root `_layout`), read
+  with `useMatchmaking()` (`src/hooks/use-matchmaking.ts`). It's one React
+  Query entry (`['matchmaking', userId]`) that polls every
+  `MatchmakingPollMs` while `searching`, `proposed` or
+  `waiting_for_opponent`, every `MatchmakingOpenMatchPollMs` (slower) while
+  the match is `accepted` or `awaiting_confirmation` (so the opponent's
+  cancel or score report shows up), and is idle otherwise
+  (`pollIntervalMs` in `src/utils/matchmaking-state.ts`); it only runs once
+  the player is signed in and onboarded. Actions (`join`, `leave`, `accept`, `decline`
+  — which requeues) write their returned state into that entry.
+  `match_open` / `match_pending` aren't errors: the state is re-read and the
+  open match is shown. Phases and the Match Found view model are pure
+  helpers in `src/utils/matchmaking-state.ts`.
+- No Realtime yet (Clerk third-party auth isn't on in hosted Supabase, so
+  RLS-filtered events wouldn't arrive). To add it, subscribe to
+  `public.matches` in the provider and call `refresh()` on each event; keep
+  the poll as the fallback.
+- Join location: `demoLocation()` when set, else one GPS read
+  (`currentPositionQuery`, shared with the courts list); radius
+  `QueueRadiusMeters` (`src/constants/matchmaking.ts`).
+- Home's queue card (`useQueueCard`) shows Find a match → searching (timer,
+  Leave) → the pairing, and opens `/match/found` once per new proposal.
+  `app/match/found.tsx` (`useMatchFoundScreen`) shows the live match:
+  Accept / Decline / Leave while proposed, then the "match on" panel
+  (`MatchOnPanel`): view phase `'on'` for `accepted`, with Cancel match, and
+  `'reported'` for `awaiting_confirmation`, with no Cancel —
+  `matchmaking_leave` only cancels `proposed` or unreported `accepted`
+  matches, so offering it after a report would leave the match open. The
+  score report goes in that panel via `MatchFoundView`'s `matchOnContent`.
+- Test builders for function states live in `src/test-utils/matchmaking.ts`
+  (outside `__tests__/` so Jest doesn't run them as tests).
+
 ### Opening other apps
 
 - Links out to another app (maps, for now) are built in `src/utils/`
@@ -90,6 +131,11 @@ Jest via `jest-expo` with React Native Testing Library. `npm test` runs it;
   Expo's `fetch` global is lazy, and if nothing sets it, Jest's teardown
   loads it against the web mock and logs "Cannot log after tests are done"
   (#102).
+- A test `QueryClient` sets `gcTime: Infinity` (with `retry: false`).
+  Otherwise React Query starts a 5-minute garbage-collection timer for each
+  unobserved query, and that timer keeps the Jest worker alive after the
+  suite ends ("A worker process has failed to exit gracefully", #98).
+  `scripts/agent/repro/98-jest-worker-leak.sh` fails if that warning comes back.
 
 ## Auth
 

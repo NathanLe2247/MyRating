@@ -27,7 +27,9 @@ function mockRatingResponse(response: { data: unknown; error: unknown }) {
 }
 
 function wrapper({ children }: { children: ReactNode }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // gcTime: Infinity stops React Query from scheduling its 5-minute garbage-collection
+  // timer for unobserved queries; that timer kept the Jest worker alive (#98).
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
