@@ -15,6 +15,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { LogBox, useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { MatchmakingProvider } from '@/providers/matchmaking-provider';
 import { QueryProvider } from '@/providers/query-provider';
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
@@ -49,10 +50,12 @@ export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <QueryProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <AnimatedSplashOverlay />
-          <Slot />
-        </ThemeProvider>
+        <MatchmakingProvider>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <AnimatedSplashOverlay />
+            <Slot />
+          </ThemeProvider>
+        </MatchmakingProvider>
       </QueryProvider>
     </ClerkProvider>
   );
