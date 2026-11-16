@@ -1,7 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { HealthDashboard } from '@/components/health/health-dashboard';
+import { DemoHealthConnectMs } from '@/constants/demo-data';
+import { useHealthConnection } from '@/hooks/use-health-connection';
 import { en } from '@/i18n/en';
+import { withDemoDataFlag } from '@/test-utils/demo-flag';
 import type { HealthSummary } from '@/types/health';
 
 const copy = en.health;
@@ -128,5 +131,99 @@ describe('HealthDashboard', () => {
       expect(screen.queryByText(copy.connect.title)).toBeNull();
       expect(screen.getByText(syncedWith(copy.providers.whoop))).toBeOnTheScreen();
     });
+  });
+});
+
+describe('connecting', () => {
+  it('shows progress on the provider being connected and disables every tile', () => {
+    const onConnect = jest.fn();
+    render(<HealthDashboard summary={null} onConnect={onConnect} connecting="apple_health" />);
+
+    const apple = screen.getByRole('button', { name: copy.connect.connectingLabel(copy.providers.apple_health) });
+    const whoop = screen.getByRole('button', { name: copy.connect.label(copy.providers.whoop) });
+    expect(screen.getByText(copy.connect.connecting)).toBeOnTheScreen();
+    expect(apple).toBeDisabled();
+    expect(whoop).toBeDisabled();
+
+    fireEvent.press(whoop);
+    expect(onConnect).not.toHaveBeenCalled();
+  });
+});
+
+describe('sample data', () => {
+  it('labels sample data and offers a disconnect', () => {
+    const onDisconnect = jest.fn();
+    render(<HealthDashboard summary={summary} onConnect={jest.fn()} sample onDisconnect={onDisconnect} />);
+
+    expect(screen.getByText(copy.sample.note)).toBeOnTheScreen();
+    fireEvent.press(screen.getByRole('button', { name: copy.sample.disconnectLabel(copy.providers.whoop) }));
+    expect(onDisconnect).toHaveBeenCalled();
+  });
+
+  it('shows no sample label for real data', () => {
+    render(<HealthDashboard summary={summary} onConnect={jest.fn()} />);
+
+    expect(screen.queryByText(copy.sample.note)).toBeNull();
+    expect(screen.queryByText(copy.sample.disconnect)).toBeNull();
+  });
+});
+
+// The dashboard fed by the real connection hook, the way the tab composes it.
+function HealthTab() {
+  const health = useHealthConnection();
+  return (
+    <HealthDashboard
+      summary={health.summary}
+      onConnect={health.connect}
+      connecting={health.connecting}
+      sample={health.sample}
+      onDisconnect={health.disconnect}
+    />
+  );
+}
+
+const connectApple = () =>
+  fireEvent.press(screen.getByRole('button', { name: copy.connect.label(copy.providers.apple_health) }));
+
+describe('Health tab, demo data off (default)', () => {
+  withDemoDataFlag(false);
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('stays not connected when Apple Health is tapped', () => {
+    render(<HealthTab />);
+
+    connectApple();
+    act(() => jest.advanceTimersByTime(DemoHealthConnectMs));
+
+    expect(screen.getByText(copy.connect.title)).toBeOnTheScreen();
+    expect(screen.queryByText(copy.connect.connecting)).toBeNull();
+    expect(screen.queryByText(copy.sample.note)).toBeNull();
+  });
+});
+
+describe('Health tab, demo data on', () => {
+  withDemoDataFlag(true);
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('simulates connecting Apple Health, shows the sample dashboard, and disconnects', () => {
+    render(<HealthTab />);
+
+    connectApple();
+    expect(screen.getByText(copy.connect.connecting)).toBeOnTheScreen();
+
+    act(() => jest.advanceTimersByTime(DemoHealthConnectMs));
+    expect(screen.queryByText(copy.connect.title)).toBeNull();
+    expect(screen.getByText(syncedWith(copy.providers.apple_health))).toBeOnTheScreen();
+    expect(screen.getByText(copy.sample.note)).toBeOnTheScreen();
+    expect(screen.getByText(copy.readiness.zones.optimal)).toBeOnTheScreen();
+    expect(screen.getByText(copy.courtLoad.title)).toBeOnTheScreen();
+
+    fireEvent.press(
+      screen.getByRole('button', { name: copy.sample.disconnectLabel(copy.providers.apple_health) }),
+    );
+    expect(screen.getByText(copy.connect.title)).toBeOnTheScreen();
+    expect(screen.queryByText(copy.sample.note)).toBeNull();
   });
 });
