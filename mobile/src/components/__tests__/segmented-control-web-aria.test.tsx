@@ -10,6 +10,9 @@ import { AppRegistry } from 'react-native';
 import { SegmentedControl } from '@/components/segmented-control';
 
 jest.mock('react-native', () => jest.requireActual('react-native-web'));
+// Expo's `fetch` global is lazy; left unset, Jest's teardown resolves it against
+// the react-native-web mock and it logs after the test is done (#102).
+globalThis.fetch = jest.fn();
 
 const options = ['left', 'right'] as const;
 const labels = { left: 'Left', right: 'Right' };

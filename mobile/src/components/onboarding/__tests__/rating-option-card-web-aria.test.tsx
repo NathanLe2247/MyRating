@@ -10,6 +10,9 @@ import { AppRegistry } from 'react-native';
 import { RatingOptionCard } from '@/components/onboarding/rating-option-card';
 
 jest.mock('react-native', () => jest.requireActual('react-native-web'));
+// Expo's `fetch` global is lazy; left unset, Jest's teardown resolves it against
+// the react-native-web mock and it logs after the test is done (#102).
+globalThis.fetch = jest.fn();
 // expo-symbols is a native module; the icon is irrelevant to the ARIA state.
 jest.mock('@/components/brand-icon', () => ({ BrandIcon: () => null }));
 
