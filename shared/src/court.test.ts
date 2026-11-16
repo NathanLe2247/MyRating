@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { GeoJsonPointSchema } from './common.ts';
 import { CourtSchema, NearbyCourtSchema } from './court.ts';
@@ -66,6 +68,40 @@ describe('CourtSchema', () => {
     const { is_active: _, ...row } = validCourt;
     assert.equal(CourtSchema.safeParse(row).success, false);
   });
+
+  it('parses google_place_id as a place id or null', () => {
+    for (const google_place_id of ['ChIJN1t_tDeuEmsRUsoyG83frY4', null]) {
+      const row = { ...validCourt, google_place_id };
+      assert.deepEqual(CourtSchema.parse(row), row, String(google_place_id));
+    }
+  });
+
+  it('rejects an empty, padded, or non-string google_place_id', () => {
+    for (const google_place_id of ['', ' ChIJN1t_tDeuEmsRUsoyG83frY4', 'ChIJ ', 42]) {
+      assert.equal(
+        CourtSchema.safeParse({ ...validCourt, google_place_id }).success,
+        false,
+        JSON.stringify(google_place_id),
+      );
+    }
+  });
+});
+
+describe('courts.google_place_id migration', () => {
+  const dir = fileURLToPath(new URL('../../backend/supabase/migrations/', import.meta.url));
+  const sql = readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .map((f) => readFileSync(dir + f, 'utf8'))
+    .join('\n');
+
+  it('adds the column the schema reads', () => {
+    assert.match(sql, /alter table public\.courts\s+add column google_place_id text/);
+  });
+
+  it('returns it from courts_geojson and nearby_courts', () => {
+    assert.match(sql, /create or replace view public\.courts_geojson[\s\S]*?google_place_id\s+from public\.courts;/);
+    assert.match(sql, /returns table \([^)]*google_place_id text,\s*distance_m double precision\s*\)/);
+  });
 });
 
 describe('NearbyCourtSchema', () => {
@@ -73,6 +109,12 @@ describe('NearbyCourtSchema', () => {
 
   it('parses a nearby_courts row', () => {
     assert.deepEqual(NearbyCourtSchema.parse(nearby), nearby);
+  });
+
+  it('parses a nearby_courts row with a google_place_id', () => {
+    const row = { ...nearby, google_place_id: 'ChIJN1t_tDeuEmsRUsoyG83frY4' };
+    assert.deepEqual(NearbyCourtSchema.parse(row), row);
+    assert.equal(NearbyCourtSchema.safeParse({ ...nearby, google_place_id: '' }).success, false);
   });
 
   it('accepts distance 0 (court at the requested point)', () => {

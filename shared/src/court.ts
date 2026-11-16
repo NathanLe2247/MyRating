@@ -3,6 +3,18 @@ import { z } from 'zod';
 import { GeoJsonPointSchema, TimestampSchema, UuidSchema } from './common.ts';
 
 /**
+ * A Google Places (New) place id (`courts.google_place_id`,
+ * 20261116120000_courts_google_place_id.sql). Opaque, never empty or padded.
+ * It is the only Places data we store: photo names and URLs expire and
+ * Google's terms forbid caching them, so the `court-photo` edge function
+ * resolves a fresh photo from this id on each request.
+ */
+export const GooglePlaceIdSchema = z
+  .string()
+  .min(1)
+  .refine((s) => s === s.trim(), 'must not have leading or trailing whitespace');
+
+/**
  * A row of the `public.courts_geojson` view (20261113120000_courts.sql): the
  * `public.courts` table with `location` converted to GeoJSON. Read courts
  * from that view, not from `public.courts`, whose `location` PostgREST
@@ -10,6 +22,11 @@ import { GeoJsonPointSchema, TimestampSchema, UuidSchema } from './common.ts';
  *
  * Intentionally minimal until the courts catalog is designed (see
  * agent/skills/courts-catalog). Change this and the migration together.
+ *
+ * `google_place_id` is null when the court has no confident Places match
+ * (then it has no photo). The view and RPC always return it; it's
+ * `.optional()` only so existing hand-built `Court` fixtures in the apps
+ * still type-check until they're updated (#107).
  */
 export const CourtSchema = z.object({
   id: UuidSchema,
@@ -17,6 +34,7 @@ export const CourtSchema = z.object({
   location: GeoJsonPointSchema,
   is_active: z.boolean(),
   created_at: TimestampSchema,
+  google_place_id: GooglePlaceIdSchema.nullable().optional(),
 });
 export type Court = z.infer<typeof CourtSchema>;
 
