@@ -46,6 +46,13 @@ Both players are computed from their pre-match state, so the order doesn't
 matter. There is no idle-time RD growth yet (Glicko-2's "no games this
 period" step); add it with a scheduled job if inactivity should raise RD.
 
+**Batch jobs over `player_ratings` (RD decay, recalibration, backfills)
+must exclude bots** (`join users ... where not users.is_bot`): the
+`refuse_bot_rating_change` trigger rejects any write to a bot's row, so one
+bot row in the batch fails the whole statement. Such a job is still a
+ratings write: put it next to `ratings/`, keep `rating = mmr`, and leave
+`rating_history` to confirmed matches.
+
 ## Encoding a match result
 
 Matches are best of 3 games, and 1, 2 or 3 games are all valid results
@@ -60,8 +67,11 @@ game is simply a result whose winner won that game.
 
 `player_ratings` (numeric columns): `mmr numeric(7,2)` holds the Glicko-2
 rating and is what the update reads; `rating numeric(7,2)` is the visible
-rating. For now both are set to the same new value on every update
-(`rating = mmr`). `rating_deviation numeric(6,2)`, `volatility numeric(8,6)`.
+rating. **For now `mmr = rating`**: both are set to the same new value on
+every update, so matchmaking (which searches by `mmr`) sees exactly the
+visible rating. If they are ever split (e.g. a visible rating that lags or
+is floored), only `ratings_apply` changes; the Glicko-2 update keeps reading
+`mmr`. `rating_deviation numeric(6,2)`, `volatility numeric(8,6)`.
 Clients can read `rating` and `rating_deviation`, never `mmr` or
 `volatility`.
 
@@ -79,7 +89,18 @@ of `after - before`.
 - Confirming a `confirmed` match is a no-op (`ratings_apply` returns false;
   `rating_history`'s primary key `(match_id, player_id)` is the backstop).
 - `ratings_apply` refuses with `rating_stale` if a player's row changed
-  since it was read; `confirmMatch` re-reads and recomputes (up to 3 tries).
+  since it was read; `confirmMatch` re-reads and recomputes (up to 3 tries),
+  and `match-results` answers 409 `rating_stale` if it still moves.
+- `ratings_apply` doesn't trust the caller's `before`: it must equal the
+  stored `rating` (1500 with no row) or the call fails with
+  `invalid_update`, and the stored value is what `rating_history` records.
+- `ratings_apply` locks and writes player rows in `player_id` order, so two
+  confirmations sharing players can't deadlock. Any other code that locks
+  several `player_ratings` rows must use the same order.
+- An empty update list for a match awaiting confirmation is
+  `match_changed`: the confirmer read the match before the score was
+  reported (a confirm racing a submit). It is a 409, not a retry, so a
+  player never confirms a score they haven't seen.
 - Disputed matches never change ratings.
 
 ## Bots

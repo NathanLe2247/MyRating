@@ -12,8 +12,7 @@
 import { verifyToken } from 'npm:@clerk/backend@3';
 import { createClient, type PostgrestError } from 'npm:@supabase/supabase-js@2';
 
-import { RatingStale } from '../ratings/confirm.ts';
-import { createHandler, MatchResultsRefusal, type MatchResultsStore } from './handler.ts';
+import { createHandler, dbErrorToThrowable, type MatchResultsStore } from './handler.ts';
 
 const secretKey = Deno.env.get('CLERK_SECRET_KEY')!;
 
@@ -32,17 +31,10 @@ async function authenticate(req: Request): Promise<string | null> {
   }
 }
 
-const REFUSALS = new Set(['match_not_found', 'match_not_accepted', 'match_not_awaiting_confirmation', 'own_report']);
-
-/** Turns the SQL functions' refusals into MatchResultsRefusal / RatingStale; rethrows anything else. */
+/** Turns the SQL functions' refusals into MatchResultsRefusal / RatingStale (dbErrorToThrowable); anything else is internal. */
 function check(error: PostgrestError | null) {
   if (!error) return;
-  if (error.code === 'P0001' && REFUSALS.has(error.message)) {
-    throw new MatchResultsRefusal(error.message as Exclude<MatchResultsRefusal['code'], 'invalid_request'>);
-  }
-  if (error.code === 'P0001' && error.message === 'rating_stale') throw new RatingStale();
-  if (error.code === '22023' && error.message === 'invalid_result') throw new MatchResultsRefusal('invalid_request');
-  throw new Error(`${error.code}: ${error.message}`);
+  throw dbErrorToThrowable(error.code, error.message) ?? new Error(`${error.code}: ${error.message}`);
 }
 
 async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {

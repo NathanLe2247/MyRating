@@ -6,11 +6,17 @@
 // ones from ../ratings/. Responses are parsed with the shared
 // MatchResultsStateSchema by the handler itself, so a shape drift fails here.
 import { assert, assertEquals } from 'jsr:@std/assert@1';
-import { DEMO_BOT_CONFIRM_DELAY_MS, DEMO_TESTER_USER_ID, type MatchGame, type MatchResultsState } from '@myrating/shared';
+import {
+  DEMO_BOT_CONFIRM_DELAY_MS,
+  DEMO_TESTER_USER_ID,
+  MATCH_RESULTS_ERRORS,
+  type MatchGame,
+  type MatchResultsState,
+} from '@myrating/shared';
 
-import { RatingStale } from '../ratings/confirm.ts';
+import { MAX_ATTEMPTS, RatingStale } from '../ratings/confirm.ts';
 import type { RatingUpdate } from '../ratings/update.ts';
-import { createHandler, MatchResultsRefusal, type MatchResultsStore } from './handler.ts';
+import { createHandler, dbErrorToThrowable, MatchResultsRefusal, type MatchResultsStore } from './handler.ts';
 
 const PLAYERS: Record<string, string> = {
   user_a: '6f1c2b8e-3d4a-4c5b-9e7f-0a1b2c3d4e5f',
@@ -43,7 +49,10 @@ function fakeStore() {
   const games = new Map<string, MatchGame[]>();
   const history: { match_id: string; player_id: string; before: number; after: number }[] = [];
   const calls: string[] = [];
-  let staleOnce = false;
+  let staleTimes = 0;
+  // Runs inside applyRatings, after the handler read the inputs: lets a test
+  // change the match in between (a concurrent call).
+  let beforeApply: (() => void) | null = null;
 
   const find = (playerId: string, matchId: string) => {
     const m = matches.get(matchId);
@@ -90,14 +99,18 @@ function fakeStore() {
     },
     applyRatings(matchId, confirmerId, updates: RatingUpdate[]) {
       calls.push('applyRatings');
+      const hook = beforeApply;
+      beforeApply = null;
+      hook?.();
       const m = find(confirmerId, matchId);
       if (m.status === 'confirmed') return Promise.resolve(false);
       if (m.reported_by === confirmerId) throw new MatchResultsRefusal('own_report');
       if (m.status !== 'awaiting_confirmation') throw new MatchResultsRefusal('match_not_awaiting_confirmation');
+      if (updates.length === 0) throw new MatchResultsRefusal('match_changed');
       const humans = [m.a, m.b].filter((id) => !bots.has(id)).sort();
       assertEquals(updates.map((u) => u.player_id).sort(), humans, 'one update per non-bot player');
-      if (staleOnce) {
-        staleOnce = false;
+      if (staleTimes > 0) {
+        staleTimes--;
         throw new RatingStale();
       }
       for (const u of updates) {
@@ -144,7 +157,8 @@ function fakeStore() {
     history,
     ratings,
     advance: (ms: number) => (now += ms),
-    staleNext: () => (staleOnce = true),
+    staleNext: (times = 1) => (staleTimes = times),
+    onApply: (fn: () => void) => (beforeApply = fn),
   };
 }
 
@@ -319,4 +333,58 @@ Deno.test('an invalid state from the database is a 500, not a bad payload', asyn
   );
   assertEquals(res.status, 500);
   assertEquals(await res.json(), { error: 'internal' });
+});
+
+Deno.test('every error the handler returns is a shared MATCH_RESULTS_ERRORS code', async () => {
+  const { call } = setup();
+  const res = await call('user_a', {}, 'GET');
+  assertEquals(res, { status: 405, body: { error: 'method_not_allowed' } });
+  for (const code of ['method_not_allowed', 'match_changed', 'rating_stale'] as const) {
+    assert(MATCH_RESULTS_ERRORS.includes(code), code);
+  }
+});
+
+Deno.test('a confirm that races the opponent\'s report is a 409 match_changed, not a 500', async () => {
+  const { call, store, onApply, history } = setup();
+  // B confirms while the match is still accepted; A's report lands between
+  // the read and the write, so the empty update list no longer fits. (The
+  // fake's submit is synchronous, so it is done before the write runs.)
+  onApply(() => {
+    void store.submit(A, AB, [game(11, 7)]);
+  });
+  assertEquals(await call('user_b', { action: 'confirm', match_id: AB }), { status: 409, body: { error: 'match_changed' } });
+  assertEquals(history.length, 0, 'the unseen score is not confirmed');
+
+  // Re-reading shows the score; confirming it then works.
+  const state = (await call('user_b', { action: 'state', match_id: AB })).body as MatchResultsState;
+  assertEquals(state.match.status, 'awaiting_confirmation');
+  assertEquals((await call('user_b', { action: 'confirm', match_id: AB })).status, 200);
+  assertEquals(history.length, 2);
+});
+
+Deno.test('a rating that keeps moving is a 409 rating_stale after the retries', async () => {
+  const { call, history, calls, staleNext } = setup();
+  await call('user_a', submit(AB, [game(11, 7)]));
+  staleNext(MAX_ATTEMPTS);
+  assertEquals(await call('user_b', { action: 'confirm', match_id: AB }), { status: 409, body: { error: 'rating_stale' } });
+  assertEquals(calls.filter((c) => c === 'applyRatings').length, MAX_ATTEMPTS);
+  assertEquals(history.length, 0);
+});
+
+Deno.test('database errors map to shared codes, or deliberately to internal', () => {
+  const refusal = (code: string, message: string): string | null => {
+    const e = dbErrorToThrowable(code, message);
+    return e instanceof MatchResultsRefusal ? e.code : e && e.message;
+  };
+  for (const code of ['match_not_found', 'match_not_accepted', 'match_not_awaiting_confirmation', 'own_report', 'match_changed']) {
+    assertEquals(refusal('P0001', code), code);
+    assert(MATCH_RESULTS_ERRORS.includes(code as (typeof MATCH_RESULTS_ERRORS)[number]), code);
+  }
+  assertEquals(refusal('22023', 'invalid_result'), 'invalid_request');
+  assert(dbErrorToThrowable('P0001', 'rating_stale') instanceof RatingStale);
+  // Backend bugs, not client errors: the handler answers 500 internal.
+  assertEquals(dbErrorToThrowable('22023', 'invalid_update'), null);
+  assertEquals(dbErrorToThrowable('P0001', 'bot_rating_frozen'), null);
+  assertEquals(dbErrorToThrowable('P0001', 'something_new'), null);
+  assertEquals(dbErrorToThrowable('23505', 'match_not_found'), null, 'only P0001 refusals pass through');
 });
