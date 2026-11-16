@@ -81,6 +81,28 @@ issuing its own sessions.
     mobile polls every few seconds while searching.
   - Realtime: `public.matches` is published; RLS limits events to the
     player's own matches.
+- `supabase/functions/court-photo/` — a court's photo for its card.
+  `GET /court-photo?court_id=<uuid>` → `CourtPhotoResponse`
+  (`shared/src/court-photo.ts`): `{ photoUri, attributions: [{ displayName,
+  uri }] }`, or `{ error }` with `COURT_PHOTO_ERRORS` (404 `not_found` for
+  an unknown/inactive court, no `google_place_id`, no photo, or no key; 502
+  `upstream_error` when Google fails). Public: callable with the anon key
+  (`verify_jwt = false`, no caller identity needed), and it reads the court
+  with the anon key so RLS hides inactive courts. 200s and 404s send
+  `Cache-Control: public, max-age=3600`; errors `no-store`.
+  - **Source and Google terms**: photos come only from Google Places
+    Photos (Places API (New): Place Details with field mask `photos`, then
+    Place Photo media with `skipHttpRedirect=true`). Only the Place ID is
+    stored (`courts.google_place_id`, 20261116120000); photo names and
+    photo URLs are resolved per request and never stored or logged. Never
+    copy park-website or image-search photos into the repo or R2.
+  - Secret `GOOGLE_PLACES_API_KEY` (Supabase function secret, key
+    restricted to Places API (New)); never in the repo or an `EXPO_PUBLIC_*`
+    var. Locally, put it in `supabase/functions/.env` (gitignored) for
+    `supabase functions serve`; without it every court 404s.
+  - Logic in `handler.ts` (tested by `handler.test.ts` with a fake lookup
+    and a mocked fetch: `cd supabase/functions/court-photo && deno test`),
+    wiring in `index.ts`.
 - `supabase/functions/dupr-import/` — importing/reconciling DUPR ratings.
 - `supabase/functions/whoop-oauth/` — WHOOP OAuth flow, token exchange/refresh for
   `agent/skills/health-integrations`.
@@ -138,7 +160,11 @@ issuing its own sessions.
   `20261114120000_courts_silver_spring.sql`, so they reach the hosted project.
   `supabase/seed.sql` is local only (`db reset` loads it, `db push` never
   does) and holds just an inactive test court. `tests/courts_seed.test.sql`
-  checks both by their fixed ids.
+  checks both by their fixed ids. `courts.google_place_id`
+  (20261116120000, nullable) feeds `court-photo`; the catalog courts are
+  still null until a data migration backfills them from Places Text Search
+  (name + location bias, unconfident matches stay null).
+  `tests/courts_google_place_id.test.sql` covers the column and RPC.
 - `django/` — a separate Django service. **Ownership boundary vs. the edge
   functions above is not yet decided** — see `django/CLAUDE.md`. Don't
   assume it owns a piece of logic without confirming; check there first

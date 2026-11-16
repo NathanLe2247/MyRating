@@ -52,5 +52,28 @@ returns geography as WKB hex. Use one of these instead:
 - Only the service role writes, and it writes to `public.courts` (the view is
   read-only).
 
+## Photos
+
+- Court photos come only from **Google Places Photos**. Never copy photos
+  from park websites or image search into the repo or R2: we don't have
+  rights to them.
+- `courts.google_place_id` (nullable, `20261116120000_courts_google_place_id.sql`)
+  is the only Places data stored, because Google allows storing Place IDs and
+  forbids caching photo names or URLs. It's returned by `courts_geojson` and
+  `nearby_courts` (`Court.google_place_id`). Null means no confident match,
+  so no photo.
+- To show a photo, call the `court-photo` edge function (anon key works):
+  `GET /functions/v1/court-photo?court_id=<uuid>`. Parse a 200 with
+  `CourtPhotoResponseSchema` (`shared/src/court-photo.ts`). Any non-200
+  (404 no place/photo/key, 502 Google error) means show the card without a
+  photo. Responses carry `Cache-Control: max-age=3600`; keep `photoUri` in
+  memory only (e.g. React Query keyed by court id), never persist it.
+- Always show the attributions with the photo ("Photo: <displayName>",
+  linking to `uri` when it's not null). Google's terms require it.
+- Finding Place IDs: Places API (New) Text Search with the court name and
+  its location as a location bias. Write them in a data migration (catalog
+  courts reach the hosted project through migrations), and leave unconfident
+  matches null.
+
 TODO: source of truth for court data (manual entry vs. import), richer
 catalog fields, and how `geospatial-matching` consumes courts.

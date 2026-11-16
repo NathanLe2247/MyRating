@@ -23,6 +23,17 @@ Types, Zod schemas, and constants used by `frontend/`, `mobile/`, and
   returns its `location` as WKB hex, which won't parse as `GeoJsonPoint`).
   Only active courts are visible to clients. The shape is deliberately
   minimal until the catalog is designed — see `agent/skills/courts-catalog`.
+  `google_place_id` (`GooglePlaceIdSchema`, nullable) is the court's Google
+  Place ID, the only Places data stored; the view and RPC always return it,
+  but the schema marks it `.optional()` so app fixtures that build a `Court`
+  by hand still type-check (tighten to required once they're updated, #107).
+- Court photo API (`src/court-photo.ts`) — the `court-photo` edge function:
+  `CourtPhotoRequestSchema` (`court_id` query param of a GET),
+  `CourtPhotoResponseSchema` (`photoUri`, `attributions[]` of
+  `{ displayName, uri | null }` — Google requires showing them with the
+  photo), `COURT_PHOTO_ERRORS`, `COURT_PHOTO_CACHE_SECONDS` (3600) and
+  `COURT_PHOTO_MAX_WIDTH_PX`. `photoUri` is short-lived: keep it in memory
+  only, never persist it.
 - Queue, match, and result shapes (`src/match.ts`) — the demo flow queue →
   match → report score → confirm → rating update. `queue_entries` and
   `matches` (with the `queue_entry_status` / `match_status` enums) are in
