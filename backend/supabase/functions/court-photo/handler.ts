@@ -14,6 +14,8 @@ import {
   CourtPhotoRequestSchema,
   type CourtPhotoResponse,
   CourtPhotoResponseSchema,
+  PLACES_MONTHLY_CAPS,
+  type PlacesSku,
 } from '@myrating/shared';
 import { z } from 'zod';
 
@@ -25,11 +27,19 @@ export const PLACES_BASE_URL = 'https://places.googleapis.com/v1';
  */
 export type PlaceIdLookup = (courtId: string) => Promise<string | null | undefined>;
 
-export type LogEvent = { event: string; court_id?: string; status?: number; error?: string };
+/**
+ * Reserves one Google call of `sku` in this calendar month (UTC), if fewer
+ * than `cap` have been made (`public.places_reserve_call`, atomic). False
+ * means the free-tier cap is reached and the call must not be made.
+ */
+export type ReserveCall = (sku: PlacesSku, cap: number) => Promise<boolean>;
+
+export type LogEvent = { event: string; court_id?: string; sku?: PlacesSku; error?: string };
 
 export type HandlerDeps = {
   placeIdFor: PlaceIdLookup;
-  /** `GOOGLE_PLACES_API_KEY`; unset means every court 404s. */
+  reserveCall: ReserveCall;
+  /** `GOOGLE_PLACES_API_KEY`; unset means every request gets a 503 `unavailable`. */
   apiKey: string | undefined;
   fetch?: typeof fetch;
   log?: (event: LogEvent) => void;
@@ -46,11 +56,15 @@ const STATUS: Record<CourtPhotoError, number> = {
   not_found: 404,
   upstream_error: 502,
   internal_error: 500,
+  unavailable: 503,
 };
 
-// 200s and 404s are cacheable for an hour (the photo URL outlives that, and a
-// court without a photo rarely gains one); errors are not cached.
-const cacheable = `public, max-age=${COURT_PHOTO_CACHE_SECONDS}`;
+// 200s and 404s (a court without a place or photo rarely gains one) may be
+// cached for an hour, but only by the client: `private`, so no CDN or proxy
+// stores the photoUri (Google's terms allow holding it in memory only).
+// Google doesn't document how long a photoUri stays valid, so clients must
+// handle the image failing to load. Errors are not cached.
+const cacheable = `private, max-age=${COURT_PHOTO_CACHE_SECONDS}`;
 
 function json(status: number, body: unknown, cache: string) {
   return new Response(JSON.stringify(body), {
@@ -94,9 +108,38 @@ function attributionsOf(
     .map((a) => ({ displayName: a.displayName.trim(), uri: absoluteUri(a.uri) }));
 }
 
-export function createHandler({ placeIdFor, apiKey, fetch: fetchFn = fetch, log = () => {} }: HandlerDeps) {
+/** The month's free-tier cap for `sku` is used up: no Google call was made. */
+class CapReached extends Error {
+  constructor(readonly sku: PlacesSku) {
+    super(`cap reached: ${sku}`);
+  }
+}
+
+/** The usage counter couldn't be read: fail closed, never call Google. */
+class ReserveFailed extends Error {}
+
+export function createHandler({
+  placeIdFor,
+  reserveCall,
+  apiKey,
+  fetch: fetchFn = fetch,
+  log = () => {},
+}: HandlerDeps) {
+  // Every Google call is reserved first, so usage can't pass the free tier.
+  async function reserve(sku: PlacesSku) {
+    let allowed: boolean;
+    try {
+      allowed = await reserveCall(sku, PLACES_MONTHLY_CAPS[sku]);
+    } catch (e) {
+      throw new ReserveFailed(e instanceof Error ? e.message : String(e));
+    }
+    if (!allowed) throw new CapReached(sku);
+  }
+
   async function places(url: string, headers: Record<string, string> = {}): Promise<unknown | null> {
-    const res = await fetchFn(url, { headers: { 'X-Goog-Api-Key': apiKey!, ...headers } });
+    // redirect: 'error' so the key header can never follow a redirect to
+    // another host (skipHttpRedirect means Places shouldn't send one).
+    const res = await fetchFn(url, { headers: { 'X-Goog-Api-Key': apiKey!, ...headers }, redirect: 'error' });
     // A stale or wrong place id: Google answers 404 NOT_FOUND. Treat it like
     // "no photo" rather than an outage.
     if (res.status === 404) {
@@ -111,6 +154,8 @@ export function createHandler({ placeIdFor, apiKey, fetch: fetchFn = fetch, log 
   }
 
   async function resolve(placeId: string): Promise<CourtPhotoResponse | null> {
+    // Field mask `photos` only: any other field could bill a pricier SKU.
+    await reserve('place_details');
     const raw = await places(`${PLACES_BASE_URL}/places/${encodeURIComponent(placeId)}`, {
       'X-Goog-FieldMask': 'photos',
     });
@@ -122,6 +167,7 @@ export function createHandler({ placeIdFor, apiKey, fetch: fetchFn = fetch, log 
 
     // photo.name is `places/<id>/photos/<ref>`: a path, so it is not encoded.
     // skipHttpRedirect returns JSON with the URL instead of the image bytes.
+    await reserve('place_photo');
     const media = await places(
       `${PLACES_BASE_URL}/${photo.name}/media?maxWidthPx=${COURT_PHOTO_MAX_WIDTH_PX}&skipHttpRedirect=true`,
     );
@@ -148,8 +194,9 @@ export function createHandler({ placeIdFor, apiKey, fetch: fetchFn = fetch, log 
     const courtId = query.data.court_id;
 
     if (!apiKey) {
+      // 503, not a cached 404: once the key is set, photos appear at once.
       log({ event: 'no_api_key', court_id: courtId });
-      return fail('not_found');
+      return fail('unavailable');
     }
 
     let placeId: string | null | undefined;
@@ -172,6 +219,15 @@ export function createHandler({ placeIdFor, apiKey, fetch: fetchFn = fetch, log 
       }
       return json(200, photo, cacheable);
     } catch (e) {
+      if (e instanceof CapReached) {
+        // Same answer as "no photo": the card just shows without one.
+        log({ event: 'free_cap_reached', court_id: courtId, sku: e.sku });
+        return fail('not_found');
+      }
+      if (e instanceof ReserveFailed) {
+        log({ event: 'usage_counter_error', court_id: courtId, error: e.message });
+        return fail('internal_error');
+      }
       // Never log the photo name, the URL or the key; the message is ours.
       const error = e instanceof UpstreamError ? e.message : 'places request failed';
       log({ event: 'upstream_error', court_id: courtId, error });

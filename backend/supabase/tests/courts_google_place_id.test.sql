@@ -6,7 +6,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(19);
+select plan(22);
 
 select has_column('public', 'courts', 'google_place_id', 'courts has google_place_id');
 select col_type_is('public', 'courts', 'google_place_id', 'text', 'google_place_id is text');
@@ -31,7 +31,20 @@ select throws_ok(
 );
 select throws_ok(
   $$insert into public.courts (name, location, google_place_id) values ('x', 'SRID=4326;POINT(0 0)', ' ChIJ-x ')$$,
-  '23514', null, 'a padded google_place_id is rejected'
+  '23514', null, 'a space-padded google_place_id is rejected'
+);
+-- Same rule as GooglePlaceIdSchema (^\S(.*\S)?$): any whitespace, not just spaces.
+select throws_ok(
+  $$insert into public.courts (name, location, google_place_id) values ('x', 'SRID=4326;POINT(0 0)', E'\tChIJ-x')$$,
+  '23514', null, 'a tab-padded google_place_id is rejected'
+);
+select throws_ok(
+  $$insert into public.courts (name, location, google_place_id) values ('x', 'SRID=4326;POINT(0 0)', E'ChIJ-x\n')$$,
+  '23514', null, 'a newline-padded google_place_id is rejected'
+);
+select lives_ok(
+  $$insert into public.courts (name, location, google_place_id) values ('x', 'SRID=4326;POINT(0 0)', 'x')$$,
+  'a one-character google_place_id is allowed'
 );
 
 -- anon (signed out): reads it, can't write it

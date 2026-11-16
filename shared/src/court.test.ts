@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
-import { fileURLToPath } from 'node:url';
 
 import { GeoJsonPointSchema } from './common.ts';
 import { CourtSchema, NearbyCourtSchema } from './court.ts';
@@ -69,38 +67,22 @@ describe('CourtSchema', () => {
     assert.equal(CourtSchema.safeParse(row).success, false);
   });
 
-  it('parses google_place_id as a place id or null', () => {
-    for (const google_place_id of ['ChIJN1t_tDeuEmsRUsoyG83frY4', null]) {
+  it('parses google_place_id as a place id, a one-character id, or null', () => {
+    for (const google_place_id of ['ChIJN1t_tDeuEmsRUsoyG83frY4', 'x', null]) {
       const row = { ...validCourt, google_place_id };
       assert.deepEqual(CourtSchema.parse(row), row, String(google_place_id));
     }
   });
 
-  it('rejects an empty, padded, or non-string google_place_id', () => {
-    for (const google_place_id of ['', ' ChIJN1t_tDeuEmsRUsoyG83frY4', 'ChIJ ', 42]) {
+  it('rejects an empty, whitespace-padded, or non-string google_place_id', () => {
+    const bad = ['', ' ', ' ChIJN1t_tDeuEmsRUsoyG83frY4', 'ChIJ ', '\tChIJ', 'ChIJ\n', 'ChIJ ', 42];
+    for (const google_place_id of bad) {
       assert.equal(
         CourtSchema.safeParse({ ...validCourt, google_place_id }).success,
         false,
         JSON.stringify(google_place_id),
       );
     }
-  });
-});
-
-describe('courts.google_place_id migration', () => {
-  const dir = fileURLToPath(new URL('../../backend/supabase/migrations/', import.meta.url));
-  const sql = readdirSync(dir)
-    .filter((f) => f.endsWith('.sql'))
-    .map((f) => readFileSync(dir + f, 'utf8'))
-    .join('\n');
-
-  it('adds the column the schema reads', () => {
-    assert.match(sql, /alter table public\.courts\s+add column google_place_id text/);
-  });
-
-  it('returns it from courts_geojson and nearby_courts', () => {
-    assert.match(sql, /create or replace view public\.courts_geojson[\s\S]*?google_place_id\s+from public\.courts;/);
-    assert.match(sql, /returns table \([^)]*google_place_id text,\s*distance_m double precision\s*\)/);
   });
 });
 

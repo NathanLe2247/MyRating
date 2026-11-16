@@ -4,15 +4,15 @@ import { GeoJsonPointSchema, TimestampSchema, UuidSchema } from './common.ts';
 
 /**
  * A Google Places (New) place id (`courts.google_place_id`,
- * 20261116120000_courts_google_place_id.sql). Opaque, never empty or padded.
+ * 20261116120000_courts_google_place_id.sql). Opaque, never empty or padded
+ * with whitespace: the same `^\S(.*\S)?$` pattern as that column's check.
  * It is the only Places data we store: photo names and URLs expire and
  * Google's terms forbid caching them, so the `court-photo` edge function
  * resolves a fresh photo from this id on each request.
  */
 export const GooglePlaceIdSchema = z
   .string()
-  .min(1)
-  .refine((s) => s === s.trim(), 'must not have leading or trailing whitespace');
+  .regex(/^\S(.*\S)?$/s, 'must be non-empty with no leading or trailing whitespace');
 
 /**
  * A row of the `public.courts_geojson` view (20261113120000_courts.sql): the

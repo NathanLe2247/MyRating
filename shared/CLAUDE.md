@@ -32,8 +32,14 @@ Types, Zod schemas, and constants used by `frontend/`, `mobile/`, and
   `CourtPhotoResponseSchema` (`photoUri`, `attributions[]` of
   `{ displayName, uri | null }` — Google requires showing them with the
   photo), `COURT_PHOTO_ERRORS`, `COURT_PHOTO_CACHE_SECONDS` (3600) and
-  `COURT_PHOTO_MAX_WIDTH_PX`. `photoUri` is short-lived: keep it in memory
-  only, never persist it.
+  `COURT_PHOTO_MAX_WIDTH_PX`. `photoUri` may only be held in memory (the
+  response is `Cache-Control: private`), never persisted; Google doesn't
+  document its lifetime, so handle the image failing to load.
+  `PLACES_SKUS` / `PLACES_MONTHLY_CAPS` (900 each) are the hard monthly
+  caps that keep court-photo inside Google's free tier (`places_usage`
+  table, 20261116130000); never raise them above the free threshold.
+  `GooglePlaceIdSchema` and the `courts.google_place_id` check use the same
+  rule: non-empty, no leading or trailing whitespace (`^\S(.*\S)?$`).
 - Queue, match, and result shapes (`src/match.ts`) — the demo flow queue →
   match → report score → confirm → rating update. `queue_entries` and
   `matches` (with the `queue_entry_status` / `match_status` enums) are in

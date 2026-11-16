@@ -14,9 +14,11 @@
 
 alter table public.courts
   add column google_place_id text
-    -- Place IDs are opaque, but never empty or padded: an empty string would
-    -- make court-photo call Places with a bad id instead of 404ing.
-    check (google_place_id is null or (google_place_id <> '' and google_place_id = btrim(google_place_id)));
+    -- Place IDs are opaque, but never empty or padded with any whitespace
+    -- (spaces, tabs, newlines): a bad value would make court-photo call
+    -- Places with a broken id. Same pattern as GooglePlaceIdSchema in
+    -- shared/src/court.ts. (null passes a check, so no `is null` needed.)
+    check (google_place_id ~ '^\S(.*\S)?$');
 
 comment on column public.courts.google_place_id is
   'Google Places (New) place id for this venue, or null. The only Places data stored (photo names/URLs must not be). Read by the court-photo edge function.';

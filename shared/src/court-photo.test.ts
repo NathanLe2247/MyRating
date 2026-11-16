@@ -6,7 +6,25 @@ import {
   CourtPhotoErrorResponseSchema,
   CourtPhotoRequestSchema,
   CourtPhotoResponseSchema,
+  PLACES_MONTHLY_CAPS,
+  PLACES_SKUS,
 } from './index.ts';
+
+describe('PLACES_MONTHLY_CAPS', () => {
+  it('caps every SKU safely under the 1,000 free calls a month', () => {
+    assert.deepEqual(Object.keys(PLACES_MONTHLY_CAPS).sort(), [...PLACES_SKUS].sort());
+    for (const sku of PLACES_SKUS) {
+      const cap = PLACES_MONTHLY_CAPS[sku];
+      assert.ok(Number.isInteger(cap) && cap > 0 && cap <= 900, `${sku}: ${cap}`);
+    }
+  });
+});
+
+describe('COURT_PHOTO_ERRORS', () => {
+  it('includes unavailable (no Places key configured)', () => {
+    assert.ok(COURT_PHOTO_ERRORS.includes('unavailable'));
+  });
+});
 
 const COURT_ID = 'b1000000-0000-4000-8000-000000000001';
 
