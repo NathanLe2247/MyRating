@@ -5,21 +5,49 @@ import { Linking } from 'react-native';
 
 import { useDashboard } from '@/hooks/use-dashboard';
 import { useMatchFoundScreen } from '@/hooks/use-match-found-screen';
+import { type MatchResult, useMatchResult } from '@/hooks/use-match-result';
 import { type Matchmaking, useMatchmaking } from '@/hooks/use-matchmaking';
 import { en } from '@/i18n/en';
-import { AnchorPoint, idleState, matchState, searchingState } from '@/test-utils/matchmaking';
+import { AnchorPoint, idleState, MatchId, matchState, searchingState } from '@/test-utils/matchmaking';
 import { matchmakingPhase, mergeSnapshot } from '@/utils/matchmaking-state';
+import type { ReportResultView } from '@/types/match-results';
 
 // useMatchmaking is tested against the network boundary in
 // use-matchmaking.test.tsx; here it's the screen's input.
 jest.mock('@/hooks/use-matchmaking', () => ({ useMatchmaking: jest.fn() }));
 jest.mock('@/hooks/use-dashboard', () => ({ useDashboard: jest.fn() }));
+// The match result is tested in use-match-result.test.tsx; here it's an input.
+jest.mock('@/hooks/use-match-result', () => ({ useMatchResult: jest.fn() }));
 jest.mock('@clerk/expo', () => ({ useUser: jest.fn() }));
 jest.mock('expo-router', () => ({
   router: { canGoBack: jest.fn(() => true), back: jest.fn(), replace: jest.fn() },
 }));
 
 const mockUseMatchmaking = useMatchmaking as jest.Mock;
+const mockUseMatchResult = useMatchResult as jest.Mock;
+
+function matchResult(extra: Partial<MatchResult> = {}): MatchResult {
+  return {
+    view: null,
+    tracked: null,
+    draft: { games: [{ you: 0, opponent: 0 }], active: 0 },
+    problem: undefined,
+    busy: false,
+    error: undefined,
+    editDraft: jest.fn(),
+    submit: jest.fn(),
+    confirm: jest.fn(),
+    dispute: jest.fn(),
+    dismiss: jest.fn(),
+    ...extra,
+  };
+}
+
+const view = (stage: ReportResultView['stage']): ReportResultView => ({
+  matchId: MatchId,
+  opponent: en.matchmaking.botName,
+  stage,
+});
 
 function matchmaking(state: Parameters<typeof mergeSnapshot>[0] | undefined, extra: Partial<Matchmaking> = {}): Matchmaking {
   return {
@@ -40,6 +68,7 @@ describe('useMatchFoundScreen', () => {
   beforeEach(() => {
     (useUser as jest.Mock).mockReturnValue({ user: { firstName: 'Sam', username: 'sam' } });
     (useDashboard as jest.Mock).mockReturnValue({ data: { rating: 4.1, recentMatches: [] } });
+    mockUseMatchResult.mockReturnValue(matchResult());
   });
   afterEach(() => jest.clearAllMocks());
 
@@ -127,5 +156,49 @@ describe('useMatchFoundScreen', () => {
     const { result } = renderHook(() => useMatchFoundScreen());
 
     expect(result.current.onOpenMap).toBeUndefined();
+  });
+
+  it('passes the score report for a match that is on', () => {
+    mockUseMatchmaking.mockReturnValue(matchmaking(matchState('accepted')));
+    mockUseMatchResult.mockReturnValue(matchResult({ view: view({ kind: 'enter' }) }));
+    const { result } = renderHook(() => useMatchFoundScreen());
+
+    expect(result.current.phase).toBe('on');
+    expect(result.current.report?.view.stage.kind).toBe('enter');
+  });
+
+  it('has no report before the match is on', () => {
+    mockUseMatchmaking.mockReturnValue(matchmaking(matchState('proposed')));
+    const { result } = renderHook(() => useMatchFoundScreen());
+
+    expect(result.current.report).toBeNull();
+  });
+
+  it('keeps showing a confirmed match after matchmaking forgets it, until Done', () => {
+    const settledMatch = mergeSnapshot(matchState('awaiting_confirmation'), undefined, AnchorPoint);
+    const mr = matchResult({
+      tracked: settledMatch,
+      view: view({ kind: 'confirmed', games: [{ you: 11, opponent: 7 }], won: true, ratingChange: null }),
+    });
+    mockUseMatchResult.mockReturnValue(mr);
+    mockUseMatchmaking.mockReturnValue(matchmaking(idleState));
+    const { result } = renderHook(() => useMatchFoundScreen());
+
+    expect(result.current.phase).toBe('settled');
+    expect(result.current.match?.opponent.name).toBe(en.matchmaking.botName);
+    expect(result.current.match?.venue?.name).toBe('Anchor Park Courts');
+
+    act(() => result.current.report?.onDone?.());
+    expect(mr.dismiss).toHaveBeenCalled();
+    expect(router.back).toHaveBeenCalled();
+  });
+
+  it('shows a disputed result as settled while matchmaking still has the match', () => {
+    mockUseMatchmaking.mockReturnValue(matchmaking(matchState('awaiting_confirmation')));
+    mockUseMatchResult.mockReturnValue(matchResult({ view: view({ kind: 'disputed', games: [] }) }));
+    const { result } = renderHook(() => useMatchFoundScreen());
+
+    expect(result.current.phase).toBe('settled');
+    expect(result.current.match).not.toBeNull();
   });
 });

@@ -23,11 +23,12 @@ import { formatRatingGap } from '@/utils/match-found-format';
  * - `on`: both accepted; where to play, and the result is reported from here.
  *   The match can still be cancelled.
  * - `reported`: a score is in and awaits confirmation; it can't be cancelled.
+ * - `settled`: the result was confirmed or disputed; the report shows how.
  */
-export type MatchFoundPhase = 'proposed' | 'waiting_for_opponent' | 'on' | 'reported';
+export type MatchFoundPhase = 'proposed' | 'waiting_for_opponent' | 'on' | 'reported' | 'settled';
 
-/** Phases where the match is on (both accepted). */
-const MatchOnPhases: readonly MatchFoundPhase[] = ['on', 'reported'];
+/** Phases where the match is on (both accepted), or just ended. */
+const MatchOnPhases: readonly MatchFoundPhase[] = ['on', 'reported', 'settled'];
 
 type MatchFoundViewProps = {
   /** Null when there's no pairing to show (empty state). */
@@ -76,7 +77,7 @@ export function MatchFoundView({
               <MatchOnPanel
                 courtName={match.venue?.name}
                 busy={busy}
-                reported={phase === 'reported'}
+                stage={phase === 'on' ? 'on' : phase === 'reported' ? 'reported' : 'settled'}
                 onCancel={phase === 'on' ? onLeave : undefined}>
                 {matchOnContent}
               </MatchOnPanel>
