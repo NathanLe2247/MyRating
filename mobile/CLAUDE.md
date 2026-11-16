@@ -126,6 +126,11 @@ Jest via `jest-expo` with React Native Testing Library. `npm test` runs it;
 - Mock at the boundary (Clerk hooks, the Supabase client, `fetch`), not the
   component under test.
 - CSS imports resolve to `jest/style-mock.js`.
+- A test `QueryClient` sets `gcTime: Infinity` (with `retry: false`).
+  Otherwise React Query starts a 5-minute garbage-collection timer for each
+  unobserved query, and that timer keeps the Jest worker alive after the
+  suite ends ("A worker process has failed to exit gracefully", #98).
+  `scripts/agent/repro/98-jest-worker-leak.sh` fails if that warning comes back.
 
 ## Auth
 
