@@ -5,3 +5,4 @@ export * from './profile.ts';
 export * from './rating.ts';
 export * from './matchmaking.ts';
 export * from './match-results.ts';
+export * from './court-photo.ts';
