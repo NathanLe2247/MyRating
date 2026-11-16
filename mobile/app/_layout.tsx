@@ -15,6 +15,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { LogBox, useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { MatchResultProvider } from '@/providers/match-result-provider';
 import { MatchmakingProvider } from '@/providers/matchmaking-provider';
 import { QueryProvider } from '@/providers/query-provider';
 
@@ -51,10 +52,12 @@ export default function RootLayout() {
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <QueryProvider>
         <MatchmakingProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <AnimatedSplashOverlay />
-            <Slot />
-          </ThemeProvider>
+          <MatchResultProvider>
+            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <AnimatedSplashOverlay />
+              <Slot />
+            </ThemeProvider>
+          </MatchResultProvider>
         </MatchmakingProvider>
       </QueryProvider>
     </ClerkProvider>
