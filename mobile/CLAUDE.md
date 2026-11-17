@@ -132,7 +132,10 @@ screens are gone; `app/(home)/` holds the tab screens.
   match, the draft, the last error and the dismissal are all scoped to
   the Clerk user id plus match id, so nothing carries over to another
   account on the device. In the settled phase the panel says where it was
-  played, not "Head to … and play".
+  played, not "Head to … and play", and the banner drops its pairing line
+  (the player's rating already includes the result, so a gap from it
+  wouldn't describe the pairing). That line (`pairingSubtitle`) says
+  "Close skill match" only within `CloseSkillMatchMaxGap` rating points.
 - The score being entered (`ScoreDraft`) lives in the provider too, so Home
   and Match Found edit the same score. Validity is
   `MatchResultSubmissionSchema` (`draftProblem` in `src/utils/match-result.ts`

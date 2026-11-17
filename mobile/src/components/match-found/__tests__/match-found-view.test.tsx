@@ -68,7 +68,7 @@ describe('MatchFoundView', () => {
       expect(screen.getByText(t.title)).toBeOnTheScreen();
       expect(screen.getByText(t.searching(5))).toBeOnTheScreen();
       expect(screen.getByText(t.elapsed('00:42'))).toBeOnTheScreen();
-      expect(screen.getByText(t.parity('0.02'))).toBeOnTheScreen();
+      expect(screen.getByText(t.closeMatch('0.02'))).toBeOnTheScreen();
       expect(screen.getByText('Alex Vance')).toBeOnTheScreen();
       expect(screen.getByText('J. Alvarez')).toBeOnTheScreen();
       expect(screen.getByText('4.18')).toBeOnTheScreen();
@@ -175,6 +175,29 @@ describe('MatchFoundView', () => {
       expect(screen.getByText(t.on.settled.court('Zilker Park Courts'))).toBeOnTheScreen();
       expect(screen.queryByText(t.on.court('Zilker Park Courts'))).toBeNull();
       expect(screen.queryByRole('button', { name: t.on.cancel })).toBeNull();
+    });
+
+    it('drops the pairing line once settled, since ratings already include the result', () => {
+      // Post-match rating against the opponent's pairing-time rating (#114).
+      renderView(
+        {
+          ...SampleMatchFound,
+          player: { ...SampleMatchFound.player, rating: 1675.07 },
+          opponent: { ...SampleMatchFound.opponent, rating: 1500 },
+        },
+        { phase: 'settled' },
+      );
+
+      expect(screen.getByText(t.title)).toBeOnTheScreen();
+      expect(screen.queryByText(t.closeMatch('175.07'))).toBeNull();
+      expect(screen.queryByText(t.ratingGap('175.07'))).toBeNull();
+      expect(screen.queryByText(t.parityCalibrating)).toBeNull();
+    });
+
+    it('keeps the pairing line while the match is on', () => {
+      renderView(SampleMatchFound, { phase: 'reported' });
+
+      expect(screen.getByText(t.closeMatch('0.02'))).toBeOnTheScreen();
     });
 
     it('drops the court line of a settled match without a court', () => {

@@ -15,7 +15,7 @@ import { matchText } from '@/components/match-found/text-styles';
 import { Brand, BrandFonts, BrandSizes, MaxContentWidth, Spacing } from '@/constants/theme';
 import { en } from '@/i18n/en';
 import type { MatchFound } from '@/types/match-found';
-import { formatRatingGap } from '@/utils/match-found-format';
+import { pairingSubtitle } from '@/utils/match-found-format';
 
 /**
  * - `proposed`: waiting for the player's answer (Accept / Decline).
@@ -89,7 +89,11 @@ export function MatchFoundView({
               />
             )}
             <MatchFoundBanner
-              ratingGap={formatRatingGap(match.player.rating, match.opponent.rating)}
+              // Once settled the player's rating already includes this match, so
+              // a gap from it no longer describes the pairing.
+              subtitle={
+                phase === 'settled' ? null : pairingSubtitle(match.player.rating, match.opponent.rating)
+              }
               verified={match.ratingsVerified}
               courtReady={match.courtReady}
             />
