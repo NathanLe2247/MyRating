@@ -80,8 +80,10 @@ describe('Community tab, demo data on', () => {
   it('recommends the sample groups on Discover and filters them by the search', () => {
     render(<Discover />);
 
-    expect(screen.getByRole('header', { name: 'Kitchen Kings — 4.5+ Invite Only' })).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Kitchen Kings — 1800+ Invite Only' })).toBeOnTheScreen();
     expect(screen.getByText('Invite only')).toBeOnTheScreen();
+    // Rating bands on the 1500-based Glicko scale, not DUPR's (#116).
+    expect(screen.getByText(copy.discover.ratingMin('1800.00'))).toBeOnTheScreen();
     expect(screen.getByRole('header', { name: 'Silver Dinks Open Play (50+)' })).toBeOnTheScreen();
     expect(screen.getByText('All levels welcome')).toBeOnTheScreen();
 
@@ -89,7 +91,7 @@ describe('Community tab, demo data on', () => {
     act(() => jest.advanceTimersByTime(DiscoverSearchDebounceMs));
 
     expect(screen.getByRole('header', { name: 'Cloverly Park Pickleball' })).toBeOnTheScreen();
-    expect(screen.getByRole('header', { name: 'Kitchen Kings — 4.5+ Invite Only' })).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Kitchen Kings — 1800+ Invite Only' })).toBeOnTheScreen();
     expect(screen.queryByRole('header', { name: 'Silver Dinks Open Play (50+)' })).toBeNull();
   });
 });
