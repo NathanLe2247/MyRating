@@ -601,6 +601,14 @@ export const en = {
       body: 'Stream recovery, strain and sleep from your wearable to see how ready you are to play.',
       action: 'Connect',
       label: (provider: string) => `Connect ${provider}`,
+      connecting: 'Connecting…',
+      connectingLabel: (provider: string) => `Connecting ${provider}`,
+    },
+    /** Dev-only demo connection (`DevPreviews.demoData()`). */
+    sample: {
+      note: 'Sample data for demo only, not from a real device.',
+      disconnect: 'Disconnect',
+      disconnectLabel: (provider: string) => `Disconnect ${provider}`,
     },
   },
   hintRow: {
