@@ -89,6 +89,46 @@ issuing its own sessions.
     mobile polls every few seconds while searching.
   - Realtime: `public.matches` is published; RLS limits events to the
     player's own matches.
+- `supabase/functions/court-photo/` — a court's photo for its card.
+  `GET /court-photo?court_id=<uuid>` → `CourtPhotoResponse`
+  (`shared/src/court-photo.ts`): `{ photoUri, attributions: [{ displayName,
+  uri }] }`, or `{ error }` with `COURT_PHOTO_ERRORS` (404 `not_found` for
+  an unknown/inactive court, no `google_place_id` or no photo; 503
+  `unavailable` when the key isn't set; 502 `upstream_error` when Google
+  fails). Public: callable with the anon key (`verify_jwt = false`, no
+  caller identity needed), and it reads the court with the anon key so RLS
+  hides inactive courts. 200s and 404s send
+  `Cache-Control: private, max-age=3600` (`private` so no CDN or proxy
+  stores the photo URL); errors `no-store`. Both Google fetches use
+  `redirect: 'error'` so the key header never follows a redirect.
+  - **Source and Google terms**: photos come only from Google Places
+    Photos (Places API (New): Place Details with field mask `photos`, then
+    Place Photo media with `skipHttpRedirect=true`). Only the Place ID is
+    stored (`courts.google_place_id`, 20261116120000); photo names and
+    photo URLs are resolved per request and never stored or logged. Never
+    copy park-website or image-search photos into the repo or R2.
+  - **Never costs money: hard monthly cap below Google's free tier.**
+    Before each Google call the function reserves it with
+    `public.places_reserve_call(sku, cap)` (20261116130000, `security
+    definer`, service role only; the counter is `public.places_usage`,
+    one row per UTC calendar month and SKU, RLS on and no client access).
+    The caps are `PLACES_MONTHLY_CAPS` in `shared/src/court-photo.ts`: 900
+    each for `place_details` (Place Details, field mask `photos` only;
+    never add fields, they can bill a pricier SKU) and `place_photo`
+    (photo media), under Google's 1,000 free calls a month. Over the cap
+    it makes no Google call, answers the same private 404 `not_found`, and
+    logs `free_cap_reached` (court id and SKU only). If the counter
+    can't be reached it fails closed (500, no Google call). The service
+    role key is used only for that RPC; the court is read with the anon
+    key. Tests: `handler.test.ts` (allowed, at cap → no fetch, per SKU,
+    per month) and `tests/places_usage.test.sql`.
+  - Secret `GOOGLE_PLACES_API_KEY` (Supabase function secret, key
+    restricted to Places API (New)); never in the repo or an `EXPO_PUBLIC_*`
+    var. Locally, put it in `supabase/functions/.env` (gitignored) for
+    `supabase functions serve`; without it every request gets a 503.
+  - Logic in `handler.ts` (tested by `handler.test.ts` with a fake lookup
+    and a mocked fetch: `cd supabase/functions/court-photo && deno test`),
+    wiring in `index.ts`.
 - `supabase/functions/dupr-import/` — importing/reconciling DUPR ratings.
 - `supabase/functions/whoop-oauth/` — WHOOP OAuth flow, token exchange/refresh for
   `agent/skills/health-integrations`.
@@ -146,7 +186,11 @@ issuing its own sessions.
   `20261114120000_courts_silver_spring.sql`, so they reach the hosted project.
   `supabase/seed.sql` is local only (`db reset` loads it, `db push` never
   does) and holds just an inactive test court. `tests/courts_seed.test.sql`
-  checks both by their fixed ids.
+  checks both by their fixed ids. `courts.google_place_id`
+  (20261116120000, nullable) feeds `court-photo`; the catalog courts are
+  still null until a data migration backfills them from Places Text Search
+  (name + location bias, unconfident matches stay null).
+  `tests/courts_google_place_id.test.sql` covers the column and RPC.
 - `django/` — a separate Django service. **Ownership boundary vs. the edge
   functions above is not yet decided** — see `django/CLAUDE.md`. Don't
   assume it owns a piece of logic without confirming; check there first

@@ -66,6 +66,24 @@ describe('CourtSchema', () => {
     const { is_active: _, ...row } = validCourt;
     assert.equal(CourtSchema.safeParse(row).success, false);
   });
+
+  it('parses google_place_id as a place id, a one-character id, or null', () => {
+    for (const google_place_id of ['ChIJN1t_tDeuEmsRUsoyG83frY4', 'x', null]) {
+      const row = { ...validCourt, google_place_id };
+      assert.deepEqual(CourtSchema.parse(row), row, String(google_place_id));
+    }
+  });
+
+  it('rejects an empty, whitespace-padded, or non-string google_place_id', () => {
+    const bad = ['', ' ', ' ChIJN1t_tDeuEmsRUsoyG83frY4', 'ChIJ ', '\tChIJ', 'ChIJ\n', 'ChIJ ', 42];
+    for (const google_place_id of bad) {
+      assert.equal(
+        CourtSchema.safeParse({ ...validCourt, google_place_id }).success,
+        false,
+        JSON.stringify(google_place_id),
+      );
+    }
+  });
 });
 
 describe('NearbyCourtSchema', () => {
@@ -73,6 +91,12 @@ describe('NearbyCourtSchema', () => {
 
   it('parses a nearby_courts row', () => {
     assert.deepEqual(NearbyCourtSchema.parse(nearby), nearby);
+  });
+
+  it('parses a nearby_courts row with a google_place_id', () => {
+    const row = { ...nearby, google_place_id: 'ChIJN1t_tDeuEmsRUsoyG83frY4' };
+    assert.deepEqual(NearbyCourtSchema.parse(row), row);
+    assert.equal(NearbyCourtSchema.safeParse({ ...nearby, google_place_id: '' }).success, false);
   });
 
   it('accepts distance 0 (court at the requested point)', () => {

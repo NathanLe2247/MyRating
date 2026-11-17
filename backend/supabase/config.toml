@@ -438,3 +438,11 @@ verify_jwt = false
 [functions.match-results]
 enabled = true
 verify_jwt = false
+
+# Public (signed-out courts screen): called with the anon key, or with a
+# Clerk token from signed-in mobile, which the gateway can't verify. No
+# caller identity is needed; the court is read with the anon key (RLS).
+# Imports shared/ through functions/court-photo/deno.json.
+[functions.court-photo]
+enabled = true
+verify_jwt = false
