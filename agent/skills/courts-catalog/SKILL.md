@@ -94,10 +94,32 @@ returns geography as WKB hex. Use one of these instead:
   as a photo (mobile: `useCourtPhoto`, no retries, no refetch on remount
   or reconnect), since a failed request can already have spent a capped
   Google call.
-- Finding Place IDs: Places API (New) Text Search with the court name and
-  its location as a location bias. Write them in a data migration (catalog
-  courts reach the hosted project through migrations), and leave unconfident
-  matches null.
+- **Finding Place IDs** (the catalog courts are backfilled by
+  `20261117150000_courts_backfill_place_ids.sql`: 6 of 8; Peachwood and
+  Fairland stay null because no match was confident). To add more:
+  - Run by hand with the key from the gitignored
+    `backend/supabase/functions/.env`, sent only in the `X-Goog-Api-Key`
+    header (never in a URL, log or commit). One request per court.
+  - Use only `POST https://places.googleapis.com/v1/places:searchText` with
+    `X-Goog-FieldMask: places.id`. That is the "Text Search Essentials (IDs
+    Only)" SKU, which is unlimited free. Adding `places.displayName` or
+    `places.location` bills Text Search Pro, and Place Details is capped
+    for `court-photo`, so don't use either for lookups.
+  - Body: `textQuery` = the court name, `includedType: "park"`,
+    `strictTypeFiltering: true`, `pageSize: 5`, `locationBias` = a 500 m
+    circle around the court's coordinates.
+  - Since the response has no name or location, judge confidence by: exactly
+    one park comes back, and the location encoded in the Place ID is close.
+    A `ChIJ…` ID is base64url protobuf whose first fixed64 (bytes 3–10,
+    little-endian) is a level-30 S2 cell id; decode it to lat/lng (e.g. the
+    `s2sphere` Python package) and accept only within ~200 m of the court.
+    This encoding is undocumented, so it is a sanity check, not a guarantee.
+    Anything else stays null.
+  - Write the IDs in a new data migration
+    (`update public.courts set google_place_id = '<id>' where id = '<uuid>'
+    and google_place_id is null`), since catalog courts reach the hosted
+    project through migrations, and extend
+    `backend/supabase/tests/courts_place_ids_backfill.test.sql`.
 
 TODO: source of truth for court data (manual entry vs. import), richer
 catalog fields, and how `geospatial-matching` consumes courts.
