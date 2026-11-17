@@ -168,6 +168,22 @@ describe('MatchFoundView', () => {
       expect(handlers.onLeave).not.toHaveBeenCalled();
     });
 
+    it('shows a settled match as played there, not as one still to play', () => {
+      renderView(SampleMatchFound, { phase: 'settled' });
+
+      expect(screen.getByText(t.on.settled.title)).toBeOnTheScreen();
+      expect(screen.getByText(t.on.settled.court('Zilker Park Courts'))).toBeOnTheScreen();
+      expect(screen.queryByText(t.on.court('Zilker Park Courts'))).toBeNull();
+      expect(screen.queryByRole('button', { name: t.on.cancel })).toBeNull();
+    });
+
+    it('drops the court line of a settled match without a court', () => {
+      renderView(minimalMatch, { phase: 'settled' });
+
+      expect(screen.getByText(t.on.settled.title)).toBeOnTheScreen();
+      expect(screen.queryByText(t.on.noCourt)).toBeNull();
+    });
+
     it('asks the player to pick a court when matchmaking found none', () => {
       renderView(minimalMatch, { phase: 'on' });
 

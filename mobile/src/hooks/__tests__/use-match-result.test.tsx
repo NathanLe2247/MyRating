@@ -14,7 +14,7 @@ import { useMatchResult } from '@/hooks/use-match-result';
 import { en } from '@/i18n/en';
 import { MatchResultProvider } from '@/providers/match-result-provider';
 import { MatchmakingProvider } from '@/providers/matchmaking-provider';
-import { DemoRatingChange, resultState } from '@/test-utils/match-results';
+import { asPlayerB, DemoRatingChange, resultState } from '@/test-utils/match-results';
 import { idleState, MatchId, matchState, searchingState } from '@/test-utils/matchmaking';
 import { addGame, stepPoints } from '@/utils/match-result';
 
@@ -144,6 +144,56 @@ describe('useMatchResult', () => {
     act(() => result.current.dismiss());
     expect(result.current.view).toBeNull();
     expect(result.current.tracked).toBeNull();
+  });
+
+  it("sends the player's score on their own side when they're player_b", async () => {
+    serve({
+      matchmaking: [asPlayerB(matchState('accepted'))],
+      results: {
+        state: [asPlayerB(resultState('accepted'))],
+        submit: [asPlayerB(resultState('awaiting_confirmation'))],
+      },
+    });
+    const { result } = render();
+    await waitFor(() => expect(result.current.view?.stage.kind).toBe('enter'));
+
+    // The player won 11–7, 11–9: as player_b that's b = 11 in both games.
+    enterDemoScore(result);
+    expect(await act(() => result.current.submit())).toBe(true);
+    expect(resultCalls()).toContainEqual({
+      action: 'submit',
+      match_id: MatchId,
+      games: [
+        { player_a_points: 7, player_b_points: 11 },
+        { player_a_points: 9, player_b_points: 11 },
+      ],
+    });
+    // Read back from the player's side too.
+    expect(result.current.view?.stage).toEqual({
+      kind: 'waiting',
+      games: [
+        { you: 11, opponent: 7 },
+        { you: 11, opponent: 9 },
+      ],
+    });
+  });
+
+  it("doesn't carry a draft or error over to another account on the same device", async () => {
+    serve({
+      matchmaking: [matchState('accepted')],
+      results: { state: [resultState('accepted')], submit: ['offline'] },
+    });
+    const { result, rerender } = render();
+    await waitFor(() => expect(result.current.view?.stage.kind).toBe('enter'));
+    enterDemoScore(result);
+    await act(() => result.current.submit());
+    expect(result.current.error).toBeDefined();
+
+    (useAuth as jest.Mock).mockReturnValue({ isSignedIn: true, userId: 'user_other' });
+    rerender({});
+    await waitFor(() => expect(result.current.view?.stage.kind).toBe('enter'));
+    expect(result.current.draft.games).toEqual([{ you: 0, opponent: 0 }]);
+    expect(result.current.error).toBeUndefined();
   });
 
   it("answers the opponent's report: confirm", async () => {

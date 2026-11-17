@@ -54,7 +54,11 @@ const STALE: readonly MatchResultsErrorCode[] = [
   'match_not_accepted',
   'match_not_awaiting_confirmation',
   'own_report',
+  'match_changed',
 ];
+
+/** State that belongs to one player's one match (reset when either changes). */
+type Scoped<T> = { userId: string; matchId: string } & T;
 
 /** The form before anything is entered (one stable object, so memos hold). */
 const BlankDraft = emptyDraft();
@@ -83,11 +87,19 @@ export function useMatchResultController(): MatchResult {
   const live = snapshot?.match && REPORTING.includes(snapshot.match.status) ? snapshot : undefined;
   const [kept, setKept] = useState<{ userId: string; snapshot: MatchmakingSnapshot } | null>(null);
   if (live && userId && kept?.snapshot !== live) setKept({ userId, snapshot: live });
-  const [dismissedId, setDismissedId] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState<Scoped<object> | null>(null);
   const movedOn = !!snapshot?.queue_entry || !!snapshot?.match;
   const candidate = live ?? (kept && kept.userId === userId && !movedOn ? kept.snapshot : null);
-  const tracked = candidate?.match && candidate.match.id !== dismissedId ? candidate : null;
+  const tracked =
+    candidate?.match && !(dismissed && dismissed.userId === userId && dismissed.matchId === candidate.match.id)
+      ? candidate
+      : null;
   const matchId = tracked?.match?.id;
+  /** Whether scoped state is for this player's current match. */
+  const current = useCallback(
+    (scoped: Scoped<object> | null): boolean => !!scoped && scoped.userId === userId && scoped.matchId === matchId,
+    [userId, matchId],
+  );
 
   const queryKey = useMemo(() => [MatchResultsQueryKey, userId, matchId] as const, [userId, matchId]);
   const query = useQuery({
@@ -128,21 +140,27 @@ export function useMatchResultController(): MatchResult {
     if (stageKind === 'confirmed') void queryClient.invalidateQueries({ queryKey: [PlayerRatingQueryKey] });
   }, [stageKind, matchId, queryClient, refreshMatchmaking]);
 
-  const [draftState, setDraftState] = useState<{ matchId?: string; draft: ScoreDraft }>({ draft: BlankDraft });
-  const draft = draftState.matchId === matchId ? draftState.draft : BlankDraft;
+  const [draftState, setDraftState] = useState<Scoped<{ draft: ScoreDraft }> | null>(null);
+  const draft = draftState && current(draftState) ? draftState.draft : BlankDraft;
   const editDraft = useCallback(
-    (change: (d: ScoreDraft) => ScoreDraft) =>
-      setDraftState((prev) => ({ matchId, draft: change(prev.matchId === matchId ? prev.draft : BlankDraft) })),
-    [matchId],
+    (change: (d: ScoreDraft) => ScoreDraft) => {
+      if (!userId || !matchId) return;
+      setDraftState((prev) => ({
+        userId,
+        matchId,
+        draft: change(prev && current(prev) ? prev.draft : BlankDraft),
+      }));
+    },
+    [userId, matchId, current],
   );
   const problem = matchId ? draftProblem(matchId, draft.games) : undefined;
 
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<{ matchId?: string; code: MatchResultsErrorCode } | null>(null);
+  const [error, setError] = useState<Scoped<{ code: MatchResultsErrorCode }> | null>(null);
 
   const perform = useCallback(
     async (action: (id: string) => Promise<MatchResultsState>) => {
-      if (!matchId) return false;
+      if (!matchId || !userId) return false;
       setBusy(true);
       setError(null);
       // An older poll landing after this call would overwrite its result.
@@ -153,7 +171,7 @@ export function useMatchResultController(): MatchResult {
         return true;
       } catch (err) {
         const code = matchResultsErrorCode(err);
-        setError({ matchId, code });
+        setError({ userId, matchId, code });
         if (STALE.includes(code)) {
           void queryClient.invalidateQueries({ queryKey });
           refreshMatchmaking();
@@ -163,19 +181,22 @@ export function useMatchResultController(): MatchResult {
         setBusy(false);
       }
     },
-    [matchId, queryClient, queryKey, refreshMatchmaking],
+    [matchId, userId, queryClient, queryKey, refreshMatchmaking],
   );
 
-  const isA = tracked?.match && opponent ? playerIsA(tracked.match, opponent.id) : true;
-  const submit = useCallback(
-    async () => (problem ? false : perform((id) => api.submit(id, toMatchGames(draft.games, isA)))),
-    [api, draft.games, isA, perform, problem],
-  );
+  // Which side the player is comes from the opponent; without one there's
+  // no telling, so nothing is sent rather than guessing (a wrong guess would
+  // record the wrong winner).
+  const isA = tracked?.match && opponent ? playerIsA(tracked.match, opponent.id) : undefined;
+  const submit = useCallback(async () => {
+    if (problem || isA === undefined) return false;
+    return perform((id) => api.submit(id, toMatchGames(draft.games, isA)));
+  }, [api, draft.games, isA, perform, problem]);
   const confirm = useCallback(() => perform((id) => api.confirm(id)), [api, perform]);
   const dispute = useCallback(() => perform((id) => api.dispute(id)), [api, perform]);
   const dismiss = useCallback(() => {
-    if (matchId) setDismissedId(matchId);
-  }, [matchId]);
+    if (userId && matchId) setDismissed({ userId, matchId });
+  }, [userId, matchId]);
 
   const courtName = tracked?.court?.name;
   const view = useMemo<ReportResultView | null>(
@@ -186,8 +207,7 @@ export function useMatchResultController(): MatchResult {
     [matchId, stage, opponent, courtName],
   );
 
-  const errorMessage =
-    error && error.matchId === matchId ? matchResultsErrorMessage(error.code) : undefined;
+  const errorMessage = error && current(error) ? matchResultsErrorMessage(error.code) : undefined;
 
   return useMemo(
     () => ({

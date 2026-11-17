@@ -3,6 +3,7 @@ import {
   type MatchGame,
   type MatchGameRow,
   MatchResultSubmissionSchema,
+  matchWinner,
   type MatchResultsState,
   MAX_GAMES,
 } from '@myrating/shared';
@@ -86,9 +87,9 @@ export function draftProblem(matchId: string, games: readonly PlayerGame[]): str
     : issue.message;
 }
 
-/** Whether the player won these games (more games than the opponent). */
-const playerWon = (games: readonly PlayerGame[]) =>
-  games.filter((g) => g.you > g.opponent).length * 2 > games.length;
+/** Whether the player won the stored (already validated) games, by the shared rule. */
+const playerWon = (games: MatchResultsState['games'], isA: boolean) =>
+  matchWinner({ games }) === (isA ? 'a' : 'b');
 
 /**
  * The report card's stage for a match's result state, or null when there's
@@ -96,14 +97,15 @@ const playerWon = (games: readonly PlayerGame[]) =>
  */
 export function resultStage(state: MatchResultsState): ReportResultStage | null {
   const { match, opponent } = state;
-  const games = toPlayerGames(state.games, playerIsA(match, opponent.id));
+  const isA = playerIsA(match, opponent.id);
+  const games = toPlayerGames(state.games, isA);
   switch (match.status) {
     case 'accepted':
       return { kind: 'enter' };
     case 'awaiting_confirmation':
       return match.reported_by === opponent.id ? { kind: 'answer', games } : { kind: 'waiting', games };
     case 'confirmed':
-      return { kind: 'confirmed', games, won: playerWon(games), ratingChange: state.rating_change };
+      return { kind: 'confirmed', games, won: playerWon(state.games, isA), ratingChange: state.rating_change };
     case 'disputed':
       return { kind: 'disputed', games };
     default:

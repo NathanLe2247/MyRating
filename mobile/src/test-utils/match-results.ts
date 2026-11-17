@@ -1,7 +1,12 @@
 // Test-only builders for `match-results` function states
 // (shared/src/match-results.ts), for the match in ./matchmaking.ts: the
 // player is player_a, the Demo Tester player_b.
-import { DEMO_TESTER_USER_ID, type MatchResultsState, type MatchStatus } from '@myrating/shared';
+import {
+  DEMO_TESTER_USER_ID,
+  type MatchmakingState,
+  type MatchResultsState,
+  type MatchStatus,
+} from '@myrating/shared';
 
 import { MatchId, matchState, PlayerId } from '@/test-utils/matchmaking';
 
@@ -43,5 +48,28 @@ export function resultState(
     games: reported ? games : [],
     opponent: base.opponent!,
     rating_change: status === 'confirmed' ? DemoRatingChange : null,
+  };
+}
+
+/**
+ * The same state with the player as player_b (the Demo Tester as player_a):
+ * ids, acceptances and stored game points swap sides.
+ */
+export function asPlayerB<T extends MatchmakingState | MatchResultsState>(state: T): T {
+  const m = state.match!;
+  const swapped = {
+    ...state,
+    match: {
+      ...m,
+      player_a_id: m.player_b_id,
+      player_b_id: m.player_a_id,
+      player_a_accepted_at: m.player_b_accepted_at,
+      player_b_accepted_at: m.player_a_accepted_at,
+    },
+  };
+  if (!('games' in state)) return swapped;
+  return {
+    ...swapped,
+    games: state.games.map((g) => ({ ...g, player_a_points: g.player_b_points, player_b_points: g.player_a_points })),
   };
 }

@@ -38,7 +38,12 @@ export function MatchOnPanel({ courtName, busy, stage = 'on', onCancel, children
           {copy.title}
         </Text>
       </View>
-      <Text style={styles.body}>{courtName ? t.court(courtName) : t.noCourt}</Text>
+      {/* "Head to … and play" only while the match is still to be played. */}
+      {stage !== 'settled' ? (
+        <Text style={styles.body}>{courtName ? t.court(courtName) : t.noCourt}</Text>
+      ) : (
+        courtName ? <Text style={styles.body}>{t.settled.court(courtName)}</Text> : null
+      )}
       <Text style={matchText.caption}>{copy.body}</Text>
       {children}
       {onCancel && (

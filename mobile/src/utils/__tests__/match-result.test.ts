@@ -2,7 +2,7 @@ import { MAX_GAMES } from '@myrating/shared';
 
 import { MatchResultsPollMs, MaxStepperPoints } from '@/constants/match-results';
 import { en } from '@/i18n/en';
-import { DemoGames, DemoRatingChange, resultState } from '@/test-utils/match-results';
+import { asPlayerB, DemoGames, DemoRatingChange, resultState } from '@/test-utils/match-results';
 import { MatchId } from '@/test-utils/matchmaking';
 import type { ScoreDraft } from '@/types/match-results';
 import {
@@ -126,6 +126,23 @@ describe('resultStage', () => {
       won: true,
       ratingChange: DemoRatingChange,
     });
+  });
+
+  it('picks the winner with the shared rule from either side', () => {
+    const asB = asPlayerB(resultState('confirmed'));
+    expect(resultStage(asB)).toMatchObject({ kind: 'confirmed', won: true, games: games([11, 7], [11, 9]) });
+    const lostAsB = asPlayerB(
+      resultState('confirmed', {
+        games: [
+          // From the player's side (asPlayerB moves these onto b): lost 1–2.
+          { match_id: MatchId, game_number: 1, player_a_points: 7, player_b_points: 11 },
+          { match_id: MatchId, game_number: 2, player_a_points: 11, player_b_points: 4 },
+          { match_id: MatchId, game_number: 3, player_a_points: 5, player_b_points: 11 },
+        ],
+      }),
+    );
+    expect(lostAsB.games[0]).toMatchObject({ player_a_points: 11, player_b_points: 7 });
+    expect(resultStage(lostAsB)).toMatchObject({ won: false, games: games([7, 11], [11, 4], [5, 11]) });
   });
 
   it('shows disputes, and nothing for a cancelled match', () => {

@@ -111,7 +111,9 @@ screens are gone; `app/(home)/` holds the tab screens.
   same way as `useMatchmakingApi`: every 200 parsed with
   `MatchResultsStateSchema`, failures thrown as `MatchResultsApiError`
   (function code or `network`). Copy for every code is
-  `en.reportResult.errors`.
+  `en.reportResult.errors` (a new code in `MATCH_RESULTS_ERRORS` fails the
+  typecheck until it has copy). Refusals that mean the device is behind
+  (`match_not_accepted`, `match_changed`, …) re-read both states.
 - `MatchResultProvider` (root `_layout`, inside `MatchmakingProvider`)
   holds the result app-wide; read it with `useMatchResult()`
   (`src/hooks/use-match-result.ts`). The match comes from matchmaking once
@@ -126,14 +128,20 @@ screens are gone; `app/(home)/` holds the tab screens.
 - Matchmaking only returns open matches, so the provider keeps its own copy
   of the match (`tracked`) after it's confirmed or disputed, until the
   player taps Done (`dismiss`) or queues again. A confirmation refreshes
-  matchmaking and the player's rating (`PlayerRatingQueryKey`).
+  matchmaking and the player's rating (`PlayerRatingQueryKey`). The kept
+  match, the draft, the last error and the dismissal are all scoped to
+  the Clerk user id plus match id, so nothing carries over to another
+  account on the device. In the settled phase the panel says where it was
+  played, not "Head to … and play".
 - The score being entered (`ScoreDraft`) lives in the provider too, so Home
   and Match Found edit the same score. Validity is
   `MatchResultSubmissionSchema` (`draftProblem` in `src/utils/match-result.ts`
   shows its first message, with the game number); Submit is disabled with
   that one-line reason until it's valid. Games are entered from the player's
   side (`you` / `opponent`) and mapped to the match's a/b order
-  (`toMatchGames`) only when sent.
+  (`toMatchGames`) only when sent; with no opponent known there's no side,
+  so nothing is sent. Who won comes from shared `matchWinner`, never a
+  local count.
 - UI: `ReportResult` (`src/components/match-result/`) renders every stage
   (`resultStage`: `enter` — game tabs Game 1/2/+ Game up to `MAX_GAMES`,
   −/+ `ScoreStepper`s capped at `MaxStepperPoints`; `waiting`; `answer` —

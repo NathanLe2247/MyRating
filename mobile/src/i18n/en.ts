@@ -388,6 +388,7 @@ export const en = {
       settled: {
         title: 'Match over',
         body: 'Here’s how it ended.',
+        court: (court: string) => `Played at ${court}.`,
       },
     },
     empty: {
@@ -460,6 +461,9 @@ export const en = {
       match_not_accepted: 'A score was already reported for this match.',
       match_not_awaiting_confirmation: 'There’s no reported score to answer anymore.',
       own_report: 'You reported this score; your opponent has to confirm it.',
+      match_changed: 'The reported score just changed. Check it and answer again.',
+      rating_stale: 'Ratings were updating at the same moment. Try again.',
+      method_not_allowed: 'Something went wrong with that request. Try again.',
       internal: 'Saving the result hit a problem. Try again in a moment.',
       network: 'Couldn’t reach the server. Check your connection and try again.',
     },
