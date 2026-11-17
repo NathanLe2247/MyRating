@@ -38,3 +38,11 @@ export const CourtPhotoQueryKey = 'court-photo';
  * `photoUri` that stops loading sooner falls back to the card without a photo.
  */
 export const CourtPhotoStaleMs = COURT_PHOTO_CACHE_SECONDS * 1000;
+
+/**
+ * How many of the nearest courts (the list is nearest first) get a photo.
+ * Each photo is 2 Google calls against a 900/month cap per SKU, so a cold
+ * session spends at most 2 × this (12), not 2 × every court in range (up to
+ * 100). Cards past it make no request.
+ */
+export const CourtPhotoMaxCards = 6;

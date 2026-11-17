@@ -179,6 +179,14 @@ screens are gone; `app/(home)/` holds the tab screens.
   (`['court-photo', courtId]`), `staleTime` `CourtPhotoStaleMs` (the
   function's 1 h max-age), no retries. Courts without a Place ID make no
   request. In memory only: never persist a photo URL (Google's terms).
+- Only the nearest `CourtPhotoMaxCards` (6, `src/constants/courts.ts`)
+  cards get a photo: the list is nearest first and `NearbyCourtsSection`
+  passes `showPhoto={index < CourtPhotoMaxCards}`. Cards past it make no
+  request and render as photo-less cards. Why: each photo is 2 Google
+  calls (Place Details + Place Photo) against a 900/month cap per SKU
+  (`PLACES_MONTHLY_CAPS`). A cold session with 50 courts in range would
+  spend up to 100 calls and use up the cap in a few sessions; with 6 it's
+  at most 12. Don't raise it without redoing that math.
 - No photo while it loads, on any non-200 (404 `not_found`, 503
   `unavailable`, …), on a body that doesn't parse, or when the image fails
   to load (`onError`, Google doesn't say how long a `photoUri` lasts): the

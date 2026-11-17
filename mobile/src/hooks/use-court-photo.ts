@@ -33,18 +33,22 @@ export async function fetchCourtPhoto(
  * The photo for one court card, or undefined while it loads and whenever
  * there's none (no Place ID, any non-200, a bad body). Works signed out: the
  * function takes the anon key. Only courts with a `googlePlaceId` are asked
- * for, so courts without one cost no request.
+ * for, and only when `enabled` (the caller limits photos to the nearest
+ * `CourtPhotoMaxCards`), so other courts cost no request.
  *
  * Kept in React Query's in-memory cache only (keyed by court id, reused for
  * `CourtPhotoStaleMs`). Never persist it: Google's terms forbid caching
  * photo URLs. No retries: a failure just leaves the card without a photo,
  * and each attempt can spend capped Google calls.
  */
-export function useCourtPhoto(court: CourtCardData): CourtPhotoResponse | undefined {
+export function useCourtPhoto(
+  court: CourtCardData,
+  enabled = true,
+): CourtPhotoResponse | undefined {
   const supabase = useSupabaseClient();
   const { data } = useQuery({
     queryKey: [CourtPhotoQueryKey, court.id],
-    enabled: !!court.googlePlaceId,
+    enabled: enabled && !!court.googlePlaceId,
     staleTime: CourtPhotoStaleMs,
     retry: false,
     queryFn: () => fetchCourtPhoto(supabase, court.id),

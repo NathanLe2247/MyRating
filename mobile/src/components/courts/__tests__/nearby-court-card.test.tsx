@@ -3,7 +3,9 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { Linking } from 'react-native';
 
 import { NearbyCourtCard } from '@/components/courts/nearby-court-card';
+import { NearbyCourtsSection } from '@/components/courts/nearby-courts-section';
 import { useSupabaseClient } from '@/config/supabase';
+import { CourtPhotoMaxCards } from '@/constants/courts';
 import { en } from '@/i18n/en';
 import { renderWithQueryClient as render } from '@/test-utils/query-client';
 import type { CourtCardData } from '@/types/play';
@@ -56,7 +58,7 @@ describe('NearbyCourtCard', () => {
   it('shows the photo above the card with its linked Google credit', async () => {
     invoke.mockResolvedValue({ data: photo(), error: null });
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
-    render(<NearbyCourtCard court={court} />);
+    render(<NearbyCourtCard court={court} showPhoto />);
 
     expect(await screen.findByLabelText(copy.a11y.photo(court.name))).toHaveProp('source', {
       uri: photoUri,
@@ -70,7 +72,7 @@ describe('NearbyCourtCard', () => {
 
   it('shows an unlinked credit when the author has no page', async () => {
     invoke.mockResolvedValue({ data: photo(null), error: null });
-    render(<NearbyCourtCard court={court} />);
+    render(<NearbyCourtCard court={court} showPhoto />);
 
     expect(await screen.findByText(credit)).toBeOnTheScreen();
     expect(screen.queryByRole('link', { name: credit })).toBeNull();
@@ -78,7 +80,7 @@ describe('NearbyCourtCard', () => {
 
   it('renders the plain card while the photo loads', () => {
     invoke.mockReturnValue(new Promise(() => {}));
-    render(<NearbyCourtCard court={court} />);
+    render(<NearbyCourtCard court={court} showPhoto />);
 
     expect(screen.getByRole('button', { name: court.name })).toBeOnTheScreen();
     expect(image()).toBeNull();
@@ -89,7 +91,7 @@ describe('NearbyCourtCard', () => {
     'renders the plain card on a %s answer',
     async (code) => {
       invoke.mockResolvedValue({ data: null, error: httpError(code) });
-      render(<NearbyCourtCard court={court} />);
+      render(<NearbyCourtCard court={court} showPhoto />);
       await settle();
 
       expect(screen.getByRole('button', { name: court.name })).toBeOnTheScreen();
@@ -100,14 +102,22 @@ describe('NearbyCourtCard', () => {
 
   it('renders the plain card when the answer does not parse', async () => {
     invoke.mockResolvedValue({ data: { photoUri: 'not a url', attributions: [] }, error: null });
-    render(<NearbyCourtCard court={court} />);
+    render(<NearbyCourtCard court={court} showPhoto />);
     await settle();
 
     expect(image()).toBeNull();
   });
 
   it('asks for nothing when the court has no Place ID', async () => {
-    render(<NearbyCourtCard court={{ ...court, googlePlaceId: undefined }} />);
+    render(<NearbyCourtCard court={{ ...court, googlePlaceId: undefined }} showPhoto />);
+    await act(async () => {});
+
+    expect(invoke).not.toHaveBeenCalled();
+    expect(image()).toBeNull();
+  });
+
+  it('asks for nothing when the list did not pick it for a photo', async () => {
+    render(<NearbyCourtCard court={court} showPhoto={false} />);
     await act(async () => {});
 
     expect(invoke).not.toHaveBeenCalled();
@@ -116,7 +126,7 @@ describe('NearbyCourtCard', () => {
 
   it('drops the photo and its credit when the image fails to load', async () => {
     invoke.mockResolvedValue({ data: photo(), error: null });
-    render(<NearbyCourtCard court={court} />);
+    render(<NearbyCourtCard court={court} showPhoto />);
     const loaded = await screen.findByLabelText(copy.a11y.photo(court.name));
 
     fireEvent(loaded, 'error', { error: 'expired' });
@@ -124,5 +134,30 @@ describe('NearbyCourtCard', () => {
     expect(image()).toBeNull();
     expect(screen.queryByText(credit)).toBeNull();
     expect(screen.getByRole('button', { name: court.name })).toBeOnTheScreen();
+  });
+});
+
+describe('NearbyCourtsSection photos', () => {
+  afterEach(() => invoke.mockReset());
+
+  it(`fetches photos for the nearest ${CourtPhotoMaxCards} courts only`, async () => {
+    invoke.mockResolvedValue({ data: photo(), error: null });
+    // Nearest first, as useNearbyCourts lists them; every one has a Place ID.
+    const courts = Array.from({ length: CourtPhotoMaxCards + 1 }, (_, i) => ({
+      ...court,
+      id: `00000000-0000-4000-8000-00000000000${i}`,
+      name: `Court ${i + 1}`,
+    }));
+    render(<NearbyCourtsSection state={{ status: 'loaded', courts }} />);
+
+    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(CourtPhotoMaxCards));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+
+    const last = courts[CourtPhotoMaxCards];
+    expect(invoke).toHaveBeenCalledTimes(CourtPhotoMaxCards);
+    expect(invoke).not.toHaveBeenCalledWith(`court-photo?court_id=${last.id}`, expect.anything());
+    expect(screen.getByLabelText(copy.a11y.photo(courts[0].name))).toBeOnTheScreen();
+    expect(screen.queryByLabelText(copy.a11y.photo(last.name))).toBeNull();
+    expect(screen.getByRole('button', { name: last.name })).toBeOnTheScreen();
   });
 });
