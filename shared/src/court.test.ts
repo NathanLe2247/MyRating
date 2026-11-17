@@ -11,6 +11,7 @@ const validCourt = {
   location: { type: 'Point', coordinates: [-122.4862, 37.7694] },
   is_active: true,
   created_at: '2026-11-13T12:00:00.123456+00:00',
+  google_place_id: null,
 };
 
 const withCoordinates = (coordinates: unknown) => ({
@@ -64,6 +65,11 @@ describe('CourtSchema', () => {
 
   it('rejects a missing column', () => {
     const { is_active: _, ...row } = validCourt;
+    assert.equal(CourtSchema.safeParse(row).success, false);
+  });
+
+  it('rejects a row without google_place_id (the view always returns it)', () => {
+    const { google_place_id: _, ...row } = validCourt;
     assert.equal(CourtSchema.safeParse(row).success, false);
   });
 

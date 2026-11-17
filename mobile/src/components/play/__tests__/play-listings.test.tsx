@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
 import { CourtCard } from '@/components/play/court-card';
@@ -6,7 +6,11 @@ import { PlayListings } from '@/components/play/play-listings';
 import { PlaySection } from '@/components/play/play-section';
 import { TournamentCard } from '@/components/play/tournament-card';
 import { en } from '@/i18n/en';
+import { renderWithQueryClient as render } from '@/test-utils/query-client';
 import type { CourtCardData, NearbyCourtsState, TournamentCardData } from '@/types/play';
+
+// Court cards fetch their photo; these courts have no Place ID, so none is asked for.
+jest.mock('@/config/supabase', () => ({ useSupabaseClient: () => ({}) }));
 
 const copy = en.play;
 

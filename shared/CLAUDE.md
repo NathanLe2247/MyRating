@@ -23,10 +23,10 @@ Types, Zod schemas, and constants used by `frontend/`, `mobile/`, and
   returns its `location` as WKB hex, which won't parse as `GeoJsonPoint`).
   Only active courts are visible to clients. The shape is deliberately
   minimal until the catalog is designed — see `agent/skills/courts-catalog`.
-  `google_place_id` (`GooglePlaceIdSchema`, nullable) is the court's Google
-  Place ID, the only Places data stored; the view and RPC always return it,
-  but the schema marks it `.optional()` so app fixtures that build a `Court`
-  by hand still type-check (tighten to required once they're updated, #107).
+  `google_place_id` (`GooglePlaceIdSchema`, nullable, required) is the
+  court's Google Place ID, the only Places data stored; the view, the RPC
+  and the matchmaking state's `court` always return it, so fixtures that
+  build a `Court` by hand must set it (`null` for no place).
 - Court photo API (`src/court-photo.ts`) — the `court-photo` edge function:
   `CourtPhotoRequestSchema` (`court_id` query param of a GET),
   `CourtPhotoResponseSchema` (`photoUri`, `attributions[]` of

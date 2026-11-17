@@ -1,3 +1,5 @@
+import type { CourtPhotoAttribution } from '@myrating/shared';
+
 import type { BrandIconName } from '@/components/brand-icon';
 import type { GeoPoint } from '@/constants/courts';
 
@@ -34,7 +36,18 @@ export type CourtCardData = {
   /** Short line under the count badge, e.g. lighting hours or rating range. */
   note?: string;
   description?: string;
+  /**
+   * The court's Google Place ID. Only courts with one can have a photo, so
+   * the photo is fetched only when it's set (`useCourtPhoto`).
+   */
+  googlePlaceId?: string;
+  /**
+   * Shown above the name. Held in memory only, never persisted (Google's
+   * terms); a URL that fails to load hides the photo block.
+   */
   photoUrl?: string;
+  /** Required credits for `photoUrl` ("Photo: <author>"), shown under it. */
+  photoAttributions?: CourtPhotoAttribution[];
   /** Live status over the photo, e.g. open play count. */
   photoCaption?: string;
   tags: VenueTag[];

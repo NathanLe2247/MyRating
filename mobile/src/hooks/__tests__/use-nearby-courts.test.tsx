@@ -44,6 +44,7 @@ const row = (id: string, name: string, distance_m: number) => ({
   location: { type: 'Point', coordinates: [-75, 40] },
   is_active: true,
   created_at: '2026-11-13T12:00:00Z',
+  google_place_id: null,
   distance_m,
 });
 const near = row('11111111-1111-4111-8111-111111111111', 'Near Courts', 805);

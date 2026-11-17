@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BrandIcon, type BrandIconName } from '@/components/brand-icon';
@@ -40,6 +41,12 @@ export function CourtCard({ court, onPress, onPrimaryAction }: CourtCardProps) {
       : { bg: Brand.chip, fg: Brand.textMuted };
   const noteColor = indoor ? Brand.warm : court.featured ? Brand.lime : Brand.textMuted;
   const booking = court.primaryAction === 'book';
+  // Google doesn't say how long a photo URL lasts: one that fails to load
+  // leaves the card as if it had no photo. Remembering which URL failed lets
+  // a new URL try again.
+  const [failedUrl, setFailedUrl] = useState<string>();
+  const photoUrl = court.photoUrl;
+  const showPhoto = !!photoUrl && photoUrl !== failedUrl;
 
   // Optional strings are checked with ternaries, not `&&`: an empty string
   // from the backend would otherwise render as a bare text node and crash.
@@ -48,6 +55,52 @@ export function CourtCard({ court, onPress, onPrimaryAction }: CourtCardProps) {
     // would be swallowed by the outer one for screen readers.
     <View style={styles.card}>
       {court.featured ? <View style={styles.accentBar} /> : null}
+
+      {/* Above the name, and outside the pressable area so the credit links
+          stay separately reachable for screen readers. */}
+      {showPhoto ? (
+        <View style={styles.photoBlock}>
+          <View style={styles.photo}>
+            <Image
+              // One Image per URL, so a late error from the old load can't hide the new one.
+              key={photoUrl}
+              source={{ uri: photoUrl }}
+              // Google's terms forbid storing Places photos: keep them in
+              // memory only (expo-image's default, 'disk', survives restarts).
+              cachePolicy="memory"
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel={copy.a11y.photo(court.name)}
+              onError={() => setFailedUrl(photoUrl)}
+            />
+            {court.photoCaption ? (
+              <View style={styles.caption}>
+                <Chip
+                  dot
+                  label={court.photoCaption}
+                  color={indoor ? Brand.indoor : Brand.text}
+                  dotColor={accent}
+                  background={Brand.background}
+                />
+              </View>
+            ) : null}
+          </View>
+          {/* Google requires the author credits and a "Google Maps" source
+              label wherever Places content is shown outside a Google map. */}
+          <View style={styles.credits}>
+            {(court.photoAttributions ?? []).map((credit) => (
+              <PhotoCredit
+                key={`${credit.displayName}|${credit.uri ?? ''}`}
+                name={credit.displayName}
+                uri={credit.uri}
+              />
+            ))}
+            <Text style={styles.credit}>{copy.photoSource}</Text>
+          </View>
+        </View>
+      ) : null}
 
       <Pressable
         onPress={onPress}
@@ -85,23 +138,6 @@ export function CourtCard({ court, onPress, onPrimaryAction }: CourtCardProps) {
             </View>
           ) : null}
         </View>
-
-        {court.photoUrl ? (
-          <View style={styles.photo}>
-            <Image source={court.photoUrl} style={StyleSheet.absoluteFill} contentFit="cover" />
-            {court.photoCaption ? (
-              <View style={styles.caption}>
-                <Chip
-                  dot
-                  label={court.photoCaption}
-                  color={indoor ? Brand.indoor : Brand.text}
-                  dotColor={accent}
-                  background={Brand.background}
-                />
-              </View>
-            ) : null}
-          </View>
-        ) : null}
 
         {court.description ? <Text style={styles.description}>{court.description}</Text> : null}
 
@@ -143,6 +179,39 @@ export function CourtCard({ court, onPress, onPrimaryAction }: CourtCardProps) {
         ) : null}
       </View>
     </View>
+  );
+}
+
+/** Line height of the photo credit text. */
+const CREDIT_LINE_HEIGHT = 14;
+
+/**
+ * Grows a credit link's touch target to `BrandSizes.minTouch` (44pt) tall;
+ * the text itself is only `CREDIT_LINE_HEIGHT`. The photo block is drawn
+ * above the card's pressable area (`zIndex`) so the slop wins there.
+ */
+const CREDIT_HIT_SLOP = {
+  top: (BrandSizes.minTouch - CREDIT_LINE_HEIGHT) / 2,
+  bottom: (BrandSizes.minTouch - CREDIT_LINE_HEIGHT) / 2,
+  left: Spacing.one,
+  right: Spacing.one,
+};
+
+// Google's required credit for a Places photo: "Photo: <author>", a link to
+// the author's page when Google gives one.
+function PhotoCredit({ name, uri }: { name: string; uri: string | null }) {
+  const label = copy.photoCredit(name);
+  if (!uri) return <Text style={styles.credit}>{label}</Text>;
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={label}
+      accessibilityHint={copy.a11y.photoCreditHint}
+      hitSlop={CREDIT_HIT_SLOP}
+      // A failed open leaves the user on the card, like Directions.
+      onPress={() => Linking.openURL(uri).catch(() => undefined)}>
+      <Text style={[styles.credit, styles.creditLink]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -242,6 +311,26 @@ const styles = StyleSheet.create({
     fontFamily: BrandFonts.bodySemiBold,
     fontSize: 11,
     lineHeight: 20,
+  },
+  photoBlock: {
+    gap: Spacing.one,
+    // Above the pressable content below, so the credit links' hit slop
+    // reaching over it gets the touch.
+    zIndex: 1,
+  },
+  credits: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  credit: {
+    fontFamily: BrandFonts.body,
+    fontSize: 11,
+    lineHeight: CREDIT_LINE_HEIGHT,
+    color: Brand.textMuted,
+  },
+  creditLink: {
+    textDecorationLine: 'underline',
   },
   photo: {
     height: BrandSizes.venuePhoto,

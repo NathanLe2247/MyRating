@@ -43,6 +43,7 @@ const court = {
   location: { type: 'Point' as const, coordinates: [AnchorPoint.lng, AnchorPoint.lat + 0.01] as [number, number] },
   is_active: true,
   created_at: JoinedAt,
+  google_place_id: null,
 };
 
 /** Paired with the Demo Tester (player_b), who has already accepted. */

@@ -3,10 +3,10 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { AuthLink } from '@/components/auth/auth-link';
 import { LoadError } from '@/components/home/load-error';
 import { LocationPrompt } from '@/components/home/location-prompt';
-import { CourtCard } from '@/components/play/court-card';
+import { NearbyCourtCard } from '@/components/courts/nearby-court-card';
 import { PlayEmptyState } from '@/components/play/play-empty-state';
 import { PlaySection } from '@/components/play/play-section';
-import { NearbyCourtsRadiusMeters } from '@/constants/courts';
+import { CourtPhotoMaxCards, NearbyCourtsRadiusMeters } from '@/constants/courts';
 import { Brand, BrandFonts, Spacing } from '@/constants/theme';
 import { en } from '@/i18n/en';
 import type { NearbyCourtsState } from '@/types/play';
@@ -82,7 +82,15 @@ function NearbyCourtsBody({ state }: NearbyCourtsSectionProps) {
             </View>
           ) : null}
           {state.courts.length > 0 ? (
-            state.courts.map((court) => <CourtCard key={court.id} court={court} onPress={noop} />)
+            // Nearest first, so only the nearest few spend capped Google calls on a photo.
+            state.courts.map((court, index) => (
+              <NearbyCourtCard
+                key={court.id}
+                court={court}
+                showPhoto={index < CourtPhotoMaxCards}
+                onPress={noop}
+              />
+            ))
           ) : (
             <PlayEmptyState
               icon="court"

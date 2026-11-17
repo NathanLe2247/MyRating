@@ -24,9 +24,8 @@ export const GooglePlaceIdSchema = z
  * agent/skills/courts-catalog). Change this and the migration together.
  *
  * `google_place_id` is null when the court has no confident Places match
- * (then it has no photo). The view and RPC always return it; it's
- * `.optional()` only so existing hand-built `Court` fixtures in the apps
- * still type-check until they're updated (#107).
+ * (then it has no photo). The view, the RPC and the matchmaking state's
+ * `court` always include it, so it's required (nullable, not optional).
  */
 export const CourtSchema = z.object({
   id: UuidSchema,
@@ -34,7 +33,7 @@ export const CourtSchema = z.object({
   location: GeoJsonPointSchema,
   is_active: z.boolean(),
   created_at: TimestampSchema,
-  google_place_id: GooglePlaceIdSchema.nullable().optional(),
+  google_place_id: GooglePlaceIdSchema.nullable(),
 });
 export type Court = z.infer<typeof CourtSchema>;
 
