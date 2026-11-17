@@ -12,6 +12,13 @@ export const MinStreakBadge = 2;
  */
 export const EvenMatchupMargin = 0.05;
 
+/**
+ * Largest rating gap, in rating points (the 1500-based Glicko scale), that
+ * the Match Found subtitle calls a "close skill match". A wider gap is shown
+ * as a plain rating gap.
+ */
+export const CloseSkillMatchMaxGap = 50;
+
 /** Route of the Match Found screen; the match is passed as JSON in the `match` param. */
 export const MatchFoundRoute = '/match/found';
 

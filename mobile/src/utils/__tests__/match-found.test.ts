@@ -1,8 +1,11 @@
+import { CloseSkillMatchMaxGap } from '@/constants/match';
+import { en } from '@/i18n/en';
 import {
   formatElapsed,
   formatMiles,
   formatRatingGap,
   formatRatingImpact,
+  pairingSubtitle,
   toPercent,
 } from '@/utils/match-found-format';
 
@@ -17,6 +20,14 @@ describe('match found formatting', () => {
     expect(formatRatingGap(4.18, 4.2)).toBe('0.02');
     expect(formatRatingGap(4.2, 4.18)).toBe('0.02');
     expect(formatRatingGap(null, 4.2)).toBeNull();
+  });
+
+  it('calls only a gap within the threshold a close skill match', () => {
+    const t = en.matchFound;
+    expect(pairingSubtitle(1500, 1520)).toBe(t.parity('20.00'));
+    expect(pairingSubtitle(1500, 1500 + CloseSkillMatchMaxGap)).toBe(t.parity(`${CloseSkillMatchMaxGap}.00`));
+    expect(pairingSubtitle(1675.07, 1500)).toBe(t.ratingGap('175.07'));
+    expect(pairingSubtitle(null, 1500)).toBe(t.parityCalibrating);
   });
 
   it('rounds and clamps probabilities to whole percents', () => {

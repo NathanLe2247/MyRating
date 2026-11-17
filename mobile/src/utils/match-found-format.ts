@@ -1,3 +1,5 @@
+import { CloseSkillMatchMaxGap } from '@/constants/match';
+import { en } from '@/i18n/en';
 import { formatRating } from '@/utils/rating-format';
 
 // Display helpers for the Match Found screen. Pure formatting — win
@@ -15,6 +17,18 @@ export function formatElapsed(totalSeconds: number): string {
 export function formatRatingGap(a: number | null, b: number | null): string | null {
   if (a === null || b === null) return null;
   return formatRating(Math.abs(a - b));
+}
+
+/**
+ * The pairing line under "Match found!": "Close skill match" only within
+ * `CloseSkillMatchMaxGap`, a plain gap beyond it, or the calibrating copy
+ * while either player is unrated.
+ */
+export function pairingSubtitle(a: number | null, b: number | null): string {
+  const t = en.matchFound;
+  if (a === null || b === null) return t.parityCalibrating;
+  const gap = Math.abs(a - b);
+  return gap <= CloseSkillMatchMaxGap ? t.parity(formatRating(gap)) : t.ratingGap(formatRating(gap));
 }
 
 /** A 0–1 probability as a whole percent, clamped to 0–100. */
