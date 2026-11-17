@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { Linking } from 'react-native';
 
 import type { MatchFoundPhase } from '@/components/match-found/match-found-view';
-import { useDashboard } from '@/hooks/use-dashboard';
 import { useMatchResult } from '@/hooks/use-match-result';
 import { useMatchmaking } from '@/hooks/use-matchmaking';
 import { useReportResult } from '@/hooks/use-report-result';
@@ -38,7 +37,6 @@ export function useMatchFoundScreen() {
   const { tracked } = useMatchResult();
   const report = useReportResult();
   const { user } = useUser();
-  const rating = useDashboard('singles').data?.rating;
 
   // An open match is only polled slowly; re-read on open so a match settled
   // elsewhere isn't shown stale.
@@ -46,10 +44,10 @@ export function useMatchFoundScreen() {
     refresh();
   }, [refresh]);
 
-  const player = {
-    name: user?.firstName?.trim() || user?.username?.trim() || en.matchFound.you,
-    rating: rating ?? null,
-  };
+  // Both ratings come from the pairing-time snapshot (`pairingRatings`), not
+  // the live dashboard, so Head-to-Head never compares a post-match rating
+  // with a pre-match one.
+  const player = { name: user?.firstName?.trim() || user?.username?.trim() || en.matchFound.you };
   const stage = report?.view.stage.kind;
   const settled = stage === 'confirmed' || stage === 'disputed';
   const open = !!VIEW_PHASE[phase];

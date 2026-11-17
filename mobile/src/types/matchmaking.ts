@@ -10,15 +10,33 @@ import type { GeoPoint } from '@/constants/courts';
 export type MatchmakingErrorCode = MatchmakingError | 'network' | 'location_unavailable';
 
 /**
+ * Both players' ratings as they were when the device first saw a pairing, so
+ * Match Found compares like with like for the whole match: the player's
+ * rating from the dashboard cache (`PlayerRatingQueryKey`), the opponent's
+ * from the function. Display-only; never sent anywhere.
+ */
+export type PairingRatings = {
+  matchId: string;
+  /**
+   * Null while calibrating; undefined when the dashboard hadn't loaded yet
+   * (filled on a later state, but only before a result is reported).
+   */
+  player: number | null | undefined;
+  opponent: number | null;
+};
+
+/**
  * The function's latest `MatchmakingState` plus what only the device knows.
- * Both extras are dropped once the player has neither a queue entry nor a
- * match.
+ * The extras are dropped once the player has neither a queue entry nor a
+ * match (`pairingRatings` as soon as there's no match).
  */
 export type MatchmakingSnapshot = MatchmakingState & {
   /** Where the player queued from, for the distance to the suggested court. */
   origin?: GeoPoint;
   /** `queue_entry.created_at` of the wait that led to the current match. */
   waitingSince?: string;
+  /** Ratings at pairing time for the current match. */
+  pairingRatings?: PairingRatings;
 };
 
 /**

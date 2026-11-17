@@ -99,6 +99,18 @@ screens are gone; `app/(home)/` holds the tab screens.
   score report goes in that panel via `MatchFoundView`'s `matchOnContent`
   (see Match results below); view phase `'settled'` keeps the panel up
   after the result is confirmed or disputed.
+- Match Found's ratings (Head-to-Head and the banner's pairing line) are
+  both pairing-time ratings: `mergeSnapshot` stores `pairingRatings` on the
+  snapshot the first time a match id shows up (the player's from the
+  dashboard cache `[PlayerRatingQueryKey, userId]`, the opponent's from the
+  state) and keeps them for that match, including in the result provider's
+  kept copy after it settles. Never mix in the live dashboard rating: it
+  can move (after a confirm) before matchmaking catches up. A player rating
+  that hadn't loaded yet is filled in on a later state, but only before a
+  result is reported. Display-only.
+- myRating's own rating is labeled `RATING` (`RATING_UNIT` in `en.ts`:
+  Home's rating card, Head-to-Head, Community). "DUPR" is only for data
+  that really is DUPR (`dupr-import`, onboarding's Connect DUPR option).
 - Test builders for function states live in `src/test-utils/matchmaking.ts`
   and `src/test-utils/match-results.ts` (outside `__tests__/` so Jest
   doesn't run them as tests).
@@ -133,8 +145,7 @@ screens are gone; `app/(home)/` holds the tab screens.
   the Clerk user id plus match id, so nothing carries over to another
   account on the device. In the settled phase the panel says where it was
   played, not "Head to … and play", and the banner drops its pairing line
-  (the player's rating already includes the result, so a gap from it
-  wouldn't describe the pairing). That line (`pairingSubtitle`) says
+  (the match is over; the before → after change is in the result panel). That line (`pairingSubtitle`) says
   "Close skill match" only within `CloseSkillMatchMaxGap` rating points.
 - The score being entered (`ScoreDraft`) lives in the provider too, so Home
   and Match Found edit the same score. Validity is

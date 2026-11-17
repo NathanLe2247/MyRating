@@ -3,7 +3,6 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { Linking } from 'react-native';
 
-import { useDashboard } from '@/hooks/use-dashboard';
 import { useMatchFoundScreen } from '@/hooks/use-match-found-screen';
 import { type MatchResult, useMatchResult } from '@/hooks/use-match-result';
 import { type Matchmaking, useMatchmaking } from '@/hooks/use-matchmaking';
@@ -15,7 +14,6 @@ import type { ReportResultView } from '@/types/match-results';
 // useMatchmaking is tested against the network boundary in
 // use-matchmaking.test.tsx; here it's the screen's input.
 jest.mock('@/hooks/use-matchmaking', () => ({ useMatchmaking: jest.fn() }));
-jest.mock('@/hooks/use-dashboard', () => ({ useDashboard: jest.fn() }));
 // The match result is tested in use-match-result.test.tsx; here it's an input.
 jest.mock('@/hooks/use-match-result', () => ({ useMatchResult: jest.fn() }));
 jest.mock('@clerk/expo', () => ({ useUser: jest.fn() }));
@@ -51,7 +49,8 @@ const view = (stage: ReportResultView['stage']): ReportResultView => ({
 
 function matchmaking(state: Parameters<typeof mergeSnapshot>[0] | undefined, extra: Partial<Matchmaking> = {}): Matchmaking {
   return {
-    snapshot: state && mergeSnapshot(state, mergeSnapshot(searchingState, undefined, AnchorPoint)),
+    // Paired while the player was at PlayerRating.
+    snapshot: state && mergeSnapshot(state, mergeSnapshot(searchingState, undefined, AnchorPoint), undefined, PlayerRating),
     phase: matchmakingPhase(state),
     error: null,
     busy: false,
@@ -64,10 +63,11 @@ function matchmaking(state: Parameters<typeof mergeSnapshot>[0] | undefined, ext
   };
 }
 
+const PlayerRating = 1480;
+
 describe('useMatchFoundScreen', () => {
   beforeEach(() => {
     (useUser as jest.Mock).mockReturnValue({ user: { firstName: 'Sam', username: 'sam' } });
-    (useDashboard as jest.Mock).mockReturnValue({ data: { rating: 4.1, recentMatches: [] } });
     mockUseMatchResult.mockReturnValue(matchResult());
   });
   afterEach(() => jest.clearAllMocks());
@@ -79,7 +79,8 @@ describe('useMatchFoundScreen', () => {
 
     expect(mm.refresh).toHaveBeenCalled();
     expect(result.current.phase).toBe('proposed');
-    expect(result.current.match?.player).toEqual({ name: 'Sam', rating: 4.1 });
+    expect(result.current.match?.player).toEqual({ name: 'Sam', rating: PlayerRating });
+    expect(result.current.match?.opponent.rating).toBe(1500);
     expect(result.current.match?.opponent.name).toBe(en.matchmaking.botName);
     expect(result.current.match?.venue?.name).toBe('Anchor Park Courts');
   });
@@ -175,7 +176,10 @@ describe('useMatchFoundScreen', () => {
   });
 
   it('keeps showing a confirmed match after matchmaking forgets it, until Done', () => {
-    const settledMatch = mergeSnapshot(matchState('awaiting_confirmation'), undefined, AnchorPoint);
+    const proposed = mergeSnapshot(matchState('proposed'), undefined, AnchorPoint, PlayerRating);
+    // The last state before the result was confirmed; the dashboard had
+    // already moved on.
+    const settledMatch = mergeSnapshot(matchState('awaiting_confirmation'), proposed, undefined, PlayerRating + 16);
     const mr = matchResult({
       tracked: settledMatch,
       view: view({ kind: 'confirmed', games: [{ you: 11, opponent: 7 }], won: true, ratingChange: null }),
@@ -186,6 +190,9 @@ describe('useMatchFoundScreen', () => {
 
     expect(result.current.phase).toBe('settled');
     expect(result.current.match?.opponent.name).toBe(en.matchmaking.botName);
+    // Head-to-Head still compares the two pairing-time ratings.
+    expect(result.current.match?.player.rating).toBe(PlayerRating);
+    expect(result.current.match?.opponent.rating).toBe(1500);
     expect(result.current.match?.venue?.name).toBe('Anchor Park Courts');
 
     act(() => result.current.report?.onDone?.());

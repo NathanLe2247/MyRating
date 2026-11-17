@@ -4,6 +4,13 @@
 /** Joins inline parts of a line, e.g. "w/ Sam · 4.1 → 4.2". */
 const SEPARATOR = ' · ';
 
+/**
+ * Unit shown next to a myRating (Glicko-2) rating. Never "DUPR": that name is
+ * only for ratings really imported from DUPR (`dupr-import`, onboarding's
+ * Connect DUPR option).
+ */
+const RATING_UNIT = 'RATING';
+
 export const en = {
   brand: 'myRating',
   // Keyed by route name (see AppTabNames).
@@ -207,7 +214,7 @@ export const en = {
     },
     rating: {
       label: 'Dynamic performance rating',
-      unit: 'DUPR',
+      unit: RATING_UNIT,
       /** Shown in place of the number when the rating couldn't be loaded. */
       unavailable: '—',
       unranked: 'Unranked',
@@ -277,18 +284,18 @@ export const en = {
     },
     chat: {
       empty: 'No messages yet. Say hi or drop a challenge.',
-      rating: (rating: string) => `DUPR ${rating}`,
+      rating: (rating: string) => `${RATING_UNIT} ${rating}`,
       unrated: 'Unrated',
       reaction: (emoji: string, count: number) => `${emoji} ${count}`,
     },
     challenge: {
       live: 'Live open challenge',
-      rated: 'DUPR rated',
+      rated: 'Rated match',
       versus: 'VS',
       format: '1v1',
       openSeat: 'Open seat',
       you: 'You?',
-      rating: (rating: string) => `${rating} DUPR`,
+      rating: (rating: string) => `${rating} ${RATING_UNIT}`,
       court: 'Court',
       time: 'Time',
       accept: 'Accept challenge',
@@ -307,7 +314,7 @@ export const en = {
         tag: 'Club builder',
         title: 'Start your own squad',
         badge: 'Instant setup',
-        body: 'Lock in your local home courts, dial in exact minimum & maximum DUPR tiers, and auto-sync live king-of-the-court queues.',
+        body: 'Lock in your local home courts, dial in exact minimum & maximum rating tiers, and auto-sync live king-of-the-court queues.',
         cta: '+ Create community',
       },
       recommended: 'Recommended for you',
@@ -321,8 +328,8 @@ export const en = {
         title: 'No matches',
         body: (query: string) => `No groups match “${query}”. Try a club name, court, or area.`,
       },
-      ratingRange: (min: string, max: string) => `DUPR ${min} – ${max}`,
-      ratingMin: (min: string) => `DUPR min ${min}+`,
+      ratingRange: (min: string, max: string) => `${RATING_UNIT} ${min} – ${max}`,
+      ratingMin: (min: string) => `${RATING_UNIT} min ${min}+`,
     },
     input: {
       placeholder: 'Send a message or drop challenge…',
@@ -343,11 +350,11 @@ export const en = {
     closeMatch: (gap: string) => `Close skill match (${gap} rating gap)`,
     parityCalibrating: 'Paired while ratings calibrate',
     ratingGap: (gap: string) => `${gap} rating gap`,
-    verified: 'DUPR verified',
+    verified: 'Ratings verified',
     courtReady: 'Court sync ready',
     you: 'You',
     streak: (wins: number) => `${wins}W streak`,
-    ratingUnit: 'DUPR',
+    ratingUnit: RATING_UNIT,
     unrated: 'NR',
     vs: 'VS',
     winProbability: 'Win prob.',
@@ -365,7 +372,7 @@ export const en = {
     dot: '•',
     openMap: 'Open map',
     formatTitle: (format: string, official: boolean, games: number | undefined) =>
-      [format, official && (games ? `Official DUPR ${games}-game series` : 'Official DUPR')]
+      [format, official && (games ? `Rated ${games}-game series` : 'Rated')]
         .filter(Boolean)
         .join(' · '),
     rules: (games: number, pointsTo: number, winBy: number) =>

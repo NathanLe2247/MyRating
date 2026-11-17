@@ -89,8 +89,8 @@ export function MatchFoundView({
               />
             )}
             <MatchFoundBanner
-              // Once settled the player's rating already includes this match, so
-              // a gap from it no longer describes the pairing.
+              // Once settled the pairing line is history; the result panel shows
+              // the before → after change instead.
               subtitle={
                 phase === 'settled' ? null : pairingSubtitle(match.player.rating, match.opponent.rating)
               }
