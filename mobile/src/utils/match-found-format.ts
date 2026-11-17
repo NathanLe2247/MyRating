@@ -13,12 +13,6 @@ export function formatElapsed(totalSeconds: number): string {
   return `${mm}:${ss}`;
 }
 
-/** Rating gap between two players at rating precision, e.g. `0.02`; null if either is unrated. */
-export function formatRatingGap(a: number | null, b: number | null): string | null {
-  if (a === null || b === null) return null;
-  return formatRating(Math.abs(a - b));
-}
-
 /**
  * The pairing line under "Match found!": "Close skill match" only within
  * `CloseSkillMatchMaxGap`, a plain gap beyond it, or the calibrating copy
@@ -28,7 +22,8 @@ export function pairingSubtitle(a: number | null, b: number | null): string {
   const t = en.matchFound;
   if (a === null || b === null) return t.parityCalibrating;
   const gap = Math.abs(a - b);
-  return gap <= CloseSkillMatchMaxGap ? t.parity(formatRating(gap)) : t.ratingGap(formatRating(gap));
+  const label = formatRating(gap);
+  return gap <= CloseSkillMatchMaxGap ? t.closeMatch(label) : t.ratingGap(label);
 }
 
 /** A 0–1 probability as a whole percent, clamped to 0–100. */

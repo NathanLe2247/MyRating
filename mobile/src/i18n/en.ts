@@ -340,7 +340,7 @@ export const en = {
     leaveLabel: 'Leave queue',
     title: 'Match found!',
     celebrate: '🎉',
-    parity: (gap: string) => `Close skill match (${gap} rating gap)`,
+    closeMatch: (gap: string) => `Close skill match (${gap} rating gap)`,
     parityCalibrating: 'Paired while ratings calibrate',
     ratingGap: (gap: string) => `${gap} rating gap`,
     verified: 'DUPR verified',
