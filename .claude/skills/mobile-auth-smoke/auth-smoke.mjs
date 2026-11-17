@@ -443,9 +443,12 @@ await step(
   { needsAccount: true }
 );
 
-// Home's queue card against the hosted `matchmaking` function (#79):
-// searching → Match Found against the Demo Tester (DEMO_BOT_ENABLED) →
-// Accept → "You're on!", then Cancel match so the account is idle again.
+// Home's queue card against the hosted `matchmaking` function (#79), then
+// the score report against `match-results` (#80): searching → Match Found
+// against the Demo Tester (DEMO_BOT_ENABLED) → Accept → "You're on!" →
+// report 11–7, 11–9 with the steppers → the Demo Tester confirms (polled,
+// ~3 s) → "Result confirmed" with the rating change → Done, so the account
+// is idle again.
 // The account's public.users row comes from the clerk-webhook; without one
 // the function answers profile_required, and the step passes on that copy
 // (from en.matchmaking.errors), since it still proves the Clerk token reached
@@ -458,9 +461,22 @@ const QUEUE = {
   // "Match found!", so waiting on that title could pass before the screen opens.
   accept: /^accept match$/i,
   on: /^you.re on!$/i,
-  cancel: /^cancel match$/i,
+  // Report result (en.reportResult): stepper and tab button labels.
+  you: 'you',
+  bot: 'Demo Tester',
+  addGame: /^add a game$/i,
+  submit: /^submit score$/i,
+  confirmed: /^result confirmed$/i,
+  // "1500.00 → 1523.45 (+23.45)", from rating_history via the function.
+  ratingChange: /^\d+\.\d\d → \d+\.\d\d \([+-]?\d+\.\d\d\)$/,
+  done: /^done$/i,
 };
 const BOT_WAIT_MS = 20000;
+const pointUp = (who) => btn(new RegExp(`^add a point for ${who}$`, 'i'));
+async function enterGame(you, bot) {
+  for (let i = 0; i < you; i++) await pointUp(QUEUE.you).click();
+  for (let i = 0; i < bot; i++) await pointUp(QUEUE.bot).click();
+}
 
 await step(
   'queue: Find a match reaches matchmaking',
@@ -483,9 +499,20 @@ await step(
     await btn(QUEUE.accept).click();
     await text(QUEUE.on).waitFor({ timeout: T }).catch(orFail('accept did not reach "You\'re on!"'));
     await shot('match-on');
-    await btn(QUEUE.cancel).click();
-    await btn(QUEUE.findMatch).waitFor({ timeout: T }).catch(orFail('cancel did not return to an idle queue card'));
-    return 'searching → Match Found → accepted → cancelled';
+    await pointUp(QUEUE.you).waitFor({ timeout: T }).catch(orFail('no score steppers in the "You\'re on!" panel'));
+    await enterGame(11, 7);
+    await btn(QUEUE.addGame).click();
+    await enterGame(11, 9);
+    await btn(QUEUE.submit).click();
+    await text(QUEUE.confirmed).waitFor({ timeout: BOT_WAIT_MS }).catch(orFail('11–7, 11–9 was not confirmed'));
+    const change = await text(QUEUE.ratingChange)
+      .waitFor({ timeout: T })
+      .then(() => text(QUEUE.ratingChange).innerText())
+      .catch(orFail('no rating change after the confirmation'));
+    await shot('match-confirmed');
+    await btn(QUEUE.done).click();
+    await btn(QUEUE.findMatch).waitFor({ timeout: T }).catch(orFail('Done did not return to an idle queue card'));
+    return `searching → Match Found → accepted → reported 11–7, 11–9 → confirmed (${change})`;
   },
   { needsAccount: true }
 );

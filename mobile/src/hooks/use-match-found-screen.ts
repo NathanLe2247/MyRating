@@ -5,7 +5,9 @@ import { Linking } from 'react-native';
 
 import type { MatchFoundPhase } from '@/components/match-found/match-found-view';
 import { useDashboard } from '@/hooks/use-dashboard';
+import { useMatchResult } from '@/hooks/use-match-result';
 import { useMatchmaking } from '@/hooks/use-matchmaking';
+import { useReportResult } from '@/hooks/use-report-result';
 import { en } from '@/i18n/en';
 import type { MatchmakingPhase } from '@/types/matchmaking';
 import { courtDirectionsUrl } from '@/utils/maps';
@@ -25,10 +27,16 @@ const VIEW_PHASE: Partial<Record<MatchmakingPhase, MatchFoundPhase>> = {
 /**
  * Everything the Match Found screen shows and does, from the shared
  * matchmaking state: the live pairing, Accept, Decline (which requeues and
- * goes back to Home's search) and Leave (which cancels the match).
+ * goes back to Home's search) and Leave (which cancels the match). Once the
+ * match is on, `report` drives the score report in the "You're on!" panel
+ * (`useReportResult`, shared with Home's card); a confirmed or disputed
+ * result keeps showing (phase `settled`) from the match result's copy of the
+ * match, since matchmaking stops returning it, until Done.
  */
 export function useMatchFoundScreen() {
   const { snapshot, phase, error, busy, accept, decline, leave, refresh } = useMatchmaking();
+  const { tracked } = useMatchResult();
+  const report = useReportResult();
   const { user } = useUser();
   const rating = useDashboard('singles').data?.rating;
 
@@ -42,12 +50,23 @@ export function useMatchFoundScreen() {
     name: user?.firstName?.trim() || user?.username?.trim() || en.matchFound.you,
     rating: rating ?? null,
   };
-  const match = toMatchFound(snapshot, player);
-  const court = snapshot?.court;
+  const stage = report?.view.stage.kind;
+  const settled = stage === 'confirmed' || stage === 'disputed';
+  const open = !!VIEW_PHASE[phase];
+  const source = open ? snapshot : settled ? (tracked ?? undefined) : undefined;
+  const match = toMatchFound(source, player);
+  const court = source?.court;
 
   return {
-    match: VIEW_PHASE[phase] ? match : null,
-    phase: VIEW_PHASE[phase] ?? 'proposed',
+    match,
+    phase: settled ? 'settled' : (VIEW_PHASE[phase] ?? 'proposed'),
+    report: report && {
+      ...report,
+      onDone: () => {
+        report.onDone?.();
+        goBack();
+      },
+    },
     loading: phase === 'loading',
     busy,
     error: error ? matchmakingErrorMessage(error) : undefined,

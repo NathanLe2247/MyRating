@@ -10,11 +10,13 @@ import { LocationPrompt } from '@/components/home/location-prompt';
 import { QueueCard } from '@/components/home/queue-card';
 import { RatingCard } from '@/components/home/rating-card';
 import { RecentMatches } from '@/components/home/recent-matches';
+import { ReportResultCard } from '@/components/home/report-result-card';
 import type { MatchFormat } from '@/constants/match';
 import { BottomTabInset, Brand, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useDashboard } from '@/hooks/use-dashboard';
 import { useLocationPermission } from '@/hooks/use-location-permission';
 import { useQueueCard } from '@/hooks/use-queue-card';
+import { useReportResult } from '@/hooks/use-report-result';
 import { en } from '@/i18n/en';
 
 export default function HomeScreen() {
@@ -23,6 +25,7 @@ export default function HomeScreen() {
   const { data, error, refetch } = useDashboard(format);
   const location = useLocationPermission();
   const queue = useQueueCard();
+  const report = useReportResult();
 
   // TODO: the header's options button is the only place to sign out until
   // there's a profile/settings screen.
@@ -54,7 +57,11 @@ export default function HomeScreen() {
               <LocationPrompt canAskAgain={location.canAskAgain} onPress={location.request} />
             )}
             <RatingCard rating={data.rating} />
-            <QueueCard calibrating={data.rating === null} {...queue} />
+            {report && <ReportResultCard {...report} onOpenMatch={queue.onOpenMatch} />}
+            {/* The report card already stands for a match that's on. */}
+            {!(report && queue.status.kind === 'on') && (
+              <QueueCard calibrating={data.rating === null} {...queue} />
+            )}
             {data.recentMatches.length > 0 && <RecentMatches matches={data.recentMatches} />}
           </>
         ) : (

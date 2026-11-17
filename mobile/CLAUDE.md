@@ -96,9 +96,62 @@ screens are gone; `app/(home)/` holds the tab screens.
   `'reported'` for `awaiting_confirmation`, with no Cancel —
   `matchmaking_leave` only cancels `proposed` or unreported `accepted`
   matches, so offering it after a report would leave the match open. The
-  score report goes in that panel via `MatchFoundView`'s `matchOnContent`.
+  score report goes in that panel via `MatchFoundView`'s `matchOnContent`
+  (see Match results below); view phase `'settled'` keeps the panel up
+  after the result is confirmed or disputed.
 - Test builders for function states live in `src/test-utils/matchmaking.ts`
-  (outside `__tests__/` so Jest doesn't run them as tests).
+  and `src/test-utils/match-results.ts` (outside `__tests__/` so Jest
+  doesn't run them as tests).
+
+### Match results (score report)
+
+- The score is reported, confirmed or disputed through the `match-results`
+  edge function (contract in `shared/src/match-results.ts`) with
+  `useMatchResultsApi` (`src/hooks/use-match-results-api.ts`), called the
+  same way as `useMatchmakingApi`: every 200 parsed with
+  `MatchResultsStateSchema`, failures thrown as `MatchResultsApiError`
+  (function code or `network`). Copy for every code is
+  `en.reportResult.errors` (a new code in `MATCH_RESULTS_ERRORS` fails the
+  typecheck until it has copy). Refusals that mean the device is behind
+  (`match_not_accepted`, `match_changed`, …) re-read both states.
+- `MatchResultProvider` (root `_layout`, inside `MatchmakingProvider`)
+  holds the result app-wide; read it with `useMatchResult()`
+  (`src/hooks/use-match-result.ts`). The match comes from matchmaking once
+  it's `accepted`. The result is one React Query entry
+  (`['match-results', userId, matchId]`), read when the match goes on,
+  re-read whenever matchmaking sees the match change (that's how the
+  opponent's report arrives: the slow open-match poll), and polled every
+  `MatchResultsPollMs` only while the player waits on the opponent's
+  confirmation (`resultPollMs`). That poll is also what lets the Demo
+  Tester confirm (the backend confirms on the first call after
+  `DEMO_BOT_CONFIRM_DELAY_MS`). No Realtime yet, same reason as the queue.
+- Matchmaking only returns open matches, so the provider keeps its own copy
+  of the match (`tracked`) after it's confirmed or disputed, until the
+  player taps Done (`dismiss`) or queues again. A confirmation refreshes
+  matchmaking and the player's rating (`PlayerRatingQueryKey`). The kept
+  match, the draft, the last error and the dismissal are all scoped to
+  the Clerk user id plus match id, so nothing carries over to another
+  account on the device. In the settled phase the panel says where it was
+  played, not "Head to … and play".
+- The score being entered (`ScoreDraft`) lives in the provider too, so Home
+  and Match Found edit the same score. Validity is
+  `MatchResultSubmissionSchema` (`draftProblem` in `src/utils/match-result.ts`
+  shows its first message, with the game number); Submit is disabled with
+  that one-line reason until it's valid. Games are entered from the player's
+  side (`you` / `opponent`) and mapped to the match's a/b order
+  (`toMatchGames`) only when sent; with no opponent known there's no side,
+  so nothing is sent. Who won comes from shared `matchWinner`, never a
+  local count.
+- UI: `ReportResult` (`src/components/match-result/`) renders every stage
+  (`resultStage`: `enter` — game tabs Game 1/2/+ Game up to `MAX_GAMES`,
+  −/+ `ScoreStepper`s capped at `MaxStepperPoints`; `waiting`; `answer` —
+  the opponent's score with Confirm / Dispute; `confirmed` — final score and
+  the backend's `rating_change`; `disputed`). `useReportResult` turns the
+  shared state into its props. Match Found renders it in the "You're on!"
+  panel; Home renders it in `ReportResultCard` (opponent, court, and a
+  link to Match Found), which replaces the queue card's "Match on" state.
+- Rating changes are only displayed (`formatRating` / `formatDelta`); they
+  come from `rating_history` through the function, never computed here.
 
 ### Opening other apps
 

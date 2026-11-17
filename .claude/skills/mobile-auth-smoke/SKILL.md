@@ -138,9 +138,13 @@ keeps working as real screens replace the placeholders. Screenshots:
 `NN-tab-community.png`, numbered like that step; builds before the tabs
 existed note "pre-#13 build" instead); the Home queue card against the
 hosted `matchmaking` function ("queue: Find a match reaches matchmaking",
-`NN-queue.png`, `NN-match-found.png`, `NN-match-on.png`): Find a match →
-searching → Match Found against the Demo Tester (`DEMO_BOT_ENABLED` on
-hosted, ~5 s) → Accept → "You're on!" → Cancel match, back to an idle card.
+`NN-queue.png`, `NN-match-found.png`, `NN-match-on.png`,
+`NN-match-confirmed.png`): Find a match → searching → Match Found against
+the Demo Tester (`DEMO_BOT_ENABLED` on hosted, ~5 s) → Accept → "You're on!"
+→ report 11–7, 11–9 with the panel's −/+ steppers and "+ Game" tab against
+the hosted `match-results` function → the Demo Tester confirms (~3 s, on a
+poll) → "Result confirmed" with the rating change (the note shows it) →
+Done, back to an idle card.
 The account's `public.users` row comes from the clerk-webhook, so the
 function accepts it even though onboarding was only marked done; where
 there's no row, the function answers `profile_required` and the step

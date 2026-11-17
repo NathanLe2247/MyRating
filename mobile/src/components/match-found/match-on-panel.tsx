@@ -11,10 +11,12 @@ type MatchOnPanelProps = {
   courtName?: string;
   busy?: boolean;
   /**
-   * A score is in and awaits confirmation: the title and caption say so, and
-   * there's no Cancel (the backend can't cancel a reported match).
+   * - `on` (default): nobody has reported yet.
+   * - `reported`: a score is in and awaits confirmation; the title and caption
+   *   say so, and there's no Cancel (the backend can't cancel a reported match).
+   * - `settled`: the result was confirmed or disputed.
    */
-  reported?: boolean;
+  stage?: 'on' | 'reported' | 'settled';
   /** Calls the match off; omitted (no button) once it can't be cancelled. */
   onCancel?: () => void;
   /** Extra content for the match that's on, e.g. the score report. */
@@ -22,19 +24,27 @@ type MatchOnPanelProps = {
 };
 
 // Shown in place of the queue strip once both players accepted: where to go,
-// and a way to call the match off before anyone reports a result.
-export function MatchOnPanel({ courtName, busy, reported, onCancel, children }: MatchOnPanelProps) {
+// the score report (children), and a way to call the match off before anyone
+// reports a result.
+export function MatchOnPanel({ courtName, busy, stage = 'on', onCancel, children }: MatchOnPanelProps) {
   const t = en.matchFound.on;
+  const copy =
+    stage === 'on' ? { title: t.title, body: t.report } : { title: t[stage].title, body: t[stage].body };
   return (
     <View style={styles.panel}>
       <View style={styles.header}>
         <BrandIcon name="paddle" color={Brand.lime} size={18} />
         <Text style={styles.title} accessibilityRole="header">
-          {reported ? t.reported.title : t.title}
+          {copy.title}
         </Text>
       </View>
-      <Text style={styles.body}>{courtName ? t.court(courtName) : t.noCourt}</Text>
-      <Text style={matchText.caption}>{reported ? t.reported.body : t.report}</Text>
+      {/* "Head to … and play" only while the match is still to be played. */}
+      {stage !== 'settled' ? (
+        <Text style={styles.body}>{courtName ? t.court(courtName) : t.noCourt}</Text>
+      ) : (
+        courtName ? <Text style={styles.body}>{t.settled.court(courtName)}</Text> : null
+      )}
+      <Text style={matchText.caption}>{copy.body}</Text>
       {children}
       {onCancel && (
         <Pressable
