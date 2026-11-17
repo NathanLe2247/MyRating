@@ -83,7 +83,7 @@ describe('Community tab, demo data on', () => {
     expect(screen.getByRole('header', { name: 'Kitchen Kings — 1800+ Invite Only' })).toBeOnTheScreen();
     expect(screen.getByText('Invite only')).toBeOnTheScreen();
     // Rating bands on the 1500-based Glicko scale, not DUPR's (#116).
-    expect(screen.getByText(copy.discover.ratingMin('1800.00'))).toBeOnTheScreen();
+    expect(screen.getByText(copy.discover.ratingMin('1800'))).toBeOnTheScreen();
     expect(screen.getByRole('header', { name: 'Silver Dinks Open Play (50+)' })).toBeOnTheScreen();
     expect(screen.getByText('All levels welcome')).toBeOnTheScreen();
 

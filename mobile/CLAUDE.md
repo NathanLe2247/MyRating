@@ -109,8 +109,12 @@ screens are gone; `app/(home)/` holds the tab screens.
   that hadn't loaded yet is filled in on a later state, but only before a
   result is reported. Display-only.
 - myRating's own rating is labeled `RATING` (`RATING_UNIT` in `en.ts`:
-  Home's rating card, Head-to-Head, Community). "DUPR" is only for data
-  that really is DUPR (`dupr-import`, onboarding's Connect DUPR option).
+  Home's rating card, Head-to-Head, Community), on the 1500-based Glicko
+  scale: a player's rating to two decimals (`formatRating`), a group's
+  band as whole numbers (`formatRatingBand`). "DUPR" is only for data
+  that really is DUPR: `dupr-import`, onboarding's Connect DUPR option,
+  and tournament divisions (e.g. a Play listing's "DUPR 3.5 – 4.5"
+  `division`). Don't relabel those.
 - Test builders for function states live in `src/test-utils/matchmaking.ts`
   and `src/test-utils/match-results.ts` (outside `__tests__/` so Jest
   doesn't run them as tests).
@@ -145,8 +149,9 @@ screens are gone; `app/(home)/` holds the tab screens.
   the Clerk user id plus match id, so nothing carries over to another
   account on the device. In the settled phase the panel says where it was
   played, not "Head to … and play", and the banner drops its pairing line
-  (the match is over; the before → after change is in the result panel). That line (`pairingSubtitle`) says
-  "Close skill match" only within `CloseSkillMatchMaxGap` rating points.
+  (the match is over; the before → after change is in the result panel).
+  That line (`pairingSubtitle`) says "Close skill match" only within
+  `CloseSkillMatchMaxGap` rating points.
 - The score being entered (`ScoreDraft`) lives in the provider too, so Home
   and Match Found edit the same score. Validity is
   `MatchResultSubmissionSchema` (`draftProblem` in `src/utils/match-result.ts`

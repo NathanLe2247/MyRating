@@ -1,7 +1,7 @@
 // English strings for the mobile app. Import as `en` and reference nested
 // keys from screens/components instead of inlining literal UI text.
 
-/** Joins inline parts of a line, e.g. "w/ Sam · 4.1 → 4.2". */
+/** Joins inline parts of a line, e.g. "w/ Sam · 1512.40 → 1528.15". */
 const SEPARATOR = ' · ';
 
 /**
@@ -328,8 +328,8 @@ export const en = {
         title: 'No matches',
         body: (query: string) => `No groups match “${query}”. Try a club name, court, or area.`,
       },
-      ratingRange: (min: string, max: string) => `${RATING_UNIT} ${min} – ${max}`,
-      ratingMin: (min: string) => `${RATING_UNIT} min ${min}+`,
+      ratingRange: (min: string, max: string) => `${RATING_UNIT} ${min}–${max}`,
+      ratingMin: (min: string) => `${RATING_UNIT} ${min}+`,
     },
     input: {
       placeholder: 'Send a message or drop challenge…',

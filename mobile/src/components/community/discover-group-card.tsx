@@ -6,7 +6,7 @@ import { communityStyles, communityText } from '@/components/community/styles';
 import { Brand, BrandSizes, Spacing } from '@/constants/theme';
 import { en } from '@/i18n/en';
 import type { DiscoverGroup, GroupRatingRange } from '@/types/community';
-import { formatRating } from '@/utils/rating-format';
+import { formatRatingBand } from '@/utils/rating-format';
 
 type DiscoverGroupCardProps = {
   group: DiscoverGroup;
@@ -74,7 +74,7 @@ export function DiscoverGroupCard({ group }: DiscoverGroupCardProps) {
 
 function ratingRangeLabel({ min, max }: GroupRatingRange): string {
   const t = en.community.discover;
-  return max === null ? t.ratingMin(formatRating(min)) : t.ratingRange(formatRating(min), formatRating(max));
+  return max === null ? t.ratingMin(formatRatingBand(min)) : t.ratingRange(formatRatingBand(min), formatRatingBand(max));
 }
 
 function DetailRow({ icon, text, primary }: { icon: 'location' | 'calendar'; text: string; primary?: boolean }) {

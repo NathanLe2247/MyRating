@@ -1,9 +1,16 @@
-import { formatDelta, formatRating } from '@/utils/rating-format';
+import { formatDelta, formatRating, formatRatingBand } from '@/utils/rating-format';
 
 describe('formatRating', () => {
   it('shows two decimals', () => {
     expect(formatRating(4.1832)).toBe('4.18');
     expect(formatRating(3)).toBe('3.00');
+  });
+});
+
+describe('formatRatingBand', () => {
+  it('shows a band bound as a whole number', () => {
+    expect(formatRatingBand(1500)).toBe('1500');
+    expect(formatRatingBand(1749.6)).toBe('1750');
   });
 });
 
