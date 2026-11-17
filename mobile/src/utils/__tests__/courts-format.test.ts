@@ -8,6 +8,7 @@ const court: NearbyCourt = {
   location: { type: 'Point', coordinates: [-75, 40] },
   is_active: true,
   created_at: '2026-11-13T12:00:00Z',
+  google_place_id: null,
   distance_m: 1931,
 };
 
