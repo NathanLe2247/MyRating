@@ -271,9 +271,12 @@ Supabase's own session.
 ## Conventions
 
 - Import shared types/schemas from `shared/`, never redefine them locally.
-- Anything writing ratings goes through the `ratings` edge function in
-  `backend/supabase/functions/ratings/`, using `agent/skills/ratings-engine`
-  conventions — never compute Glicko-2 client-side as the source of truth.
+- Ratings are written only by the `match-results` edge function: confirming
+  a result calls `confirmMatch` from the ratings module in
+  `backend/supabase/functions/ratings/` (a module folder, not a deployed
+  function), per `agent/skills/ratings-engine`. The app never writes
+  ratings itself and never computes Glicko-2 client-side; it only displays
+  the `rating_change` the function returns.
 - OAuth tokens (WHOOP) and HealthKit data stay device-local or go through
   `backend/supabase/functions/whoop-oauth/`; never persist raw health credentials in
   `shared/` or client-visible tables.
