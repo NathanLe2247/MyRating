@@ -90,7 +90,11 @@ of `after - before`.
   `rating_history`'s primary key `(match_id, player_id)` is the backstop).
 - `ratings_apply` refuses with `rating_stale` if a player's row changed
   since it was read; `confirmMatch` re-reads and recomputes (up to 3 tries),
-  and `match-results` answers 409 `rating_stale` if it still moves.
+  and `match-results` answers 409 `rating_stale` if it still moves. That
+  includes a player's first row: when two confirmations for an unrated
+  player race, the second one's insert finds the row the first inserted
+  (`on conflict do nothing`) and refuses with `rating_stale`, not a unique
+  violation (20261117120000).
 - `ratings_apply` doesn't trust the caller's `before`: it must equal the
   stored `rating` (1500 with no row) or the call fails with
   `invalid_update`, and the stored value is what `rating_history` records.
