@@ -1,9 +1,13 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, screen } from '@testing-library/react-native';
 
 import { NearbyCourtsSection } from '@/components/courts/nearby-courts-section';
 import { SignUpCta } from '@/components/courts/sign-up-cta';
 import { en } from '@/i18n/en';
+import { renderWithQueryClient as render } from '@/test-utils/query-client';
 import type { CourtCardData } from '@/types/play';
+
+// Cards fetch their photo; these courts have no Place ID, so none is asked for.
+jest.mock('@/config/supabase', () => ({ useSupabaseClient: () => ({}) }));
 
 const copy = en.courts;
 

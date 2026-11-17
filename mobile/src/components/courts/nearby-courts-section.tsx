@@ -3,7 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { AuthLink } from '@/components/auth/auth-link';
 import { LoadError } from '@/components/home/load-error';
 import { LocationPrompt } from '@/components/home/location-prompt';
-import { CourtCard } from '@/components/play/court-card';
+import { NearbyCourtCard } from '@/components/courts/nearby-court-card';
 import { PlayEmptyState } from '@/components/play/play-empty-state';
 import { PlaySection } from '@/components/play/play-section';
 import { NearbyCourtsRadiusMeters } from '@/constants/courts';
@@ -82,7 +82,9 @@ function NearbyCourtsBody({ state }: NearbyCourtsSectionProps) {
             </View>
           ) : null}
           {state.courts.length > 0 ? (
-            state.courts.map((court) => <CourtCard key={court.id} court={court} onPress={noop} />)
+            state.courts.map((court) => (
+              <NearbyCourtCard key={court.id} court={court} onPress={noop} />
+            ))
           ) : (
             <PlayEmptyState
               icon="court"

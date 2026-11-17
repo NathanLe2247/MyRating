@@ -481,8 +481,11 @@ export const en = {
       directionsWithDistance: (miles: string) => `Directions${SEPARATOR}${miles} mi`,
       checkIn: 'Check in',
       bookCourt: 'Book court',
+      /** Google's required photo credit under a court photo. */
+      photoCredit: (author: string) => `Photo: ${author}`,
       a11y: {
         directions: (court: string) => `Directions to ${court}`,
+        photo: (court: string) => `Photo of ${court}`,
         checkIn: (court: string) => `Check in at ${court}`,
         bookCourt: (court: string) => `Book a court at ${court}`,
         comingSoon: 'Coming soon',

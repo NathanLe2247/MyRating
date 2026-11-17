@@ -164,6 +164,33 @@ screens are gone; `app/(home)/` holds the tab screens.
 - A court card's Directions button opens maps from `CourtCardData.location`
   itself; it's disabled only when a court has no coordinates.
 
+### Court photos
+
+- Photos come only from Google Places, through the `court-photo` edge
+  function (contract `shared/src/court-photo.ts`, rules in
+  `agent/skills/courts-catalog`). Only the Place ID is stored
+  (`Court.google_place_id` → `CourtCardData.googlePlaceId`).
+- The courts list (public `/courts` and Play) renders `NearbyCourtCard`
+  (`src/components/courts/`), which calls `useCourtPhoto`
+  (`src/hooks/use-court-photo.ts`) and fills `photoUrl` /
+  `photoAttributions` on the plain `CourtCard`. It's a GET
+  (`functions.invoke('court-photo?court_id=<id>', { method: 'GET' })`) that
+  works with the anon key. One React Query entry per court
+  (`['court-photo', courtId]`), `staleTime` `CourtPhotoStaleMs` (the
+  function's 1 h max-age), no retries. Courts without a Place ID make no
+  request. In memory only: never persist a photo URL (Google's terms).
+- No photo while it loads, on any non-200 (404 `not_found`, 503
+  `unavailable`, …), on a body that doesn't parse, or when the image fails
+  to load (`onError`, Google doesn't say how long a `photoUri` lasts): the
+  card is exactly the photo-less card.
+- With a photo, the card shows it above the name with Google's required
+  credit under it (`en.play.courts.photoCredit`: "Photo: <author>", a link
+  to the author's `uri` when there is one). The photo block sits outside
+  the card's pressable area so the credit links stay reachable for screen
+  readers.
+- Component tests that render the courts list mock `@/config/supabase` and
+  render with `renderWithQueryClient` (`src/test-utils/query-client.tsx`).
+
 ## Testing
 
 Jest via `jest-expo` with React Native Testing Library. `npm test` runs it;

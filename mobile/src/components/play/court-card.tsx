@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BrandIcon, type BrandIconName } from '@/components/brand-icon';
@@ -40,6 +41,12 @@ export function CourtCard({ court, onPress, onPrimaryAction }: CourtCardProps) {
       : { bg: Brand.chip, fg: Brand.textMuted };
   const noteColor = indoor ? Brand.warm : court.featured ? Brand.lime : Brand.textMuted;
   const booking = court.primaryAction === 'book';
+  // Google doesn't say how long a photo URL lasts: one that fails to load
+  // leaves the card as if it had no photo. Remembering which URL failed lets
+  // a new URL try again.
+  const [failedUrl, setFailedUrl] = useState<string>();
+  const photoUrl = court.photoUrl;
+  const showPhoto = !!photoUrl && photoUrl !== failedUrl;
 
   // Optional strings are checked with ternaries, not `&&`: an empty string
   // from the backend would otherwise render as a bare text node and crash.
@@ -48,6 +55,48 @@ export function CourtCard({ court, onPress, onPrimaryAction }: CourtCardProps) {
     // would be swallowed by the outer one for screen readers.
     <View style={styles.card}>
       {court.featured ? <View style={styles.accentBar} /> : null}
+
+      {/* Above the name, and outside the pressable area so the credit links
+          stay separately reachable for screen readers. */}
+      {showPhoto ? (
+        <View style={styles.photoBlock}>
+          <View style={styles.photo}>
+            <Image
+              // One Image per URL, so a late error from the old load can't hide the new one.
+              key={photoUrl}
+              source={{ uri: photoUrl }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel={copy.a11y.photo(court.name)}
+              onError={() => setFailedUrl(photoUrl)}
+            />
+            {court.photoCaption ? (
+              <View style={styles.caption}>
+                <Chip
+                  dot
+                  label={court.photoCaption}
+                  color={indoor ? Brand.indoor : Brand.text}
+                  dotColor={accent}
+                  background={Brand.background}
+                />
+              </View>
+            ) : null}
+          </View>
+          {court.photoAttributions && court.photoAttributions.length > 0 ? (
+            <View style={styles.credits}>
+              {court.photoAttributions.map((credit) => (
+                <PhotoCredit
+                  key={`${credit.displayName}|${credit.uri ?? ''}`}
+                  name={credit.displayName}
+                  uri={credit.uri}
+                />
+              ))}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       <Pressable
         onPress={onPress}
@@ -85,23 +134,6 @@ export function CourtCard({ court, onPress, onPrimaryAction }: CourtCardProps) {
             </View>
           ) : null}
         </View>
-
-        {court.photoUrl ? (
-          <View style={styles.photo}>
-            <Image source={court.photoUrl} style={StyleSheet.absoluteFill} contentFit="cover" />
-            {court.photoCaption ? (
-              <View style={styles.caption}>
-                <Chip
-                  dot
-                  label={court.photoCaption}
-                  color={indoor ? Brand.indoor : Brand.text}
-                  dotColor={accent}
-                  background={Brand.background}
-                />
-              </View>
-            ) : null}
-          </View>
-        ) : null}
 
         {court.description ? <Text style={styles.description}>{court.description}</Text> : null}
 
@@ -143,6 +175,22 @@ export function CourtCard({ court, onPress, onPrimaryAction }: CourtCardProps) {
         ) : null}
       </View>
     </View>
+  );
+}
+
+// Google's required credit for a Places photo: "Photo: <author>", a link to
+// the author's page when Google gives one.
+function PhotoCredit({ name, uri }: { name: string; uri: string | null }) {
+  const label = copy.photoCredit(name);
+  if (!uri) return <Text style={styles.credit}>{label}</Text>;
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={label}
+      // A failed open leaves the user on the card, like Directions.
+      onPress={() => Linking.openURL(uri).catch(() => undefined)}>
+      <Text style={[styles.credit, styles.creditLink]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -242,6 +290,23 @@ const styles = StyleSheet.create({
     fontFamily: BrandFonts.bodySemiBold,
     fontSize: 11,
     lineHeight: 20,
+  },
+  photoBlock: {
+    gap: Spacing.one,
+  },
+  credits: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  credit: {
+    fontFamily: BrandFonts.body,
+    fontSize: 11,
+    lineHeight: 14,
+    color: Brand.textMuted,
+  },
+  creditLink: {
+    textDecorationLine: 'underline',
   },
   photo: {
     height: BrandSizes.venuePhoto,

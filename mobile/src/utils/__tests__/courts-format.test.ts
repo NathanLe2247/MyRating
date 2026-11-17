@@ -30,4 +30,9 @@ describe('toCourtCardData', () => {
       tags: [],
     });
   });
+
+  it('passes the Google Place ID through, so the card can fetch its photo', () => {
+    const placed = { ...court, google_place_id: 'ChIJN1t_tDeuEmsRUsoyG83frY4' };
+    expect(toCourtCardData(placed).googlePlaceId).toBe('ChIJN1t_tDeuEmsRUsoyG83frY4');
+  });
 });

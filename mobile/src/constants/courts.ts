@@ -1,3 +1,5 @@
+import { COURT_PHOTO_CACHE_SECONDS } from '@myrating/shared';
+
 /**
  * Arguments for the `public.nearby_courts` RPC (see
  * agent/skills/courts-catalog). The RPC caps them at 100 000 m and 200 rows.
@@ -22,3 +24,17 @@ export const DefaultCourtsArea: GeoPoint = {
   lat: 39.1022,
   lng: -76.9441,
 };
+
+/** Edge function that resolves a court's Google Places photo (backend/supabase/functions/court-photo). */
+export const CourtPhotoFunction = 'court-photo';
+
+/** React Query key prefix of a court's photo (plus the court id). */
+export const CourtPhotoQueryKey = 'court-photo';
+
+/**
+ * How long a fetched court photo is reused before asking the function again:
+ * the function's own `Cache-Control` max-age. Every photo costs two Google
+ * calls against a capped free tier (`PLACES_MONTHLY_CAPS`), so it's long. A
+ * `photoUri` that stops loading sooner falls back to the card without a photo.
+ */
+export const CourtPhotoStaleMs = COURT_PHOTO_CACHE_SECONDS * 1000;
