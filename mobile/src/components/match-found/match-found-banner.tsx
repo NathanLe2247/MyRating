@@ -6,14 +6,14 @@ import { Brand, BrandFonts, BrandSizes, Spacing } from '@/constants/theme';
 import { en } from '@/i18n/en';
 
 type MatchFoundBannerProps = {
-  /** Rating gap shown as the parity delta; null while either player is unrated. */
-  ratingGap: string | null;
+  /** Pairing line under the title (`pairingSubtitle`); hidden when null. */
+  subtitle: string | null;
   verified?: boolean;
   courtReady?: boolean;
 };
 
-// "Match found!" hero: lime icon, parity line, and verified / court-ready tags.
-export function MatchFoundBanner({ ratingGap, verified, courtReady }: MatchFoundBannerProps) {
+// "Match found!" hero: lime icon, pairing line, and verified / court-ready tags.
+export function MatchFoundBanner({ subtitle, verified, courtReady }: MatchFoundBannerProps) {
   const t = en.matchFound;
   return (
     <View style={styles.banner}>
@@ -30,9 +30,7 @@ export function MatchFoundBanner({ ratingGap, verified, courtReady }: MatchFound
               {t.celebrate}
             </Text>
           </View>
-          <Text style={matchText.caption}>
-            {ratingGap === null ? t.parityCalibrating : t.parity(ratingGap)}
-          </Text>
+          {subtitle !== null && <Text style={matchText.caption}>{subtitle}</Text>}
         </View>
       </View>
       {(verified || courtReady) && (
