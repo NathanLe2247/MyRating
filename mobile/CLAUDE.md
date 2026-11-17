@@ -177,8 +177,15 @@ screens are gone; `app/(home)/` holds the tab screens.
   (`functions.invoke('court-photo?court_id=<id>', { method: 'GET' })`) that
   works with the anon key. One React Query entry per court
   (`['court-photo', courtId]`), `staleTime` `CourtPhotoStaleMs` (the
-  function's 1 h max-age), no retries. Courts without a Place ID make no
-  request. In memory only: never persist a photo URL (Google's terms).
+  function's 1 h max-age), no retries, `refetchOnMount` and
+  `refetchOnReconnect` off. `fetchCourtPhoto` never throws: every failure
+  (any non-200, network, bad body) resolves to null and is cached like a
+  404, because a 502 can come after Place Details already spent a capped
+  Google call. Courts without a Place ID make no request.
+- In memory only: never persist a photo URL (Google's terms). That covers
+  the image bytes too: the card's `<Image>` sets `cachePolicy="memory"`
+  (expo-image defaults to `'disk'`, which survives restarts). Don't drop
+  it in a refactor; a test checks it.
 - Only the nearest `CourtPhotoMaxCards` (6, `src/constants/courts.ts`)
   cards get a photo: the list is nearest first and `NearbyCourtsSection`
   passes `showPhoto={index < CourtPhotoMaxCards}`. Cards past it make no
@@ -192,10 +199,15 @@ screens are gone; `app/(home)/` holds the tab screens.
   to load (`onError`, Google doesn't say how long a `photoUri` lasts): the
   card is exactly the photo-less card.
 - With a photo, the card shows it above the name with Google's required
-  credit under it (`en.play.courts.photoCredit`: "Photo: <author>", a link
-  to the author's `uri` when there is one). The photo block sits outside
-  the card's pressable area so the credit links stay reachable for screen
-  readers.
+  credits under it: "Photo: <author>" (`en.play.courts.photoCredit`, a
+  link to the author's `uri` when there is one) and the "Google Maps"
+  source label (`photoSource`), which Places policy requires for Places
+  content shown outside a Google map. The photo block sits outside the
+  card's pressable area so the credit links stay reachable for screen
+  readers. Each link has an `accessibilityHint` (opens in the browser) and
+  `CREDIT_HIT_SLOP` making its touch target 44pt (`BrandSizes.minTouch`)
+  tall; the photo block's `zIndex` keeps that slop above the card's
+  pressable area.
 - Component tests that render the courts list mock `@/config/supabase` and
   render with `renderWithQueryClient` (`src/test-utils/query-client.tsx`).
 

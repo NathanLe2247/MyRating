@@ -60,14 +60,37 @@ describe('NearbyCourtCard', () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
     render(<NearbyCourtCard court={court} showPhoto />);
 
-    expect(await screen.findByLabelText(copy.a11y.photo(court.name))).toHaveProp('source', {
-      uri: photoUri,
-    });
+    const shown = await screen.findByLabelText(copy.a11y.photo(court.name));
+    expect(shown).toHaveProp('source', { uri: photoUri });
     expect(invoke).toHaveBeenCalledWith(`court-photo?court_id=${court.id}`, { method: 'GET' });
-    fireEvent.press(screen.getByRole('link', { name: credit }));
+    // Google requires a "Google Maps" source label next to Places content.
+    expect(screen.getByText(copy.photoSource)).toBeOnTheScreen();
+    const link = screen.getByRole('link', { name: credit });
+    expect(link).toHaveProp('accessibilityHint', copy.a11y.photoCreditHint);
+    fireEvent.press(link);
     expect(openURL).toHaveBeenCalledWith('https://maps.google.com/maps/contrib/1');
     expect(screen.getByRole('button', { name: court.name })).toBeOnTheScreen();
     openURL.mockRestore();
+  });
+
+  // Google's terms forbid storing Places photos; expo-image's default
+  // ('disk') would keep them on the device across restarts.
+  it('keeps the photo in the memory image cache only', async () => {
+    invoke.mockResolvedValue({ data: photo(), error: null });
+    render(<NearbyCourtCard court={court} showPhoto />);
+
+    expect(await screen.findByLabelText(copy.a11y.photo(court.name))).toHaveProp(
+      'cachePolicy',
+      'memory',
+    );
+  });
+
+  it('gives a credit link a touch target at least 44pt tall', async () => {
+    invoke.mockResolvedValue({ data: photo(), error: null });
+    render(<NearbyCourtCard court={court} showPhoto />);
+
+    const { hitSlop } = (await screen.findByRole('link', { name: credit })).props;
+    expect(14 + hitSlop.top + hitSlop.bottom).toBeGreaterThanOrEqual(44);
   });
 
   it('shows an unlinked credit when the author has no page', async () => {
@@ -87,7 +110,7 @@ describe('NearbyCourtCard', () => {
     expect(screen.queryByText(credit)).toBeNull();
   });
 
-  it.each(['not_found', 'unavailable', 'upstream_error'])(
+  it.each(['not_found', 'unavailable', 'upstream_error', 'internal_error'])(
     'renders the plain card on a %s answer',
     async (code) => {
       invoke.mockResolvedValue({ data: null, error: httpError(code) });
@@ -97,8 +120,32 @@ describe('NearbyCourtCard', () => {
       expect(screen.getByRole('button', { name: court.name })).toBeOnTheScreen();
       expect(image()).toBeNull();
       expect(screen.queryByText(credit)).toBeNull();
+      expect(screen.queryByText(copy.photoSource)).toBeNull();
     },
   );
+
+  it('renders the plain card when the request fails outright', async () => {
+    invoke.mockRejectedValue(new Error('offline'));
+    render(<NearbyCourtCard court={court} showPhoto />);
+    await settle();
+
+    expect(screen.getByRole('button', { name: court.name })).toBeOnTheScreen();
+    expect(image()).toBeNull();
+  });
+
+  // A 502 can come after Place Details already spent a capped Google call,
+  // so a failure is kept like a 404 instead of being asked again.
+  it('does not ask again when a card remounts after a failure', async () => {
+    invoke.mockResolvedValue({ data: null, error: httpError('upstream_error') });
+    const { rerender } = render(<NearbyCourtCard key="first" court={court} showPhoto />);
+    await settle();
+
+    rerender(<NearbyCourtCard key="second" court={court} showPhoto />);
+    await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(image()).toBeNull();
+  });
 
   it('renders the plain card when the answer does not parse', async () => {
     invoke.mockResolvedValue({ data: { photoUri: 'not a url', attributions: [] }, error: null });

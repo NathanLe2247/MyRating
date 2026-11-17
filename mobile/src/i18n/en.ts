@@ -483,9 +483,12 @@ export const en = {
       bookCourt: 'Book court',
       /** Google's required photo credit under a court photo. */
       photoCredit: (author: string) => `Photo: ${author}`,
+      /** Google's required source label next to Places content shown off a Google map. */
+      photoSource: 'Google Maps',
       a11y: {
         directions: (court: string) => `Directions to ${court}`,
         photo: (court: string) => `Photo of ${court}`,
+        photoCreditHint: "Opens the photographer's page in your browser",
         checkIn: (court: string) => `Check in at ${court}`,
         bookCourt: (court: string) => `Book a court at ${court}`,
         comingSoon: 'Coming soon',

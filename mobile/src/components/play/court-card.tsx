@@ -65,6 +65,9 @@ export function CourtCard({ court, onPress, onPrimaryAction }: CourtCardProps) {
               // One Image per URL, so a late error from the old load can't hide the new one.
               key={photoUrl}
               source={{ uri: photoUrl }}
+              // Google's terms forbid storing Places photos: keep them in
+              // memory only (expo-image's default, 'disk', survives restarts).
+              cachePolicy="memory"
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               accessible
@@ -84,17 +87,18 @@ export function CourtCard({ court, onPress, onPrimaryAction }: CourtCardProps) {
               </View>
             ) : null}
           </View>
-          {court.photoAttributions && court.photoAttributions.length > 0 ? (
-            <View style={styles.credits}>
-              {court.photoAttributions.map((credit) => (
-                <PhotoCredit
-                  key={`${credit.displayName}|${credit.uri ?? ''}`}
-                  name={credit.displayName}
-                  uri={credit.uri}
-                />
-              ))}
-            </View>
-          ) : null}
+          {/* Google requires the author credits and a "Google Maps" source
+              label wherever Places content is shown outside a Google map. */}
+          <View style={styles.credits}>
+            {(court.photoAttributions ?? []).map((credit) => (
+              <PhotoCredit
+                key={`${credit.displayName}|${credit.uri ?? ''}`}
+                name={credit.displayName}
+                uri={credit.uri}
+              />
+            ))}
+            <Text style={styles.credit}>{copy.photoSource}</Text>
+          </View>
         </View>
       ) : null}
 
@@ -178,6 +182,21 @@ export function CourtCard({ court, onPress, onPrimaryAction }: CourtCardProps) {
   );
 }
 
+/** Line height of the photo credit text. */
+const CREDIT_LINE_HEIGHT = 14;
+
+/**
+ * Grows a credit link's touch target to `BrandSizes.minTouch` (44pt) tall;
+ * the text itself is only `CREDIT_LINE_HEIGHT`. The photo block is drawn
+ * above the card's pressable area (`zIndex`) so the slop wins there.
+ */
+const CREDIT_HIT_SLOP = {
+  top: (BrandSizes.minTouch - CREDIT_LINE_HEIGHT) / 2,
+  bottom: (BrandSizes.minTouch - CREDIT_LINE_HEIGHT) / 2,
+  left: Spacing.one,
+  right: Spacing.one,
+};
+
 // Google's required credit for a Places photo: "Photo: <author>", a link to
 // the author's page when Google gives one.
 function PhotoCredit({ name, uri }: { name: string; uri: string | null }) {
@@ -187,6 +206,8 @@ function PhotoCredit({ name, uri }: { name: string; uri: string | null }) {
     <Pressable
       accessibilityRole="link"
       accessibilityLabel={label}
+      accessibilityHint={copy.a11y.photoCreditHint}
+      hitSlop={CREDIT_HIT_SLOP}
       // A failed open leaves the user on the card, like Directions.
       onPress={() => Linking.openURL(uri).catch(() => undefined)}>
       <Text style={[styles.credit, styles.creditLink]}>{label}</Text>
@@ -293,6 +314,9 @@ const styles = StyleSheet.create({
   },
   photoBlock: {
     gap: Spacing.one,
+    // Above the pressable content below, so the credit links' hit slop
+    // reaching over it gets the touch.
+    zIndex: 1,
   },
   credits: {
     flexDirection: 'row',
@@ -302,7 +326,7 @@ const styles = StyleSheet.create({
   credit: {
     fontFamily: BrandFonts.body,
     fontSize: 11,
-    lineHeight: 14,
+    lineHeight: CREDIT_LINE_HEIGHT,
     color: Brand.textMuted,
   },
   creditLink: {

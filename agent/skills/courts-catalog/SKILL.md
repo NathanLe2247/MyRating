@@ -82,7 +82,18 @@ returns geography as WKB hex. Use one of these instead:
   a pricier SKU. Any other Places use (e.g. a Text Search backfill) runs
   by hand with a local key and is not covered by this counter.
 - Always show the attributions with the photo ("Photo: <displayName>",
-  linking to `uri` when it's not null). Google's terms require it.
+  linking to `uri` when it's not null), plus a "Google Maps" source label:
+  Places (New) policy requires it wherever Places content appears outside
+  a Google map. Google's terms require both.
+- "Never persist" includes the image bytes: render the photo with an
+  in-memory image cache only (mobile's expo-image `<Image>` uses
+  `cachePolicy="memory"`; its default `'disk'` survives restarts). On the
+  web, don't put the photo through a service worker or any persistent
+  cache.
+- Clients treat every failure as "no photo" and keep that result as long
+  as a photo (mobile: `useCourtPhoto`, no retries, no refetch on remount
+  or reconnect), since a failed request can already have spent a capped
+  Google call.
 - Finding Place IDs: Places API (New) Text Search with the court name and
   its location as a location bias. Write them in a data migration (catalog
   courts reach the hosted project through migrations), and leave unconfident
