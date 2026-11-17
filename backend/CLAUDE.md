@@ -39,6 +39,10 @@ issuing its own sessions.
   `tests/ratings_hardening.test.sql` for `20261115120000_ratings_hardening.sql`:
   `match_games` primary key `(match_id, game_number)`, `ratings_apply`'s
   server-side `before`, its `player_id` lock order, and `match_changed`).
+  `20261117120000_ratings_first_insert_race.sql` makes two concurrent first
+  confirms for an unrated player `rating_stale` instead of a 23505 (500);
+  that race needs two sessions, so it is checked by
+  `scripts/agent/repro/100-concurrent-first-confirm.sh`, not pgTAP.
   - A separate function from `matchmaking` because it's a different screen
     and lifecycle (it addresses one match by id, including finished ones,
     while matchmaking is "my current queue/match") and it holds the only
