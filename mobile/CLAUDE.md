@@ -211,6 +211,26 @@ screens are gone; `app/(home)/` holds the tab screens.
 - Component tests that render the courts list mock `@/config/supabase` and
   render with `renderWithQueryClient` (`src/test-utils/query-client.tsx`).
 
+### Dev-only demo data (Community, Health)
+
+- `DevPreviews.demoData()` (`src/constants/dev-previews.ts`) is
+  `__DEV__ && process.env.EXPO_PUBLIC_DEMO_DATA === '1'`: false in every
+  production build, off by default in dev. Set `EXPO_PUBLIC_DEMO_DATA=1` in
+  `.env.local` only for demo recordings (documented in `.env.example`).
+- All sample data lives in `src/constants/demo-data.ts` (fictional people,
+  group names borrowed from public seeded courts). Only hooks read it, and
+  only behind the flag: `useCommunityGroups` / `useGroupChat` /
+  `useDiscoverGroups` (`src/hooks/use-community.ts`; Discover filters it
+  with `filterDiscoverGroups`, `src/utils/community-search.ts`) and
+  `useHealthConnection` (`src/hooks/use-health-connection.ts`), where
+  tapping Apple Health "connects" after `DemoHealthConnectMs`, shows the
+  sample summary labeled as sample data (`SampleDataNote`), and offers
+  Disconnect. In memory only: no HealthKit APIs, permissions or storage.
+- With the flag off, the hooks return no groups/chat/results and Connect
+  does nothing, exactly as before. Never return placeholder data for real
+  users outside this flag. Tests toggle it with `withDemoDataFlag` from
+  `src/test-utils/demo-flag.ts`.
+
 ## Testing
 
 Jest via `jest-expo` with React Native Testing Library. `npm test` runs it;

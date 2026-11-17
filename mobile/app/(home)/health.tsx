@@ -3,19 +3,22 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HealthDashboard } from '@/components/health/health-dashboard';
-import type { HealthProvider } from '@/constants/health';
 import { BottomTabInset, Brand, MaxContentWidth, Spacing } from '@/constants/theme';
-
-// TODO: wire up HealthKit (iOS) and WHOOP OAuth (whoop-oauth edge function).
-// Until then there's no data source, so the tab always shows "not connected".
-const connectProvider = (_provider: HealthProvider) => {};
+import { useHealthConnection } from '@/hooks/use-health-connection';
 
 export default function HealthScreen() {
+  const health = useHealthConnection();
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <HealthDashboard summary={null} onConnect={connectProvider} />
+        <HealthDashboard
+          summary={health.summary}
+          onConnect={health.connect}
+          connecting={health.connecting}
+          sample={health.sample}
+          onDisconnect={health.disconnect}
+        />
       </ScrollView>
     </SafeAreaView>
   );

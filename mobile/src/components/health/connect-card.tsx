@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BrandIcon, type BrandIconName } from '@/components/brand-icon';
 import { HealthProviders, type HealthProvider } from '@/constants/health';
@@ -14,10 +14,12 @@ const PROVIDER_ICONS = {
 
 type ConnectCardProps = {
   onConnect: (provider: HealthProvider) => void;
+  /** A provider whose connection is in progress; every tile is disabled meanwhile. */
+  connecting?: HealthProvider | null;
 };
 
 // "Not connected" state: a tile per wearable source to link.
-export function ConnectCard({ onConnect }: ConnectCardProps) {
+export function ConnectCard({ onConnect, connecting = null }: ConnectCardProps) {
   const copy = en.health.connect;
   return (
     <View style={[healthStyles.card, styles.card]}>
@@ -35,18 +37,28 @@ export function ConnectCard({ onConnect }: ConnectCardProps) {
       <View style={styles.grid}>
         {HealthProviders.map((provider) => {
           const name = en.health.providers[provider];
+          const busy = connecting === provider;
           return (
             <Pressable
               key={provider}
               onPress={() => onConnect(provider)}
+              disabled={connecting !== null}
               accessibilityRole="button"
-              accessibilityLabel={copy.label(name)}
+              accessibilityLabel={busy ? copy.connectingLabel(name) : copy.label(name)}
+              accessibilityState={{ disabled: connecting !== null, busy }}
               style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
               <View style={styles.iconCircle}>
                 <BrandIcon name={PROVIDER_ICONS[provider]} color={Brand.text} size={18} />
               </View>
               <Text style={styles.tileName}>{name}</Text>
-              <Text style={[healthStyles.caption, styles.tileAction]}>{copy.action}</Text>
+              {busy ? (
+                <View style={healthStyles.rowTight}>
+                  <ActivityIndicator size="small" color={Brand.lime} />
+                  <Text style={[healthStyles.caption, styles.tileAction]}>{copy.connecting}</Text>
+                </View>
+              ) : (
+                <Text style={[healthStyles.caption, styles.tileAction]}>{copy.action}</Text>
+              )}
             </Pressable>
           );
         })}
