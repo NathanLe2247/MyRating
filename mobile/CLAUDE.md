@@ -259,6 +259,13 @@ Jest via `jest-expo` with React Native Testing Library. `npm test` runs it;
   unobserved query, and that timer keeps the Jest worker alive after the
   suite ends ("A worker process has failed to exit gracefully", #98).
   `scripts/agent/repro/98-jest-worker-leak.sh` fails if that warning comes back.
+- Jest runs at most 2 workers (`maxWorkers` in `package.json`). Jest's
+  default is one per core but one, and when several agents' gates run the
+  suite at once that many workers make the machine swap. The first render
+  in a test file then takes 5-20 s and tests time out or miss their
+  `findBy`/`waitFor` window (#119). Two workers also run the suite faster
+  on their own. `scripts/agent/repro/119-flaky-court-card-test.sh` fails if
+  a test times out with eight runs at once.
 
 ## Auth
 
