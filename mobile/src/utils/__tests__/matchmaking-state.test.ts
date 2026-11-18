@@ -1,4 +1,4 @@
-import { MATCHMAKING_ERRORS, MAX_GAMES, POINTS_TO_WIN, WIN_BY } from '@myrating/shared';
+import { MATCHMAKING_ERRORS, type MatchmakingState, MAX_GAMES, POINTS_TO_WIN, WIN_BY } from '@myrating/shared';
 
 import { MatchmakingOpenMatchPollMs, MatchmakingPollMs } from '@/constants/matchmaking';
 import { en } from '@/i18n/en';
@@ -16,12 +16,18 @@ import {
   matchmakingPhase,
   mergeSnapshot,
   opponentName,
+  pairingRatings,
   pollIntervalMs,
   QueueRadiusMiles,
   toMatchFound,
 } from '@/utils/matchmaking-state';
 
-const player = { name: 'Sam', rating: null };
+const player = { name: 'Sam' };
+
+/** `state` with the opponent's live rating changed (e.g. after the result). */
+function withOpponentRating(state: MatchmakingState, rating: number | null): MatchmakingState {
+  return { ...state, opponent: { ...state.opponent!, rating } };
+}
 
 describe('matchmakingPhase / pollIntervalMs', () => {
   it.each([
@@ -71,6 +77,39 @@ describe('mergeSnapshot', () => {
   });
 });
 
+describe('pairingRatings', () => {
+  it('snapshots both ratings the first time the pairing is seen and keeps them for that match', () => {
+    const proposed = mergeSnapshot(matchState('proposed'), undefined, undefined, 1480);
+    expect(proposed.pairingRatings).toEqual({ matchId: MatchId, player: 1480, opponent: 1500 });
+
+    // The dashboard and the opponent's rating move once the result is in;
+    // the pairing-time pair doesn't.
+    const reported = mergeSnapshot(withOpponentRating(matchState('awaiting_confirmation'), 1488), proposed, undefined, 1512);
+    expect(reported.pairingRatings).toEqual({ matchId: MatchId, player: 1480, opponent: 1500 });
+  });
+
+  it('keeps a calibrating player as null rather than filling it later', () => {
+    const proposed = mergeSnapshot(matchState('proposed'), undefined, undefined, null);
+    expect(mergeSnapshot(matchState('accepted'), proposed, undefined, 1500).pairingRatings?.player).toBeNull();
+  });
+
+  it('fills a rating that had not loaded yet, but only before a result is reported', () => {
+    const unknown = pairingRatings(matchState('proposed'), undefined, undefined);
+    expect(unknown).toEqual({ matchId: MatchId, player: undefined, opponent: 1500 });
+
+    expect(pairingRatings(matchState('accepted'), unknown, 1480)?.player).toBe(1480);
+    expect(pairingRatings(matchState('awaiting_confirmation'), unknown, 1512)?.player).toBeUndefined();
+  });
+
+  it('starts over for a new match and is dropped without one', () => {
+    const old = { matchId: 'another-match', player: 1400, opponent: 1600 };
+    expect(pairingRatings(matchState('proposed'), old, 1480)).toEqual({ matchId: MatchId, player: 1480, opponent: 1500 });
+    expect(pairingRatings(searchingState, old, 1480)).toBeUndefined();
+    const open = mergeSnapshot(matchState('accepted'), undefined, undefined, 1480);
+    expect(mergeSnapshot(idleState, open).pairingRatings).toBeUndefined();
+  });
+});
+
 describe('opponentName', () => {
   it('names the bot, then first name, then username, then a fallback', () => {
     const base = { id: MatchId, rating: null, is_bot: false };
@@ -96,7 +135,7 @@ describe('toMatchFound', () => {
       id: MatchId,
       format: 'singles',
       official: false,
-      player,
+      player: { ...player, rating: null },
       opponent: { name: en.matchmaking.botName, rating: 1500 },
       searchRadiusMiles: QueueRadiusMiles,
       elapsedSeconds: 6,
@@ -107,6 +146,18 @@ describe('toMatchFound', () => {
       rules: { games: MAX_GAMES, pointsTo: POINTS_TO_WIN, winBy: WIN_BY },
     });
     expect(match.venue!.distanceMiles).toBeCloseTo(0.69, 1);
+  });
+
+  it('shows both players at their pairing-time ratings, not the live ones', () => {
+    const proposed = mergeSnapshot(matchState('proposed'), undefined, undefined, 1480);
+    const reported = mergeSnapshot(withOpponentRating(matchState('awaiting_confirmation'), 1488), proposed, undefined, 1512);
+    const match = toMatchFound(reported, player)!;
+    expect(match.player.rating).toBe(1480);
+    expect(match.opponent.rating).toBe(1500);
+  });
+
+  it('shows an unloaded player rating as unrated', () => {
+    expect(toMatchFound(mergeSnapshot(matchState('accepted'), undefined), player)!.player.rating).toBeNull();
   });
 
   it('leaves out what the device doesn’t know', () => {

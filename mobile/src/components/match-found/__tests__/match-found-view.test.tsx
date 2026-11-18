@@ -18,13 +18,13 @@ function renderView(match: MatchFound | null, props: Partial<ComponentProps<type
   return handlers;
 }
 
-// Every optional field filled in.
+// Every optional field filled in. Ratings on the Glicko scale (1500 start).
 const SampleMatchFound: MatchFound = {
   id: 'sample',
   format: 'singles',
   official: true,
-  player: { name: 'Alex Vance', rating: 4.18, location: 'Austin, TX' },
-  opponent: { name: 'J. Alvarez', rating: 4.2, location: 'Austin, TX', winStreak: 7 },
+  player: { name: 'Alex Vance', rating: 1512.4, location: 'Austin, TX' },
+  opponent: { name: 'J. Alvarez', rating: 1534.75, location: 'Austin, TX', winStreak: 7 },
   searchRadiusMiles: 5,
   elapsedSeconds: 42,
   ratingsVerified: true,
@@ -42,7 +42,7 @@ const minimalMatch: MatchFound = {
   format: 'doubles',
   official: false,
   player: { name: 'Sam Lee', rating: null },
-  opponent: { name: 'Rita Cho', rating: 3.9 },
+  opponent: { name: 'Rita Cho', rating: 1460 },
   searchRadiusMiles: 10,
   elapsedSeconds: 125,
 };
@@ -68,11 +68,11 @@ describe('MatchFoundView', () => {
       expect(screen.getByText(t.title)).toBeOnTheScreen();
       expect(screen.getByText(t.searching(5))).toBeOnTheScreen();
       expect(screen.getByText(t.elapsed('00:42'))).toBeOnTheScreen();
-      expect(screen.getByText(t.closeMatch('0.02'))).toBeOnTheScreen();
+      expect(screen.getByText(t.closeMatch('22.35'))).toBeOnTheScreen();
       expect(screen.getByText('Alex Vance')).toBeOnTheScreen();
       expect(screen.getByText('J. Alvarez')).toBeOnTheScreen();
-      expect(screen.getByText('4.18')).toBeOnTheScreen();
-      expect(screen.getByText('4.20')).toBeOnTheScreen();
+      expect(screen.getByText('1512.40')).toBeOnTheScreen();
+      expect(screen.getByText('1534.75')).toBeOnTheScreen();
       expect(screen.getByText(t.streak(7))).toBeOnTheScreen();
       expect(screen.getByText(t.percent(51))).toBeOnTheScreen();
       expect(screen.getByText(t.percent(49))).toBeOnTheScreen();
@@ -197,7 +197,21 @@ describe('MatchFoundView', () => {
     it('keeps the pairing line while the match is on', () => {
       renderView(SampleMatchFound, { phase: 'reported' });
 
-      expect(screen.getByText(t.closeMatch('0.02'))).toBeOnTheScreen();
+      expect(screen.getByText(t.closeMatch('22.35'))).toBeOnTheScreen();
+    });
+
+    it('calls a wide pairing a rating gap, not a close match', () => {
+      renderView({ ...SampleMatchFound, opponent: { ...SampleMatchFound.opponent, rating: 1675.07 } });
+
+      expect(screen.getByText(t.ratingGap('162.67'))).toBeOnTheScreen();
+      expect(screen.queryByText(t.closeMatch('162.67'))).toBeNull();
+    });
+
+    it('labels both ratings as myRating’s own, never as DUPR (#116)', () => {
+      renderView(SampleMatchFound);
+
+      expect(screen.getAllByText(t.ratingUnit)).toHaveLength(2);
+      expect(screen.queryByText(/DUPR/)).toBeNull();
     });
 
     it('drops the court line of a settled match without a court', () => {

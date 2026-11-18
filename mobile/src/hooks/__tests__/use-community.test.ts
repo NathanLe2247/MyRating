@@ -56,8 +56,20 @@ describe('demo data on', () => {
     expect(groups).toBe(DemoCommunityGroups);
     const names = groups.map((group) => group.name);
     expect(names).toEqual(
-      expect.arrayContaining(['Kitchen Kings — 4.5+ Invite Only', 'Silver Dinks Open Play (50+)']),
+      expect.arrayContaining(['Kitchen Kings — 1800+ Invite Only', 'Silver Dinks Open Play (50+)']),
     );
+  });
+
+  it('uses the 1500-based Glicko scale for every sample rating (#116)', () => {
+    const ratings = Object.values(DemoGroupChats)
+      .flat()
+      .flatMap((item) => (item.kind === 'challenge' ? [item.challenger.rating] : item.kind === 'text' ? [item.author.rating] : []))
+      .filter((rating): rating is number => rating !== null);
+    expect(ratings.length).toBeGreaterThan(0);
+    for (const rating of ratings) expect(rating).toBeGreaterThan(1000);
+    for (const { ratingRange } of DemoDiscoverGroups) {
+      if (ratingRange) expect(ratingRange.min).toBeGreaterThan(1000);
+    }
   });
 
   it('returns each sample group’s chat, with an open challenge', () => {
@@ -94,7 +106,7 @@ describe('demo data on', () => {
       act(() => jest.advanceTimersByTime(DiscoverSearchDebounceMs));
 
       expect(result.current.loading).toBe(false);
-      expect(result.current.groups.map((group) => group.name)).toEqual(['Kitchen Kings — 4.5+ Invite Only']);
+      expect(result.current.groups.map((group) => group.name)).toEqual(['Kitchen Kings — 1800+ Invite Only']);
     });
 
     it('settles to no results for a query nothing matches', () => {

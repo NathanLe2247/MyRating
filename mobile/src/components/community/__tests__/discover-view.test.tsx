@@ -16,7 +16,7 @@ const groups: DiscoverGroup[] = [
     memberCount: 48,
     onlineCount: 5,
     verified: true,
-    ratingRange: { min: 4.25, max: 5 },
+    ratingRange: { min: 1550, max: 1700 },
     courts: 'Test Rec Center',
     schedule: 'Sunday ladder nights',
     tags: ['High intensity'],
@@ -26,7 +26,7 @@ const groups: DiscoverGroup[] = [
     name: 'Open Elite',
     memberCount: 1,
     onlineCount: 0,
-    ratingRange: { min: 4.75, max: null },
+    ratingRange: { min: 1750, max: null },
   },
 ];
 
@@ -122,7 +122,7 @@ describe('DiscoverView', () => {
       expect(screen.getByLabelText(copy.a11y.verified)).toBeOnTheScreen();
       expect(screen.getByText(copy.members(48))).toBeOnTheScreen();
       expect(screen.getByText(copy.online(5))).toBeOnTheScreen();
-      expect(screen.getByText(t.ratingRange('4.25', '5.00'))).toBeOnTheScreen();
+      expect(screen.getByText('RATING 1550–1700')).toBeOnTheScreen();
       expect(screen.getByText('Test Rec Center')).toBeOnTheScreen();
       expect(screen.getByText('Sunday ladder nights')).toBeOnTheScreen();
       expect(screen.getByText('High intensity')).toBeOnTheScreen();
@@ -132,7 +132,7 @@ describe('DiscoverView', () => {
       renderView({ results: { groups: [groups[1]], loading: false } });
 
       expect(screen.getByText(copy.members(1))).toBeOnTheScreen();
-      expect(screen.getByText(t.ratingMin('4.75'))).toBeOnTheScreen();
+      expect(screen.getByText('RATING 1750+')).toBeOnTheScreen();
       expect(screen.queryByText(copy.online(0))).toBeNull();
     });
   });

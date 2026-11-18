@@ -8,6 +8,7 @@ import type { ReactNode } from 'react';
 
 import { demoLocation } from '@/config/demo-location';
 import { useSupabaseClient } from '@/config/supabase';
+import { PlayerRatingQueryKey } from '@/constants/match';
 import { MatchmakingOpenMatchPollMs, MatchmakingPollMs, QueueRadiusMeters } from '@/constants/matchmaking';
 import { OnboardingCompletedKey, ProfileCompletedKey } from '@/constants/profile';
 import { useMatchmaking } from '@/hooks/use-matchmaking';
@@ -181,6 +182,22 @@ describe('useMatchmaking', () => {
     await tick(1_000);
     await waitFor(() => expect(result.current.phase).toBe(phase));
     expect(actions()).toEqual(['poll', 'poll']);
+  });
+
+  it('snapshots the dashboard rating when the pairing shows up, and keeps it after the rating moves', async () => {
+    serve({ poll: [matchState('proposed'), matchState('accepted'), matchState('awaiting_confirmation')] });
+    const { result } = render();
+    client.setQueryData([PlayerRatingQueryKey, 'user_test'], 1480);
+    await settled(result);
+    expect(result.current.snapshot?.pairingRatings).toEqual({ matchId: MatchId, player: 1480, opponent: 1500 });
+
+    // The dashboard refreshes before matchmaking sees the match settle.
+    client.setQueryData([PlayerRatingQueryKey, 'user_test'], 1496);
+    await tick();
+    await waitFor(() => expect(result.current.phase).toBe('accepted'));
+    await tick(MatchmakingOpenMatchPollMs);
+    await waitFor(() => expect(result.current.phase).toBe('awaiting_confirmation'));
+    expect(result.current.snapshot?.pairingRatings?.player).toBe(1480);
   });
 
   it('keeps polling after accepting until the opponent answers', async () => {

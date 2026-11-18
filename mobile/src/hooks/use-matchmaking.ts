@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 
 import { demoLocation } from '@/config/demo-location';
 import type { GeoPoint } from '@/constants/courts';
+import { PlayerRatingQueryKey } from '@/constants/match';
 import { MatchmakingQueryKey, QueueRadiusMeters } from '@/constants/matchmaking';
 import {
   MatchmakingApiError,
@@ -70,6 +71,12 @@ export function useMatchmakingController(): Matchmaking {
   const queryKey = useMemo(() => [MatchmakingQueryKey, userId] as const, [userId]);
   const [actionError, setActionError] = useState<MatchmakingErrorCode | null>(null);
   const [busy, setBusy] = useState(false);
+  // The player's rating as the dashboard last loaded it (undefined if it
+  // hasn't), snapshotted into the state when a pairing first shows up.
+  const playerRating = useCallback(
+    () => queryClient.getQueryData<number | null>([PlayerRatingQueryKey, userId]),
+    [queryClient, userId],
+  );
 
   const query = useQuery({
     queryKey,
@@ -77,7 +84,7 @@ export function useMatchmakingController(): Matchmaking {
     // profile_required.
     enabled: !!isSignedIn && !!userId && onboardingCompleted,
     queryFn: async () =>
-      mergeSnapshot(await api.poll(), queryClient.getQueryData<MatchmakingSnapshot>(queryKey)),
+      mergeSnapshot(await api.poll(), queryClient.getQueryData<MatchmakingSnapshot>(queryKey), undefined, playerRating()),
     refetchInterval: (q) => pollIntervalMs(q.state.data),
     staleTime: 0,
     // The poll interval is the retry while waiting; otherwise the screen
@@ -97,7 +104,9 @@ export function useMatchmakingController(): Matchmaking {
       await queryClient.cancelQueries({ queryKey });
       try {
         const { state, origin } = await action();
-        queryClient.setQueryData<MatchmakingSnapshot>(queryKey, (prev) => mergeSnapshot(state, prev, origin));
+        queryClient.setQueryData<MatchmakingSnapshot>(queryKey, (prev) =>
+          mergeSnapshot(state, prev, origin, playerRating()),
+        );
         return true;
       } catch (err) {
         const code = matchmakingErrorCode(err);
@@ -108,7 +117,7 @@ export function useMatchmakingController(): Matchmaking {
         setBusy(false);
       }
     },
-    [queryClient, queryKey, refresh],
+    [queryClient, queryKey, refresh, playerRating],
   );
 
   const join = useCallback(

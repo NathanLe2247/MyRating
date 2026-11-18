@@ -21,7 +21,7 @@ export const communityText = StyleSheet.create({
     textTransform: 'uppercase',
     color: Brand.textMuted,
   },
-  /** Condensed figure or tag, e.g. "248", "DUPR 4.22". */
+  /** Condensed figure or tag, e.g. "248", "RATING 1621.48". */
   stat: {
     fontFamily: BrandFonts.display,
     fontSize: 13,

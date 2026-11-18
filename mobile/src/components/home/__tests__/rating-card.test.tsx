@@ -7,10 +7,17 @@ const copy = en.home.rating;
 
 describe('RatingCard', () => {
   it('shows the rating', () => {
-    render(<RatingCard rating={4.18} />);
+    render(<RatingCard rating={1512.4} />);
 
-    expect(screen.getByText('4.18')).toBeOnTheScreen();
+    expect(screen.getByText('1512.40')).toBeOnTheScreen();
     expect(screen.queryByText(copy.calibrating)).toBeNull();
+  });
+
+  it('labels the rating as myRating’s own, never as DUPR (#116)', () => {
+    render(<RatingCard rating={1512.4} />);
+
+    expect(screen.getByText(copy.unit)).toBeOnTheScreen();
+    expect(screen.queryByText(/DUPR/)).toBeNull();
   });
 
   it('shows the calibrating state when there is no rating yet', () => {

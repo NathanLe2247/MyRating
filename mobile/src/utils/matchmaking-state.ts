@@ -10,7 +10,7 @@ import { type GeoPoint, MetersPerMile } from '@/constants/courts';
 import { MatchmakingOpenMatchPollMs, MatchmakingPollMs, QueueRadiusMeters } from '@/constants/matchmaking';
 import { en } from '@/i18n/en';
 import type { MatchFound, MatchFoundPlayer } from '@/types/match-found';
-import type { MatchmakingPhase, MatchmakingSnapshot } from '@/types/matchmaking';
+import type { MatchmakingPhase, MatchmakingSnapshot, PairingRatings } from '@/types/matchmaking';
 import { distanceMeters } from '@/utils/geo';
 
 // Pure helpers over the `matchmaking` function's state
@@ -65,20 +65,45 @@ export function pollIntervalMs(state: MatchmakingState | undefined): number | fa
 }
 
 /**
+ * The ratings to show for the match in `next`: taken once, the first time the
+ * device sees the pairing, and kept for that match after. Live ratings move
+ * when a result is confirmed (and the dashboard can refresh before
+ * matchmaking catches up), so reading them later would mix a post-match
+ * rating with a pre-match one. A player rating that wasn't loaded yet is
+ * filled in later only while no result has been reported.
+ */
+export function pairingRatings(
+  next: MatchmakingState,
+  prev: PairingRatings | undefined,
+  playerRating: number | null | undefined,
+): PairingRatings | undefined {
+  const { match, opponent } = next;
+  if (!match) return undefined;
+  if (prev?.matchId !== match.id) {
+    return { matchId: match.id, player: playerRating, opponent: opponent?.rating ?? null };
+  }
+  const canFill = prev.player === undefined && playerRating !== undefined && match.status !== 'awaiting_confirmation';
+  return canFill ? { ...prev, player: playerRating } : prev;
+}
+
+/**
  * Folds a new state from the function into the previous snapshot, carrying
  * the device-only fields forward while there's still a queue entry or match.
- * `origin` is set by a `join`.
+ * `origin` is set by a `join`; `playerRating` is the player's rating as the
+ * device knows it now (undefined when not loaded), for `pairingRatings`.
  */
 export function mergeSnapshot(
   next: MatchmakingState,
   prev: MatchmakingSnapshot | undefined,
   origin?: GeoPoint,
+  playerRating?: number | null,
 ): MatchmakingSnapshot {
   const active = next.queue_entry !== null || next.match !== null;
   return {
     ...next,
     origin: origin ?? (active ? prev?.origin : undefined),
     waitingSince: next.queue_entry?.created_at ?? (next.match ? prev?.waitingSince : undefined),
+    pairingRatings: pairingRatings(next, prev?.pairingRatings, playerRating),
   };
 }
 
@@ -93,13 +118,18 @@ export const QueueRadiusMiles = Math.round(QueueRadiusMeters / MetersPerMile);
 
 /**
  * The Match Found view model for the current match, or null without one.
- * Matches are singles, scored by the shared rules. Win probability and rating
- * impact aren't provided by matchmaking, so they stay unset (the screen hides
- * them) rather than being computed here.
+ * Matches are singles, scored by the shared rules. Both ratings are the
+ * pairing-time ones (`pairingRatings`), never the live ones. Win probability
+ * and rating impact aren't provided by matchmaking, so they stay unset (the
+ * screen hides them) rather than being computed here.
  */
-export function toMatchFound(snapshot: MatchmakingSnapshot | undefined, player: MatchFoundPlayer): MatchFound | null {
+export function toMatchFound(
+  snapshot: MatchmakingSnapshot | undefined,
+  player: Omit<MatchFoundPlayer, 'rating'>,
+): MatchFound | null {
   const { match, opponent, court } = snapshot ?? {};
   if (!snapshot || !match || !opponent) return null;
+  const ratings = snapshot.pairingRatings?.matchId === match.id ? snapshot.pairingRatings : undefined;
 
   const waited = snapshot.waitingSince
     ? (Date.parse(match.created_at) - Date.parse(snapshot.waitingSince)) / 1000
@@ -111,8 +141,8 @@ export function toMatchFound(snapshot: MatchmakingSnapshot | undefined, player: 
     id: match.id,
     format: 'singles',
     official: false,
-    player,
-    opponent: { name: opponentName(opponent), rating: opponent.rating },
+    player: { ...player, rating: ratings?.player ?? null },
+    opponent: { name: opponentName(opponent), rating: ratings ? ratings.opponent : opponent.rating },
     searchRadiusMiles: QueueRadiusMiles,
     elapsedSeconds: Number.isFinite(waited) ? Math.max(0, waited) : 0,
     venue:
