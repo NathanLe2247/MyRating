@@ -84,6 +84,18 @@ async function settled(result: { current: ReturnType<typeof useMatchmaking> }) {
   await waitFor(() => expect(result.current.phase).not.toBe('loading'));
 }
 
+/**
+ * Launch reads idle, then a refresh reads the state under test: a search or
+ * proposal on the very first check would be left as a previous session's.
+ */
+async function reread(result: { current: ReturnType<typeof useMatchmaking> }) {
+  await settled(result);
+  const calls = invoke.mock.calls.length;
+  act(() => result.current.refresh());
+  await waitFor(() => expect(invoke.mock.calls.length).toBeGreaterThan(calls));
+  await waitFor(() => expect(result.current.phase).not.toBe('idle'));
+}
+
 const tick = (ms = MatchmakingPollMs) => act(() => jest.advanceTimersByTimeAsync(ms));
 
 describe('useMatchmaking', () => {
@@ -102,6 +114,39 @@ describe('useMatchmaking', () => {
   function mockUseSupabaseClient() {
     (useSupabaseClient as jest.Mock).mockReturnValue({ functions: { invoke } });
   }
+
+  describe('a previous session’s leftovers', () => {
+    it.each([
+      ['search', searchingState],
+      ['unanswered proposal', matchState('proposed')],
+      ['proposal accepted on another launch', matchState('proposed', { playerAccepted: true })],
+    ] as const)('leaves a %s found on the first check, so queueing starts from Find a match', async (_, leftover) => {
+      serve({ poll: [leftover], leave: [idleState] });
+      const { result } = render();
+      await waitFor(() => expect(actions()).toEqual(['poll', 'leave']));
+      await settled(result);
+      expect(result.current.phase).toBe('idle');
+      expect(result.current.error).toBeNull();
+    });
+
+    it('keeps a match that’s on: it’s a real game waiting for a score', async () => {
+      serve({ poll: [matchState('accepted')] });
+      const { result } = render();
+      await settled(result);
+      expect(result.current.phase).toBe('accepted');
+      expect(actions()).toEqual(['poll']);
+    });
+
+    it('only checks once: a search started this session keeps going', async () => {
+      serve({ poll: [idleState, searchingState], join: [searchingState] });
+      const { result } = render();
+      await settled(result);
+      await act(() => result.current.join());
+      await tick();
+      expect(result.current.phase).toBe('searching');
+      expect(actions()).not.toContain('leave');
+    });
+  });
 
   it('reads the state once on start and stays quiet while idle', async () => {
     serve({ poll: [idleState] });
@@ -185,10 +230,10 @@ describe('useMatchmaking', () => {
   });
 
   it('snapshots the dashboard rating when the pairing shows up, and keeps it after the rating moves', async () => {
-    serve({ poll: [matchState('proposed'), matchState('accepted'), matchState('awaiting_confirmation')] });
+    serve({ poll: [idleState, matchState('proposed'), matchState('accepted'), matchState('awaiting_confirmation')] });
     const { result } = render();
     client.setQueryData([PlayerRatingQueryKey, 'user_test'], 1480);
-    await settled(result);
+    await reread(result);
     expect(result.current.snapshot?.pairingRatings).toEqual({ matchId: MatchId, player: 1480, opponent: 1500 });
 
     // The dashboard refreshes before matchmaking sees the match settle.
@@ -202,11 +247,11 @@ describe('useMatchmaking', () => {
 
   it('keeps polling after accepting until the opponent answers', async () => {
     serve({
-      poll: [matchState('proposed'), matchState('proposed', { playerAccepted: true }), matchState('accepted')],
+      poll: [idleState, matchState('proposed'), matchState('proposed', { playerAccepted: true }), matchState('accepted')],
       accept: [matchState('proposed', { playerAccepted: true })],
     });
     const { result } = render();
-    await settled(result);
+    await reread(result);
 
     await act(() => result.current.accept());
     expect(result.current.phase).toBe('waiting_for_opponent');
@@ -244,9 +289,9 @@ describe('useMatchmaking', () => {
   });
 
   it('declines, then requeues to look for someone else', async () => {
-    serve({ poll: [matchState('proposed')], decline: [idleState], join: [searchingState] });
+    serve({ poll: [idleState, matchState('proposed')], decline: [idleState], join: [searchingState] });
     const { result } = render();
-    await settled(result);
+    await reread(result);
     expect(result.current.phase).toBe('proposed');
 
     await act(() => result.current.decline());
@@ -256,9 +301,9 @@ describe('useMatchmaking', () => {
   });
 
   it('leaves the queue and stops polling', async () => {
-    serve({ poll: [searchingState], leave: [idleState] });
+    serve({ poll: [idleState, searchingState], leave: [idleState] });
     const { result } = render();
-    await settled(result);
+    await reread(result);
     expect(result.current.phase).toBe('searching');
 
     await act(() => result.current.leave());
@@ -271,9 +316,9 @@ describe('useMatchmaking', () => {
   });
 
   it('stops polling when unmounted', async () => {
-    serve({ poll: [searchingState] });
+    serve({ poll: [idleState, searchingState] });
     const { result, unmount } = render();
-    await settled(result);
+    await reread(result);
     await tick();
     const calls = invoke.mock.calls.length;
     expect(calls).toBeGreaterThan(1);
@@ -300,9 +345,9 @@ describe('useMatchmaking', () => {
     it.each(['match_not_found', 'match_not_proposed'] as const)(
       'an accept refused with %s shows the error and re-reads the state',
       async (code) => {
-        serve({ poll: [matchState('proposed'), idleState], accept: [{ error: code }] });
+        serve({ poll: [idleState, matchState('proposed'), idleState], accept: [{ error: code }] });
         const { result } = render();
-        await settled(result);
+        await reread(result);
 
         await act(() => result.current.accept());
         expect(result.current.error).toBe(code);

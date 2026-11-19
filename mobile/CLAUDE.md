@@ -78,6 +78,10 @@ screens are gone; `app/(home)/` holds the tab screens.
   (`pollIntervalMs` in `src/utils/matchmaking-state.ts`); it only runs once
   the player is signed in and onboarded. Actions (`join`, `leave`, `accept`, `decline`
   — which requeues) write their returned state into that entry.
+  The first check after launch (or a different player signing in) leaves a
+  previous session's search or unanswered proposal (`LEFTOVER_PHASES`), so
+  queueing always starts from Find a match; a match that's on is kept. A
+  `join` before that check finishes counts as this session's choice.
   `match_open` / `match_pending` aren't errors: the state is re-read and the
   open match is shown. Phases and the Match Found view model are pure
   helpers in `src/utils/matchmaking-state.ts`.
