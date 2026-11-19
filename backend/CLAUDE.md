@@ -191,9 +191,12 @@ issuing its own sessions.
   `supabase/seed.sql` is local only (`db reset` loads it, `db push` never
   does) and holds just an inactive test court. `tests/courts_seed.test.sql`
   checks both by their fixed ids. `courts.google_place_id`
-  (20261116120000, nullable) feeds `court-photo`; the catalog courts are
-  still null until a data migration backfills them from Places Text Search
-  (name + location bias, unconfident matches stay null).
+  (20261116120000, nullable) feeds `court-photo`. The data migration
+  `20261117150000_courts_backfill_place_ids.sql` sets it for 6 of the 8
+  catalog courts (found with free IDs-only Places Text Search; Peachwood and
+  Fairland stay null, no confident match), checked by
+  `tests/courts_place_ids_backfill.test.sql`. To add more, follow
+  "Finding Place IDs" in `agent/skills/courts-catalog`.
   `tests/courts_google_place_id.test.sql` covers the column and RPC.
 - `django/` — a separate Django service. **Ownership boundary vs. the edge
   functions above is not yet decided** — see `django/CLAUDE.md`. Don't
