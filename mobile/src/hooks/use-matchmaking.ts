@@ -1,7 +1,7 @@
 import { useAuth } from '@clerk/expo';
 import type { MatchmakingState } from '@myrating/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 
 import { demoLocation } from '@/config/demo-location';
 import type { GeoPoint } from '@/constants/courts';
@@ -49,6 +49,15 @@ const STALE_STATE: readonly MatchmakingErrorCode[] = [
 ];
 const SHOWN_AS_STATE: readonly MatchmakingErrorCode[] = ['match_pending', 'match_open'];
 
+/**
+ * Phases a previous app session can leave behind that the player never chose
+ * in this one: a search, or a proposal nobody has accepted on this device.
+ * The first state check after launch (or after a different player signs in)
+ * leaves them, so queueing always starts from "Find a match". A match that's
+ * on (accepted / awaiting confirmation) is a real game and is kept.
+ */
+const LEFTOVER_PHASES: readonly MatchmakingPhase[] = ['searching', 'proposed', 'waiting_for_opponent'];
+
 export const MatchmakingContext = createContext<Matchmaking | null>(null);
 
 /**
@@ -71,6 +80,8 @@ export function useMatchmakingController(): Matchmaking {
   const queryKey = useMemo(() => [MatchmakingQueryKey, userId] as const, [userId]);
   const [actionError, setActionError] = useState<MatchmakingErrorCode | null>(null);
   const [busy, setBusy] = useState(false);
+  // The player whose leftover search this session has already dealt with.
+  const leftoverCheckedFor = useRef<string | null>(null);
   // The player's rating as the dashboard last loaded it (undefined if it
   // hasn't), snapshotted into the state when a pairing first shows up.
   const playerRating = useCallback(
@@ -83,8 +94,15 @@ export function useMatchmakingController(): Matchmaking {
     // Without an onboarded account the function would only answer
     // profile_required.
     enabled: !!isSignedIn && !!userId && onboardingCompleted,
-    queryFn: async () =>
-      mergeSnapshot(await api.poll(), queryClient.getQueryData<MatchmakingSnapshot>(queryKey), undefined, playerRating()),
+    queryFn: async () => {
+      const prev = queryClient.getQueryData<MatchmakingSnapshot>(queryKey);
+      let state = await api.poll();
+      if (leftoverCheckedFor.current !== userId) {
+        leftoverCheckedFor.current = userId ?? null;
+        if (LEFTOVER_PHASES.includes(matchmakingPhase(state))) state = await api.leave();
+      }
+      return mergeSnapshot(state, prev, undefined, playerRating());
+    },
     refetchInterval: (q) => pollIntervalMs(q.state.data),
     staleTime: 0,
     // The poll interval is the retry while waiting; otherwise the screen
@@ -123,6 +141,7 @@ export function useMatchmakingController(): Matchmaking {
   const join = useCallback(
     () =>
       perform(async () => {
+        leftoverCheckedFor.current = userId ?? null;
         const origin =
           demoLocation() ??
           (await queryClient.fetchQuery(currentPositionQuery).catch(() => {
@@ -130,7 +149,7 @@ export function useMatchmakingController(): Matchmaking {
           }));
         return { state: await api.join(origin, QueueRadiusMeters), origin };
       }),
-    [api, perform, queryClient],
+    [api, perform, queryClient, userId],
   );
 
   const matchId = query.data?.match?.id;
