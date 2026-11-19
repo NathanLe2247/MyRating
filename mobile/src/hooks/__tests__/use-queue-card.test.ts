@@ -15,6 +15,7 @@ jest.mock('expo-router', () => ({ useRouter: jest.fn() }));
 
 const mockUseMatchmaking = useMatchmaking as jest.Mock;
 const push = jest.fn();
+const setFormat = jest.fn();
 
 function matchmaking(state: Parameters<typeof mergeSnapshot>[0], extra: Partial<Matchmaking> = {}): Matchmaking {
   return {
@@ -38,7 +39,7 @@ describe('useQueueCard', () => {
   it('idle: Find a match joins', () => {
     const mm = matchmaking(idleState);
     mockUseMatchmaking.mockReturnValue(mm);
-    const { result } = renderHook(() => useQueueCard());
+    const { result } = renderHook(() => useQueueCard('singles', setFormat));
 
     expect(result.current.status).toEqual({ kind: 'idle' });
     act(() => result.current.onFindMatch());
@@ -48,7 +49,7 @@ describe('useQueueCard', () => {
   it('searching: timer from the queue entry, and Leave leaves', () => {
     const mm = matchmaking(searchingState);
     mockUseMatchmaking.mockReturnValue(mm);
-    const { result } = renderHook(() => useQueueCard());
+    const { result } = renderHook(() => useQueueCard('singles', setFormat));
 
     expect(result.current.status).toEqual({
       kind: 'searching',
@@ -62,7 +63,7 @@ describe('useQueueCard', () => {
 
   it('opens Match Found once when a proposal arrives, and again from the card', () => {
     mockUseMatchmaking.mockReturnValue(matchmaking(searchingState));
-    const { result, rerender } = renderHook(() => useQueueCard());
+    const { result, rerender } = renderHook(() => useQueueCard('singles', setFormat));
 
     mockUseMatchmaking.mockReturnValue(matchmaking(matchState('proposed')));
     rerender({});
@@ -77,7 +78,7 @@ describe('useQueueCard', () => {
 
   it('shows the waiting and match-on states without navigating', () => {
     mockUseMatchmaking.mockReturnValue(matchmaking(matchState('proposed', { playerAccepted: true })));
-    const { result, rerender } = renderHook(() => useQueueCard());
+    const { result, rerender } = renderHook(() => useQueueCard('singles', setFormat));
     expect(result.current.status).toEqual({ kind: 'matched', opponent: en.matchmaking.botName, waiting: true });
 
     mockUseMatchmaking.mockReturnValue(matchmaking(matchState('accepted')));
@@ -88,9 +89,40 @@ describe('useQueueCard', () => {
 
   it('turns an error code into copy', () => {
     mockUseMatchmaking.mockReturnValue(matchmaking(idleState, { error: 'profile_required', busy: true }));
-    const { result } = renderHook(() => useQueueCard());
+    const { result } = renderHook(() => useQueueCard('singles', setFormat));
 
     expect(result.current.error).toBe(en.matchmaking.errors.profile_required);
     expect(result.current.busy).toBe(true);
+  });
+
+  describe.each(['doubles', 'mixed'] as const)('on the %s tab (the queue is singles-only)', (format) => {
+    it.each([
+      ['a search', searchingState],
+      ['a proposal', matchState('proposed')],
+      ['a match that’s on', matchState('accepted')],
+    ] as const)('hides %s: the card stays at Find a match', (_, state) => {
+      mockUseMatchmaking.mockReturnValue(matchmaking(state, { error: 'network' }));
+      const { result } = renderHook(() => useQueueCard(format, setFormat));
+      expect(result.current.status).toEqual({ kind: 'idle' });
+      expect(result.current.error).toBeUndefined();
+    });
+
+    it('Find a match switches to singles and joins', () => {
+      const mm = matchmaking(idleState);
+      mockUseMatchmaking.mockReturnValue(mm);
+      const { result } = renderHook(() => useQueueCard(format, setFormat));
+      act(() => result.current.onFindMatch());
+      expect(setFormat).toHaveBeenCalledWith('singles');
+      expect(mm.join).toHaveBeenCalled();
+    });
+  });
+
+  it('on the singles tab, Find a match joins without switching', () => {
+    const mm = matchmaking(idleState);
+    mockUseMatchmaking.mockReturnValue(mm);
+    const { result } = renderHook(() => useQueueCard('singles', setFormat));
+    act(() => result.current.onFindMatch());
+    expect(setFormat).not.toHaveBeenCalled();
+    expect(mm.join).toHaveBeenCalled();
   });
 });

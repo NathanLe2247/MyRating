@@ -12,6 +12,7 @@ import { RatingCard } from '@/components/home/rating-card';
 import { RecentMatches } from '@/components/home/recent-matches';
 import { ReportResultCard } from '@/components/home/report-result-card';
 import type { MatchFormat } from '@/constants/match';
+import { QueueFormat } from '@/constants/matchmaking';
 import { BottomTabInset, Brand, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useDashboard } from '@/hooks/use-dashboard';
 import { useLocationPermission } from '@/hooks/use-location-permission';
@@ -24,8 +25,10 @@ export default function HomeScreen() {
   const [format, setFormat] = useState<MatchFormat>('doubles');
   const { data, error, refetch } = useDashboard(format);
   const location = useLocationPermission();
-  const queue = useQueueCard();
-  const report = useReportResult();
+  const queue = useQueueCard(format, setFormat);
+  // The queue's match is singles, so its score card stays on that tab.
+  const reportResult = useReportResult();
+  const report = format === QueueFormat ? reportResult : null;
 
   // TODO: the header's options button is the only place to sign out until
   // there's a profile/settings screen.
