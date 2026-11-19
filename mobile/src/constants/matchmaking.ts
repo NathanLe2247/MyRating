@@ -1,3 +1,5 @@
+import type { MatchFormat } from '@/constants/match';
+
 /** Edge function behind the match queue (backend/supabase/functions/matchmaking). */
 export const MatchmakingFunction = 'matchmaking';
 
@@ -25,3 +27,9 @@ export const MatchmakingOpenMatchPollMs = 12_000;
 
 /** React Query key prefix of the player's matchmaking state (plus the Clerk user id). */
 export const MatchmakingQueryKey = 'matchmaking';
+
+/**
+ * The format the match queue pairs for: matchmaking is singles-only (one
+ * player per side), so Home shows queue and match state on this tab only.
+ */
+export const QueueFormat = 'singles' satisfies MatchFormat;

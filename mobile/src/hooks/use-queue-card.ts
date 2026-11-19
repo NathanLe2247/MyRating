@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 
-import { MatchFoundRoute } from '@/constants/match';
+import { MatchFoundRoute, type MatchFormat } from '@/constants/match';
+import { QueueFormat } from '@/constants/matchmaking';
 import { useMatchmaking } from '@/hooks/use-matchmaking';
 import type { QueueCardStatus } from '@/types/matchmaking';
 import { matchmakingErrorMessage } from '@/utils/matchmaking-error';
@@ -11,8 +12,11 @@ import { opponentName, QueueRadiusMiles } from '@/utils/matchmaking-state';
  * Drives Home's queue card from the shared matchmaking state, and opens Match
  * Found once when a new proposal arrives (going back from it leaves the card
  * showing the pairing, which reopens it).
+ *
+ * The queue is singles-only (`QueueFormat`): on the other format tabs the
+ * card stays at "Find a match", and pressing it switches to singles and joins.
  */
-export function useQueueCard() {
+export function useQueueCard(format: MatchFormat, onFormatChange: (format: MatchFormat) => void) {
   const router = useRouter();
   const { snapshot, phase, error, busy, join, leave } = useMatchmaking();
   const openedMatch = useRef<string | null>(null);
@@ -26,8 +30,9 @@ export function useQueueCard() {
   }, [proposedId, router]);
 
   const opponent = snapshot?.opponent ? opponentName(snapshot.opponent) : '';
+  const queueTab = format === QueueFormat;
   let status: QueueCardStatus;
-  switch (phase) {
+  switch (queueTab ? phase : 'idle') {
     case 'searching':
       status = { kind: 'searching', since: snapshot?.waitingSince, radiusMiles: QueueRadiusMiles };
       break;
@@ -46,8 +51,11 @@ export function useQueueCard() {
   return {
     status,
     busy,
-    error: error ? matchmakingErrorMessage(error) : undefined,
-    onFindMatch: () => void join(),
+    error: queueTab && error ? matchmakingErrorMessage(error) : undefined,
+    onFindMatch: () => {
+      if (!queueTab) onFormatChange(QueueFormat);
+      void join();
+    },
     onOpenMatch: () => router.push(MatchFoundRoute),
     onLeave: () => void leave(),
   };

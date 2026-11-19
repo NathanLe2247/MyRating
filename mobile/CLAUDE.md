@@ -90,6 +90,9 @@ screens are gone; `app/(home)/` holds the tab screens.
   `QueueRadiusMeters` (`src/constants/matchmaking.ts`).
 - Home's queue card (`useQueueCard`) shows Find a match → searching (timer,
   Leave) → the pairing, and opens `/match/found` once per new proposal.
+  The queue is singles-only (`QueueFormat`): on Home's doubles / mixed tabs
+  the card stays at Find a match (pressing it switches to singles and
+  joins) and the score card is hidden — don't show queue state there.
   `app/match/found.tsx` (`useMatchFoundScreen`) shows the live match:
   Accept / Decline / Leave while proposed, then the "match on" panel
   (`MatchOnPanel`): view phase `'on'` for `accepted`, with Cancel match, and
